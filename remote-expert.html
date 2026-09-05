@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FieldLens AR • Cockpit de Experto Remoto</title>
+  <meta name="description" content="Consola de especialista remoto para asistencia técnica aumentada con puntero láser, anotaciones AR y esquemas técnicos sincronizados.">
+  <link rel="stylesheet" href="css/design-system.css">
+  <link rel="stylesheet" href="css/report.css">
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+  <style>
+    body, html {
+      height: 100%;
+      overflow: hidden;
+      background: var(--bg-space);
+    }
+
+    .expert-cockpit {
+      display: flex;
+      height: 100vh;
+      width: 100vw;
+      overflow: hidden;
+    }
+
+    /* Left Control & Inspection Stage */
+    .expert-main-stage {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      background: #030712;
+    }
+
+    /* Top Cockpit Header */
+    .cockpit-header {
+      height: 60px;
+      padding: 0 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--bg-surface);
+      border-bottom: 1px solid var(--border-glass);
+      z-index: 30;
+    }
+
+    .brand-title {
+      font-size: 1.15rem;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      color: var(--neon-cyan);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    /* Center Video Monitor Stage */
+    .monitor-stage-wrapper {
+      flex: 1;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #000;
+      overflow: hidden;
+      cursor: crosshair;
+    }
+
+    #expertVideo {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    #expertSimCanvas {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: none;
+    }
+
+    #expertArCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 20;
+    }
+
+    /* Floating Tactical Toolbar */
+    .floating-tools-bar {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      background: var(--bg-glass-strong);
+      padding: 12px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-glass);
+      box-shadow: var(--shadow-md);
+      z-index: 40;
+    }
+
+    .tool-btn {
+      width: 44px;
+      height: 44px;
+      border-radius: var(--radius-sm);
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--border-glass);
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .tool-btn:hover {
+      background: rgba(255, 255, 255, 0.12);
+      border-color: rgba(255, 255, 255, 0.3);
+    }
+
+    .tool-btn.active {
+      background: rgba(0, 240, 255, 0.2);
+      border-color: var(--neon-cyan);
+      color: var(--neon-cyan);
+      box-shadow: 0 0 14px var(--neon-cyan-glow);
+    }
+
+    .color-swatch-picker {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      align-items: center;
+      margin-top: 6px;
+      padding-top: 8px;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .color-swatch {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: transform 0.2s;
+    }
+
+    .color-swatch.active {
+      border-color: #fff;
+      transform: scale(1.15);
+      box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+    }
+
+    /* Bottom Action Bar */
+    .cockpit-bottom-actions {
+      height: 64px;
+      padding: 0 20px;
+      background: var(--bg-surface);
+      border-top: 1px solid var(--border-glass);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 30;
+    }
+
+    /* Right Session & Diagnostics Sidebar */
+    .expert-sidebar {
+      width: 380px;
+      background: var(--bg-surface-elevated);
+      border-left: 1px solid var(--border-glass);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      z-index: 30;
+    }
+
+    .sidebar-section {
+      padding: 18px 20px;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .section-heading {
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      color: var(--neon-cyan);
+      text-transform: uppercase;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .evidence-thumbs-strip {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .evidence-thumb-item {
+      position: relative;
+      height: 100px;
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+      border: 1px solid var(--border-glass);
+      background: #000;
+      cursor: pointer;
+    }
+
+    .evidence-thumb-item img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .evidence-thumb-item .time-tag {
+      position: absolute;
+      bottom: 4px;
+      right: 4px;
+      background: rgba(0,0,0,0.7);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.68rem;
+      font-family: var(--font-mono);
+    }
+
+    /* Schematics Modal */
+    .schematics-grid-modal {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+      margin-top: 16px;
+    }
+
+    .schematic-card-item {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-glass);
+      border-radius: var(--radius-md);
+      padding: 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .schematic-card-item:hover {
+      border-color: var(--neon-cyan);
+      box-shadow: 0 0 16px var(--neon-cyan-glow);
+    }
+
+    .schematic-card-item.selected {
+      border-color: var(--neon-amber);
+      background: rgba(255, 214, 0, 0.05);
+    }
+
+    .schematic-preview-box {
+      height: 140px;
+      background: #000;
+      border-radius: 6px;
+      overflow: hidden;
+      margin-bottom: 10px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="expert-cockpit">
+    
+    <!-- Main Center Inspection Console -->
+    <main class="expert-main-stage">
+      
+      <!-- Top Cockpit Header -->
+      <header class="cockpit-header">
+        <div class="brand-title">
+          <span>FIELDLENS AR</span>
+          <span style="font-size:0.75rem; color:var(--text-muted); font-weight:400;">| COCKPIT ESPECIALISTA REMOTO</span>
+        </div>
+
+        <div style="display:flex; align-items:center; gap:12px;">
+          <span class="badge badge-live" id="expertLiveBadge">CONECTADO</span>
+          <span class="badge badge-cyan" id="expertRoomBadge">SALA: SALA-1</span>
+          <span class="telemetry-tag" id="pingDisplay">LATENCIA: 14ms</span>
+        </div>
+      </header>
+
+      <!-- Central Video Monitor -->
+      <div class="monitor-stage-wrapper" id="monitorStage">
+        
+        <!-- Floating Tactical AR Toolbar -->
+        <aside class="floating-tools-bar">
+          <!-- Laser Pointer -->
+          <button class="tool-btn active" id="toolLaser" title="Puntero Láser Pulsante (Hover/Clic)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/></svg>
+            <span style="font-size:0.62rem; margin-top:2px;">Láser</span>
+          </button>
+
+          <!-- Freehand Pen -->
+          <button class="tool-btn" id="toolPen" title="Rotulador Libre (Dibujo AR)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/></svg>
+            <span style="font-size:0.62rem; margin-top:2px;">Dibujo</span>
+          </button>
+
+          <!-- Arrow -->
+          <button class="tool-btn" id="toolArrow" title="Flecha de Indicación">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+            <span style="font-size:0.62rem; margin-top:2px;">Flecha</span>
+          </button>
+
+          <!-- Inspection Circle -->
+          <button class="tool-btn" id="toolCircle" title="Círculo de Inspección">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg>
+            <span style="font-size:0.62rem; margin-top:2px;">Zona</span>
+          </button>
+
+          <!-- Step Pins (1, 2, 3...) -->
+          <button class="tool-btn" id="toolStepPin" title="Pines de Pasos Enumerados (1, 2, 3...)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            <span style="font-size:0.62rem; margin-top:2px;">Pasos</span>
+          </button>
+
+          <!-- Color Swatches -->
+          <div class="color-swatch-picker">
+            <div class="color-swatch active" data-color="#00f0ff" style="background:#00f0ff;" title="Cian Eléctrico"></div>
+            <div class="color-swatch" data-color="#ffd600" style="background:#ffd600;" title="Amarillo Precaución"></div>
+            <div class="color-swatch" data-color="#ff0055" style="background:#ff0055;" title="Fucsia Alta Visibilidad"></div>
+            <div class="color-swatch" data-color="#00e676" style="background:#00e676;" title="Verde Confirmado"></div>
+          </div>
+
+          <div style="border-top:1px solid rgba(255,255,255,0.1); padding-top:6px; margin-top:4px;">
+            <button class="tool-btn" id="btnUndo" title="Deshacer último trazo" style="height:34px;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg>
+            </button>
+            <button class="tool-btn" id="btnClear" title="Limpiar todas las anotaciones" style="height:34px; margin-top:4px;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            </button>
+          </div>
+        </aside>
+
+        <!-- Video Element from Field Mobile Stream -->
+        <video id="expertVideo" autoplay playsinline></video>
+        <!-- Canvas simulation loop fallback -->
+        <canvas id="expertSimCanvas" width="1280" height="720"></canvas>
+        <!-- Interactive AR Canvas Layer -->
+        <canvas id="expertArCanvas"></canvas>
+
+        <!-- Tactical HUD corner brackets -->
+        <div class="hud-corner-bracket hud-tl"></div>
+        <div class="hud-corner-bracket hud-tr"></div>
+        <div class="hud-corner-bracket hud-bl"></div>
+        <div class="hud-corner-bracket hud-br"></div>
+
+        <!-- Freeze Frame Status Banner -->
+        <div class="freeze-banner" id="freezeIndicator" style="display:none;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="10" y1="15" x2="10" y2="9"/><line x1="14" y1="15" x2="14" y2="9"/></svg>
+          <span>MODO CONGELADO: INSPECCIÓN EN DETALLE</span>
+        </div>
+      </div>
+
+      <!-- Cockpit Bottom Actions Bar -->
+      <footer class="cockpit-bottom-actions">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <!-- Freeze Frame Toggle -->
+          <button class="btn btn-amber" id="btnToggleFreeze">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            <span id="freezeBtnText">Congelar Imagen</span>
+          </button>
+
+          <!-- Snapshot Evidence -->
+          <button class="btn btn-secondary" id="btnCaptureEvidence">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+            <span>Capturar Evidencia</span>
+          </button>
+
+          <!-- Share Screen / CAD / Manual -->
+          <button class="btn btn-secondary" id="btnShareScreen">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+            <span id="shareScreenText">Compartir Pantalla</span>
+          </button>
+        </div>
+
+        <div style="display:flex; align-items:center; gap:10px;">
+          <!-- Open Schematics Library -->
+          <button class="btn btn-primary" id="btnOpenSchematics">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+            <span>Esquemas y Diagramas</span>
+          </button>
+
+          <!-- Generate Service Report -->
+          <button class="btn btn-secondary" id="btnOpenReport">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+            <span>Informe de Servicio</span>
+          </button>
+        </div>
+      </footer>
+
+    </main>
+
+    <!-- Right Diagnostics & Evidences Sidebar -->
+    <aside class="expert-sidebar">
+      
+      <!-- Session Details -->
+      <div class="sidebar-section">
+        <div class="section-heading">
+          <span>SESIÓN ACTIVA</span>
+          <span class="badge badge-cyan" id="sidebarRoomCode">SALA-1</span>
+        </div>
+        <div style="font-size:0.85rem; color:var(--text-secondary); line-height:1.5;">
+          <strong style="color:#fff;">Equipo Asignado:</strong> Tablero Principal & Bomba #02<br>
+          <strong style="color:#fff;">Técnico en Campo:</strong> Carlos M.<br>
+          <strong style="color:#fff;">Ubicación:</strong> Planta Norte • Nave 4
+        </div>
+      </div>
+
+      <!-- Realtime Guidance Checklist -->
+      <div class="sidebar-section">
+        <div class="section-heading">
+          <span>SECUENCIA DE PASOS GUIADOS</span>
+          <button class="btn btn-secondary" id="btnAddStepChecklist" style="padding:2px 8px; font-size:0.75rem;">+ Paso</button>
+        </div>
+        <ul id="checklistItems" style="list-style:none; display:flex; flex-direction:column; gap:8px; font-size:0.85rem;">
+          <li style="display:flex; align-items:center; gap:8px;">
+            <input type="checkbox" checked style="accent-color:var(--neon-cyan);">
+            <span>[1] Verificar disparo de guardamotor Q1</span>
+          </li>
+          <li style="display:flex; align-items:center; gap:8px;">
+            <input type="checkbox" checked style="accent-color:var(--neon-cyan);">
+            <span>[2] Comprobar tensión trifásica en bornes</span>
+          </li>
+          <li style="display:flex; align-items:center; gap:8px;">
+            <input type="checkbox" style="accent-color:var(--neon-cyan);">
+            <span>[3] Desmontar tapa de rodamientos de la bomba</span>
+          </li>
+          <li style="display:flex; align-items:center; gap:8px;">
+            <input type="checkbox" style="accent-color:var(--neon-cyan);">
+            <span>[4] Comprobar holgura axial y sello mecánico</span>
+          </li>
+        </ul>
+      </div>
+
+      <!-- Evidences Gallery -->
+      <div class="sidebar-section" style="flex:1;">
+        <div class="section-heading">
+          <span>EVIDENCIAS ANOTADAS (<span id="evidenceCount">0</span>)</span>
+        </div>
+        <p class="hint-text">Las fotos capturadas con tus marcas y punteros láser se compilarán en el informe final.</p>
+        
+        <div class="evidence-thumbs-strip" id="evidenceThumbList">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+
+      <!-- Help info -->
+      <div class="sidebar-section" style="background:rgba(0,0,0,0.3); font-size:0.75rem; color:var(--text-muted);">
+        💡 <strong>Tip de Interacción:</strong> Mueve el cursor sobre el video para guiar al técnico con el láser en tiempo real. Usa <em>Pines</em> para marcar los componentes 1, 2, 3 paso a paso.
+      </div>
+    </aside>
+
+  </div>
+
+  <!-- Modal: Schematics & Blueprints Library -->
+  <div class="modal-backdrop" id="schematicsModal" style="display:none;">
+    <div class="modal-content" style="max-width:860px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+        <div>
+          <h2 style="font-size:1.3rem; font-weight:800; color:var(--neon-cyan);">Biblioteca de Esquemas Técnicos</h2>
+          <p style="font-size:0.85rem; color:var(--text-secondary);">Selecciona un plano para proyectarlo en el visor del técnico en campo.</p>
+        </div>
+        <button class="btn btn-secondary btn-icon" id="btnCloseSchematicsModal">✕</button>
+      </div>
+
+      <div class="schematics-grid-modal" id="schematicsGrid">
+        <!-- Rendered dynamically -->
+      </div>
+
+      <div style="margin-top:24px; display:flex; justify-content:space-between; align-items:center; padding-top:16px; border-top:1px solid var(--border-glass);">
+        <label class="btn btn-secondary" style="cursor:pointer;">
+          <span>📁 Subir Plano Propio (PNG/JPG/SVG)</span>
+          <input type="file" id="uploadSchematicInput" accept="image/*" style="display:none;">
+        </label>
+
+        <div style="display:flex; gap:10px;">
+          <button class="btn btn-secondary" id="btnCancelPush">Cerrar</button>
+          <button class="btn btn-primary" id="btnPushActiveSchematic">🚀 Enviar al Técnico en Campo</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Service Work Order Report -->
+  <div class="modal-backdrop" id="reportModal" style="display:none;">
+    <div class="modal-content" style="max-width:920px;">
+      <div class="no-print" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+        <h2 style="font-size:1.3rem; font-weight:800; color:#fff;">Informe Técnico de Inspección</h2>
+        <div style="display:flex; gap:10px;">
+          <button class="btn btn-primary" id="btnPrintReport">🖨️ Imprimir / Guardar PDF</button>
+          <button class="btn btn-secondary btn-icon" id="btnCloseReportModal">✕</button>
+        </div>
+      </div>
+
+      <div id="reportContainer" class="report-modal-body">
+        <!-- Rendered dynamically by ReportGenerator -->
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { ARCanvas } from './js/ar-canvas.js';
+    import { WebRTCManager } from './js/webrtc-manager.js';
+    import { SchematicsManager, BUILTIN_SCHEMATICS } from './js/schematics-manager.js';
+    import { ReportGenerator } from './js/report-generator.js';
+    import { EquipmentSimulator } from './js/equipment-simulator.js';
+
+    // Room ID from URL: ?room=SALA-1
+    const urlParams = new URLSearchParams(window.location.search);
+    const roomId = urlParams.get('room') || 'SALA-1';
+    document.getElementById('expertRoomBadge').textContent = `SALA: ${roomId}`;
+    document.getElementById('sidebarRoomCode').textContent = roomId;
+
+    const expertVideo = document.getElementById('expertVideo');
+    const simCanvas = document.getElementById('expertSimCanvas');
+    const arCanvasEl = document.getElementById('expertArCanvas');
+    const freezeIndicator = document.getElementById('freezeIndicator');
+    const freezeBtnText = document.getElementById('freezeBtnText');
+
+    let arCanvas = null;
+    let webrtc = null;
+    let schematicsMgr = null;
+    let reportGen = null;
+    let equipmentSim = null;
+    let isFrozen = false;
+    let isScreenSharing = false;
+
+    // Initialize AR Canvas
+    arCanvas = new ARCanvas(arCanvasEl, {
+      isInteractive: true,
+      onEmitAction: (action) => {
+        if (webrtc) webrtc.sendMessage(action);
+      }
+    });
+
+    // Initialize Schematics & Report
+    schematicsMgr = new SchematicsManager({
+      onPushToField: (schematic) => {
+        if (webrtc) {
+          webrtc.sendMessage({
+            type: 'schematic_push',
+            schematic
+          });
+        }
+      }
+    });
+    reportGen = new ReportGenerator();
+
+    // Initialize WebRTC
+    webrtc = new WebRTCManager({
+      role: 'expert',
+      roomId: roomId,
+      onRemoteStream: (stream) => {
+        console.log('[Expert] Video stream recibido del técnico!');
+        expertVideo.srcObject = stream;
+        expertVideo.style.display = 'block';
+        simCanvas.style.display = 'none';
+        if (equipmentSim) equipmentSim.stop();
+      },
+      onDataMessage: (action) => {
+        if (action.type === 'tech_ping') {
+          // Field tech tapped screen
+          arCanvas.addLaserPing(action.normX, action.normY, '#ffd600');
+        }
+      },
+      onConnectionStatus: (info) => {
+        console.log('[Expert Status]', info);
+      }
+    });
+
+    webrtc.initPeer();
+
+    // Fallback: If no real video received after 1.5s, launch realistic industrial simulator loop
+    setTimeout(() => {
+      if (!expertVideo.srcObject) {
+        simCanvas.style.display = 'block';
+        expertVideo.style.display = 'none';
+        equipmentSim = new EquipmentSimulator(simCanvas);
+        equipmentSim.start();
+      }
+    }, 1500);
+
+    // Toolbar Tool Selection
+    const toolButtons = {
+      laser: document.getElementById('toolLaser'),
+      pen: document.getElementById('toolPen'),
+      arrow: document.getElementById('toolArrow'),
+      circle: document.getElementById('toolCircle'),
+      step_pin: document.getElementById('toolStepPin')
+    };
+
+    function setActiveTool(toolKey) {
+      Object.values(toolButtons).forEach(btn => btn.classList.remove('active'));
+      toolButtons[toolKey].classList.add('active');
+      arCanvas.currentTool = toolKey;
+    }
+
+    Object.entries(toolButtons).forEach(([toolKey, btn]) => {
+      btn.addEventListener('click', () => setActiveTool(toolKey));
+    });
+
+    // Color Swatches
+    document.querySelectorAll('.color-swatch').forEach(swatch => {
+      swatch.addEventListener('click', () => {
+        document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
+        swatch.classList.add('active');
+        arCanvas.currentColor = swatch.dataset.color;
+      });
+    });
+
+    // Undo & Clear
+    document.getElementById('btnUndo').addEventListener('click', () => arCanvas.undo(true));
+    document.getElementById('btnClear').addEventListener('click', () => arCanvas.clear(true));
+
+    // Freeze Frame Toggle
+    document.getElementById('btnToggleFreeze').addEventListener('click', () => {
+      isFrozen = !isFrozen;
+      if (isFrozen) {
+        const sourceEl = expertVideo.style.display !== 'none' ? expertVideo : simCanvas;
+        const frameData = arCanvas.captureFrame(sourceEl);
+        arCanvas.setFrozenFrame(frameData);
+        freezeIndicator.style.display = 'flex';
+        freezeBtnText.textContent = 'Reanudar Video';
+        webrtc.sendMessage({
+          type: 'freeze',
+          dataUrl: frameData
+        });
+      } else {
+        arCanvas.unfreezeFrame();
+        freezeIndicator.style.display = 'none';
+        freezeBtnText.textContent = 'Congelar Imagen';
+        webrtc.sendMessage({
+          type: 'freeze',
+          dataUrl: null
+        });
+      }
+    });
+
+    // Capture Evidence Snapshot
+    document.getElementById('btnCaptureEvidence').addEventListener('click', () => {
+      const sourceEl = expertVideo.style.display !== 'none' ? expertVideo : simCanvas;
+      const dataUrl = arCanvas.captureFrame(sourceEl);
+      const ev = reportGen.addEvidence(dataUrl, `Marcas de diagnóstico - ${new Date().toLocaleTimeString()}`);
+      
+      // Update UI
+      document.getElementById('evidenceCount').textContent = reportGen.getEvidences().length;
+      const thumbList = document.getElementById('evidenceThumbList');
+      const thumb = document.createElement('div');
+      thumb.className = 'evidence-thumb-item';
+      thumb.innerHTML = `
+        <img src="${dataUrl}" alt="Evidencia" />
+        <span class="time-tag">${ev.timestamp}</span>
+      `;
+      thumbList.appendChild(thumb);
+
+      // Brief flash animation
+      const flash = document.createElement('div');
+      flash.style.position = 'absolute';
+      flash.style.inset = '0';
+      flash.style.background = '#fff';
+      flash.style.opacity = '0.7';
+      flash.style.transition = 'opacity 0.4s';
+      flash.style.pointerEvents = 'none';
+      flash.style.zIndex = '100';
+      document.getElementById('monitorStage').appendChild(flash);
+      setTimeout(() => flash.style.opacity = '0', 50);
+      setTimeout(() => flash.remove(), 450);
+    });
+
+    // Share Screen
+    document.getElementById('btnShareScreen').addEventListener('click', async () => {
+      if (!isScreenSharing) {
+        const stream = await webrtc.startScreenShare();
+        if (stream) {
+          isScreenSharing = true;
+          document.getElementById('shareScreenText').textContent = 'Dejar de Compartir';
+          document.getElementById('btnShareScreen').classList.add('btn-active');
+        }
+      } else {
+        webrtc.stopScreenShare();
+        isScreenSharing = false;
+        document.getElementById('shareScreenText').textContent = 'Compartir Pantalla';
+        document.getElementById('btnShareScreen').classList.remove('btn-active');
+      }
+    });
+
+    // Schematics Modal Setup
+    const schematicsModal = document.getElementById('schematicsModal');
+    const schematicsGrid = document.getElementById('schematicsGrid');
+
+    function renderSchematicsGrid() {
+      schematicsGrid.innerHTML = '';
+      schematicsMgr.getAll().forEach(s => {
+        const card = document.createElement('div');
+        card.className = `schematic-card-item ${schematicsMgr.activeSchematic?.id === s.id ? 'selected' : ''}`;
+        card.innerHTML = `
+          <div class="schematic-preview-box">${s.svg || `<img src="${s.imageUrl}" style="width:100%; height:100%; object-fit:contain;"/>`}</div>
+          <div style="font-weight:700; font-size:0.92rem; color:#fff; margin-bottom:4px;">${s.title}</div>
+          <div style="font-size:0.75rem; color:var(--neon-cyan); margin-bottom:6px;">${s.category}</div>
+          <div style="font-size:0.78rem; color:var(--text-muted); line-height:1.4;">${s.description}</div>
+        `;
+        card.addEventListener('click', () => {
+          document.querySelectorAll('.schematic-card-item').forEach(c => c.classList.remove('selected'));
+          card.classList.add('selected');
+          schematicsMgr.setActive(s.id);
+        });
+        schematicsGrid.appendChild(card);
+      });
+    }
+
+    document.getElementById('btnOpenSchematics').addEventListener('click', () => {
+      renderSchematicsGrid();
+      schematicsModal.style.display = 'flex';
+    });
+
+    document.getElementById('btnCloseSchematicsModal').addEventListener('click', () => {
+      schematicsModal.style.display = 'none';
+    });
+    document.getElementById('btnCancelPush').addEventListener('click', () => {
+      schematicsModal.style.display = 'none';
+    });
+
+    document.getElementById('btnPushActiveSchematic').addEventListener('click', () => {
+      if (!schematicsMgr.activeSchematic) {
+        schematicsMgr.setActive(BUILTIN_SCHEMATICS[0].id);
+      }
+      schematicsMgr.pushActiveToField();
+      schematicsModal.style.display = 'none';
+      alert('¡Esquema técnico enviado con éxito a la pantalla del técnico en campo!');
+    });
+
+    // Custom Blueprint Upload
+    document.getElementById('uploadSchematicInput').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        const custom = {
+          id: 'custom_' + Date.now(),
+          title: file.name.replace(/\.[^/.]+$/, ""),
+          category: 'Plano Personalizado',
+          description: 'Plano subido por el especialista durante la sesión.',
+          imageUrl: evt.target.result,
+          svg: `<img src="${evt.target.result}" style="width:100%; height:100%; object-fit:contain;" />`
+        };
+        schematicsMgr.addCustomSchematic(custom);
+        schematicsMgr.setActive(custom.id);
+        renderSchematicsGrid();
+      };
+      reader.readAsDataURL(file);
+    });
+
+    // Report Modal
+    const reportModal = document.getElementById('reportModal');
+    document.getElementById('btnOpenReport').addEventListener('click', () => {
+      document.getElementById('reportContainer').innerHTML = reportGen.generateHTML();
+      reportModal.style.display = 'flex';
+    });
+
+    document.getElementById('btnCloseReportModal').addEventListener('click', () => {
+      reportModal.style.display = 'none';
+    });
+
+    document.getElementById('btnPrintReport').addEventListener('click', () => {
+      window.print();
+    });
+
+  </script>
+</body>
+</html>

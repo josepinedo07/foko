@@ -1,0 +1,19 @@
+{
+  "name": "fieldlens-ar",
+  "version": "1.0.0",
+  "description": "Plataforma de tele-asistencia técnica aumentada en tiempo real para operaciones en campo con WebRTC y AR.",
+  "main": "server.py",
+  "scripts": {
+    "start": "python3 server.py",
+    "dev": "python3 server.py"
+  },
+  "keywords": [
+    "augmented-reality",
+    "webrtc",
+    "remote-assistance",
+    "field-service",
+    "pwa"
+  ],
+  "author": "Antigravity Team",
+  "license": "MIT"
+}

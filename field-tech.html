@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>FieldLens AR • Técnico en Campo</title>
+  <meta name="description" content="Interfaz móvil de asistencia técnica en campo con proyección de realidad aumentada y video WebRTC en tiempo real.">
+  <link rel="stylesheet" href="css/design-system.css">
+  <link rel="stylesheet" href="css/report.css">
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+  <style>
+    body, html {
+      height: 100%;
+      overflow: hidden;
+      background: #000;
+      touch-action: none;
+    }
+
+    .field-mobile-viewport {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Top Floating Status Bar */
+    .field-top-bar {
+      position: absolute;
+      top: 14px;
+      left: 14px;
+      right: 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 50;
+      pointer-events: none;
+    }
+
+    .field-status-group {
+      pointer-events: auto;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Main Video Stage */
+    .field-video-stage {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      background: #000;
+    }
+
+    #fieldVideo {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    #simVideoCanvas {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: none;
+    }
+
+    #fieldArCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 20;
+    }
+
+    /* Bottom Floating Action Bar */
+    .field-bottom-bar {
+      position: absolute;
+      bottom: 24px;
+      left: 16px;
+      right: 16px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 14px;
+      z-index: 50;
+      pointer-events: none;
+    }
+
+    .field-btn {
+      pointer-events: auto;
+      width: 54px;
+      height: 54px;
+      border-radius: 50%;
+      background: rgba(15, 23, 42, 0.85);
+      border: 1.5px solid rgba(255, 255, 255, 0.18);
+      backdrop-filter: blur(16px);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .field-btn:active {
+      transform: scale(0.92);
+      border-color: var(--neon-cyan);
+    }
+
+    .field-btn.active {
+      background: rgba(0, 240, 255, 0.25);
+      border-color: var(--neon-cyan);
+      color: var(--neon-cyan);
+      box-shadow: 0 0 20px rgba(0, 240, 255, 0.5);
+    }
+
+    .field-btn-ping {
+      width: 66px;
+      height: 66px;
+      background: linear-gradient(135deg, #00f0ff 0%, #0088ff 100%);
+      color: #060911;
+      border: none;
+      box-shadow: 0 0 25px rgba(0, 240, 255, 0.6);
+      font-weight: 800;
+      font-size: 0.82rem;
+    }
+
+    /* Floating Schematics HUD on Mobile */
+    .schematic-mobile-hud {
+      position: absolute;
+      bottom: 95px;
+      left: 16px;
+      right: 16px;
+      max-height: 48vh;
+      background: rgba(11, 17, 30, 0.95);
+      border: 1.5px solid var(--neon-cyan);
+      border-radius: var(--radius-md);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8), 0 0 20px rgba(0, 240, 255, 0.3);
+      backdrop-filter: blur(20px);
+      z-index: 60;
+      display: none;
+      flex-direction: column;
+      overflow: hidden;
+      animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes slideUp {
+      from { transform: translateY(40px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    .schematic-hud-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 14px;
+      background: rgba(255, 255, 255, 0.05);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .schematic-hud-title {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--neon-cyan);
+    }
+
+    .schematic-hud-body {
+      padding: 10px;
+      overflow-y: auto;
+      flex: 1;
+      min-height: 180px;
+    }
+
+    /* Remote Screen Share Overlay */
+    .screen-share-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.95);
+      z-index: 70;
+      display: none;
+      flex-direction: column;
+    }
+    .screen-share-overlay.active {
+      display: flex;
+    }
+    .screen-share-video {
+      width: 100%;
+      flex: 1;
+      object-fit: contain;
+    }
+
+    /* Connection banner when joining */
+    .connection-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(6, 9, 17, 0.94);
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Mobile Field Technician Viewport -->
+  <div class="field-mobile-viewport">
+    
+    <!-- Top HUD Status Bar -->
+    <header class="field-top-bar">
+      <div class="field-status-group">
+        <span class="badge badge-live" id="techLiveBadge">EN VIVO</span>
+        <span class="badge badge-cyan" id="roomCodeDisplay">SALA: --</span>
+      </div>
+
+      <div class="field-status-group">
+        <button class="field-btn" id="btnToggleSimMode" title="Alternar Video Simulado / Cámara Real" style="width:38px; height:38px;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+        </button>
+        <button class="field-btn" id="btnToggleSchematicHud" title="Ver Diagrama / Esquema Activo" style="width:38px; height:38px;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Freeze Alert Badge -->
+    <div class="freeze-banner" id="freezeAlertBadge" style="display: none;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="10" y1="15" x2="10" y2="9"/><line x1="14" y1="15" x2="14" y2="9"/></svg>
+      <span>FOTOGRAMA CONGELADO POR EL EXPERTO</span>
+    </div>
+
+    <!-- Main Video & AR Canvas Stage -->
+    <div class="field-video-stage">
+      <video id="fieldVideo" autoplay playsinline muted></video>
+      <canvas id="simVideoCanvas" width="720" height="1280"></canvas>
+      <canvas id="fieldArCanvas"></canvas>
+
+      <!-- Corner HUD brackets for tactical look -->
+      <div class="hud-corner-bracket hud-tl"></div>
+      <div class="hud-corner-bracket hud-tr"></div>
+      <div class="hud-corner-bracket hud-bl"></div>
+      <div class="hud-corner-bracket hud-br"></div>
+    </div>
+
+    <!-- Bottom Controls -->
+    <nav class="field-bottom-bar">
+      <!-- Mute Mic -->
+      <button class="field-btn" id="btnToggleMic" title="Silenciar Micrófono">
+        <svg id="micIcon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/></svg>
+      </button>
+
+      <!-- Ping Expert / Radar Touch -->
+      <button class="field-btn field-btn-ping" id="btnPingExpert" title="Toca o pulsa para señalar un punto al experto">
+        <span>SEÑALAR</span>
+      </button>
+
+      <!-- Flip Camera -->
+      <button class="field-btn" id="btnFlipCam" title="Cambiar Cámara Frontal/Trasera">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 10c0-4.418-3.582-8-8-8s-8 3.582-8 8c0 2.21 1.05 4.22 2.7 5.54"/><path d="M4 14c0 4.418 3.582 8 8 8s8-3.582 8-8c0-2.21-1.05-4.22-2.7-5.54"/><polyline points="1 10 5 10 5 6"/><polyline points="23 14 19 14 19 18"/></svg>
+      </button>
+
+      <!-- Torch / Flashlight -->
+      <button class="field-btn" id="btnTorch" title="Encender Linterna">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+      </button>
+    </nav>
+
+    <!-- Floating Schematics HUD Modal -->
+    <div class="schematic-mobile-hud" id="schematicMobileHud">
+      <div class="schematic-hud-header">
+        <div class="schematic-hud-title" id="schematicHudTitle">Esquema Técnico</div>
+        <button class="btn btn-secondary btn-icon" id="btnCloseSchematicHud" style="width:28px; height:28px; font-size:0.8rem;">✕</button>
+      </div>
+      <div class="schematic-hud-body" id="schematicHudBody">
+        <div style="color:var(--text-muted); font-size:0.85rem; text-align:center; padding:30px 0;">
+          El especialista remoto aún no ha enviado un esquema técnico.
+        </div>
+      </div>
+    </div>
+
+    <!-- Screen Share Receiver Overlay -->
+    <div class="screen-share-overlay" id="screenShareOverlay">
+      <div style="padding:12px 16px; display:flex; justify-content:space-between; align-items:center; background:rgba(0,0,0,0.8);">
+        <span class="badge badge-cyan">PANTALLA COMPARTIDA POR EL EXPERTO</span>
+        <button class="btn btn-secondary btn-icon" id="btnCloseScreenShare" style="width:32px; height:32px;">✕</button>
+      </div>
+      <video id="screenShareVideo" class="screen-share-video" autoplay playsinline></video>
+    </div>
+
+    <!-- Connection / Setup Dialog -->
+    <div class="connection-overlay" id="connectionOverlay">
+      <div style="max-width:340px; width:100%;">
+        <div style="font-size:2.2rem; margin-bottom:8px;">📡</div>
+        <h2 style="font-size:1.4rem; font-weight:800; color:var(--neon-cyan); margin-bottom:8px;">FieldLens AR</h2>
+        <p style="font-size:0.88rem; color:var(--text-secondary); margin-bottom:20px;">
+          Ingresa el Código de Sala proporcionado por el Experto Remoto para iniciar la videollamada aumentada.
+        </p>
+
+        <div style="margin-bottom:16px;">
+          <input type="text" id="inputRoomId" placeholder="Ej: SALA-1" value="SALA-1" 
+            style="width:100%; padding:14px; background:rgba(255,255,255,0.06); border:1px solid var(--neon-cyan); border-radius:var(--radius-sm); color:#fff; font-family:var(--font-mono); font-size:1.2rem; text-align:center; text-transform:uppercase; letter-spacing:0.1em; outline:none;" />
+        </div>
+
+        <button class="btn btn-primary" id="btnStartCall" style="width:100%; padding:14px; font-size:1rem;">
+          Conectar Cámara y Sala
+        </button>
+
+        <div style="margin-top:20px; font-size:0.75rem; color:var(--text-muted);">
+          * Requiere permiso de cámara y micrófono. Si no cuentas con cámara en este dispositivo, se activará el simulador de maquinaria automáticamente.
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script type="module">
+    import { ARCanvas } from './js/ar-canvas.js';
+    import { WebRTCManager } from './js/webrtc-manager.js';
+    import { EquipmentSimulator } from './js/equipment-simulator.js';
+
+    // Parse URL room parameter if available: ?room=SALA-1
+    const urlParams = new URLSearchParams(window.location.search);
+    const initialRoom = urlParams.get('room') || 'SALA-1';
+    document.getElementById('inputRoomId').value = initialRoom;
+
+    let arCanvas = null;
+    let webrtc = null;
+    let equipmentSim = null;
+    let isSimMode = false;
+    let currentSchematic = null;
+
+    const fieldVideo = document.getElementById('fieldVideo');
+    const simCanvas = document.getElementById('simVideoCanvas');
+    const arCanvasEl = document.getElementById('fieldArCanvas');
+    const freezeBadge = document.getElementById('freezeAlertBadge');
+    const schematicHud = document.getElementById('schematicMobileHud');
+    const schematicHudBody = document.getElementById('schematicHudBody');
+    const schematicHudTitle = document.getElementById('schematicHudTitle');
+
+    // Initialize AR Canvas
+    arCanvas = new ARCanvas(arCanvasEl, {
+      isInteractive: true,
+      onEmitAction: (action) => {
+        if (webrtc) webrtc.sendMessage(action);
+      }
+    });
+
+    // Touch on mobile canvas sends "Ping Técnico"
+    arCanvasEl.addEventListener('touchstart', (e) => {
+      const rect = arCanvasEl.getBoundingClientRect();
+      const touch = e.touches[0];
+      const normX = (touch.clientX - rect.left) / rect.width;
+      const normY = (touch.clientY - rect.top) / rect.height;
+      arCanvas.addLaserPing(normX, normY, '#ffd600');
+      if (webrtc) {
+        webrtc.sendMessage({
+          type: 'tech_ping',
+          normX,
+          normY
+        });
+      }
+    });
+
+    // Handle Start Connection
+    document.getElementById('btnStartCall').addEventListener('click', async () => {
+      const roomId = document.getElementById('inputRoomId').value.trim().toUpperCase() || 'SALA-1';
+      document.getElementById('roomCodeDisplay').textContent = `SALA: ${roomId}`;
+      document.getElementById('connectionOverlay').style.display = 'none';
+
+      initFieldSession(roomId);
+    });
+
+    async function initFieldSession(roomId) {
+      // 1. Initialize WebRTC Manager
+      webrtc = new WebRTCManager({
+        role: 'tech',
+        roomId: roomId,
+        onDataMessage: (action) => {
+          handleIncomingExpertAction(action);
+        },
+        onConnectionStatus: (info) => {
+          console.log('[FieldTech Status]', info);
+        }
+      });
+
+      // 2. Try physical camera, fallback to simulation
+      try {
+        const stream = await webrtc.startCamera();
+        fieldVideo.srcObject = stream;
+        fieldVideo.style.display = 'block';
+        simCanvas.style.display = 'none';
+        isSimMode = false;
+      } catch (err) {
+        console.warn('Cámara física no disponible, activando simulador de equipo:', err);
+        activateSimulator();
+      }
+
+      // 3. Connect to PeerJS room
+      webrtc.initPeer();
+    }
+
+    function activateSimulator() {
+      isSimMode = true;
+      fieldVideo.style.display = 'none';
+      simCanvas.style.display = 'block';
+      equipmentSim = new EquipmentSimulator(simCanvas);
+      equipmentSim.start();
+    }
+
+    function handleIncomingExpertAction(action) {
+      if (!action) return;
+
+      if (action.type === 'freeze') {
+        if (action.dataUrl) {
+          freezeBadge.style.display = 'flex';
+          arCanvas.setFrozenFrame(action.dataUrl);
+        } else {
+          freezeBadge.style.display = 'none';
+          arCanvas.unfreezeFrame();
+        }
+        return;
+      }
+
+      if (action.type === 'schematic_push') {
+        currentSchematic = action.schematic;
+        schematicHudTitle.textContent = currentSchematic.title;
+        schematicHudBody.innerHTML = currentSchematic.svg;
+        schematicHud.style.display = 'flex';
+        return;
+      }
+
+      if (action.type === 'schematic_close') {
+        schematicHud.style.display = 'none';
+        return;
+      }
+
+      if (action.type === 'screen_share_status') {
+        const overlay = document.getElementById('screenShareOverlay');
+        overlay.classList.toggle('active', !!action.active);
+        return;
+      }
+
+      // Delegate AR actions (laser, pins, strokes)
+      arCanvas.handleRemoteAction(action);
+    }
+
+    // Toggle Simulator / Camera
+    document.getElementById('btnToggleSimMode').addEventListener('click', async () => {
+      if (isSimMode) {
+        try {
+          if (equipmentSim) equipmentSim.stop();
+          const stream = await webrtc.startCamera();
+          fieldVideo.srcObject = stream;
+          fieldVideo.style.display = 'block';
+          simCanvas.style.display = 'none';
+          isSimMode = false;
+        } catch (e) {
+          alert('No se pudo acceder a la cámara física: ' + e.message);
+        }
+      } else {
+        activateSimulator();
+      }
+    });
+
+    // Flip Camera
+    document.getElementById('btnFlipCam').addEventListener('click', async () => {
+      if (isSimMode) return;
+      try {
+        const stream = await webrtc.switchCamera();
+        fieldVideo.srcObject = stream;
+      } catch (e) {
+        console.warn('Error alternando cámara:', e);
+      }
+    });
+
+    // Toggle Torch
+    const btnTorch = document.getElementById('btnTorch');
+    btnTorch.addEventListener('click', async () => {
+      const active = await webrtc.toggleTorch();
+      btnTorch.classList.toggle('active', active);
+    });
+
+    // Toggle Mic
+    const btnMic = document.getElementById('btnToggleMic');
+    let micMuted = false;
+    btnMic.addEventListener('click', () => {
+      if (webrtc && webrtc.localStream) {
+        const audioTrack = webrtc.localStream.getAudioTracks()[0];
+        if (audioTrack) {
+          audioTrack.enabled = !audioTrack.enabled;
+          micMuted = !audioTrack.enabled;
+          btnMic.classList.toggle('active', micMuted);
+        }
+      }
+    });
+
+    // Ping Expert button
+    document.getElementById('btnPingExpert').addEventListener('click', () => {
+      const normX = 0.5;
+      const normY = 0.5;
+      arCanvas.addLaserPing(normX, normY, '#ffd600');
+      if (webrtc) {
+        webrtc.sendMessage({
+          type: 'tech_ping',
+          normX,
+          normY
+        });
+      }
+    });
+
+    // Schematics HUD controls
+    document.getElementById('btnToggleSchematicHud').addEventListener('click', () => {
+      const isVisible = schematicHud.style.display === 'flex';
+      schematicHud.style.display = isVisible ? 'none' : 'flex';
+    });
+
+    document.getElementById('btnCloseSchematicHud').addEventListener('click', () => {
+      schematicHud.style.display = 'none';
+    });
+
+    document.getElementById('btnCloseScreenShare').addEventListener('click', () => {
+      document.getElementById('screenShareOverlay').classList.remove('active');
+    });
+
+  </script>
+</body>
+</html>

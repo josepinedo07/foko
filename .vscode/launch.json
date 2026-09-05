@@ -1,0 +1,19 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Abrir Simulador FieldLens AR en Navegador",
+      "type": "chrome",
+      "request": "launch",
+      "url": "http://localhost:8000/simulator.html",
+      "webRoot": "${workspaceFolder}"
+    },
+    {
+      "name": "Iniciar Servidor Python",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/server.py",
+      "console": "integratedTerminal"
+    }
+  ]
+}

@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FieldLens AR • Asistencia Visual Remota con Realidad Aumentada</title>
+  <meta name="description" content="Plataforma de tele-asistencia técnica aumentada para operaciones en campo. Video en tiempo real, puntero láser interactivo, diagramas esquemáticos y reportes automáticos.">
+  <link rel="stylesheet" href="css/design-system.css">
+  <style>
+    .hero-container {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 20px;
+      position: relative;
+      background: radial-gradient(circle at 50% 20%, #0f1c38 0%, #060911 80%);
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 16px;
+      border-radius: var(--radius-full);
+      background: rgba(0, 240, 255, 0.12);
+      border: 1px solid rgba(0, 240, 255, 0.4);
+      color: var(--neon-cyan);
+      font-size: 0.82rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 24px;
+      box-shadow: 0 0 20px rgba(0, 240, 255, 0.2);
+    }
+
+    .hero-title {
+      font-size: clamp(2.2rem, 5vw, 4rem);
+      font-weight: 800;
+      line-height: 1.15;
+      text-align: center;
+      max-width: 900px;
+      margin-bottom: 18px;
+      background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 50%, #00f0ff 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero-sub {
+      font-size: 1.15rem;
+      color: var(--text-secondary);
+      text-align: center;
+      max-width: 680px;
+      line-height: 1.6;
+      margin-bottom: 40px;
+    }
+
+    /* Action Cards Grid */
+    .launch-cards-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+      width: 100%;
+      max-width: 1100px;
+      margin-bottom: 50px;
+    }
+
+    .launch-card {
+      background: var(--bg-glass);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--border-glass);
+      border-radius: var(--radius-lg);
+      padding: 32px 26px;
+      display: flex;
+      flex-direction: column;
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      position: relative;
+      overflow: hidden;
+      text-decoration: none;
+      color: inherit;
+    }
+
+    .launch-card:hover {
+      transform: translateY(-6px);
+      border-color: var(--neon-cyan);
+      box-shadow: 0 16px 36px rgba(0, 0, 0, 0.6), 0 0 30px var(--neon-cyan-glow);
+    }
+
+    .launch-card.featured {
+      border-color: rgba(0, 240, 255, 0.5);
+      background: linear-gradient(180deg, rgba(15, 28, 54, 0.8) 0%, rgba(11, 17, 30, 0.9) 100%);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 0 20px rgba(0, 240, 255, 0.15);
+    }
+
+    .card-badge-top {
+      position: absolute;
+      top: 14px;
+      right: 16px;
+      background: var(--neon-amber);
+      color: #060911;
+      font-size: 0.68rem;
+      font-weight: 800;
+      padding: 3px 8px;
+      border-radius: var(--radius-full);
+      letter-spacing: 0.06em;
+    }
+
+    .card-icon {
+      width: 52px;
+      height: 52px;
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.6rem;
+      margin-bottom: 20px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .card-title {
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 10px;
+    }
+
+    .card-desc {
+      font-size: 0.88rem;
+      color: var(--text-secondary);
+      line-height: 1.5;
+      margin-bottom: 24px;
+      flex: 1;
+    }
+
+    /* Key Value Features */
+    .features-strip {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 20px;
+      width: 100%;
+      max-width: 1100px;
+      border-top: 1px solid var(--border-subtle);
+      padding-top: 36px;
+    }
+
+    .feat-item {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .feat-num {
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: var(--neon-cyan);
+    }
+
+    .feat-title {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #fff;
+    }
+
+    .feat-desc {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+
+    @media (max-width: 900px) {
+      .launch-cards-grid {
+        grid-template-columns: 1fr;
+      }
+      .features-strip {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="hero-container">
+    
+    <!-- Top Innovation Pill -->
+    <div class="hero-badge">
+      <span style="width:8px; height:8px; background:var(--neon-cyan); border-radius:50%; box-shadow:0 0 10px var(--neon-cyan);"></span>
+      <span>Plataforma Revolucionaria de Asistencia Técnica en Campo</span>
+    </div>
+
+    <!-- Main Title -->
+    <h1 class="hero-title">
+      Mira lo que ve tu técnico.<br>
+      Toca la pantalla y guíalo en vivo con AR.
+    </h1>
+
+    <p class="hero-sub">
+      Transforma la cámara del smartphone de cualquier operario en campo en una lente de Realidad Aumentada interactiva. Dibuja anotaciones, apunta con láser, proyecta esquemas de ingeniería y comparte pantalla en tiempo real.
+    </p>
+
+    <!-- Interactive Launch Options -->
+    <div class="launch-cards-grid">
+      
+      <!-- Option 1: Dual Simulator (Recommended for testing right now) -->
+      <a href="simulator.html" class="launch-card featured">
+        <span class="card-badge-top">RECOMENDADO PARA DEMO</span>
+        <div class="card-icon" style="background:rgba(0, 240, 255, 0.15); border-color:rgba(0, 240, 255, 0.3); color:var(--neon-cyan);">
+          ⚡
+        </div>
+        <div class="card-title">Banco de Pruebas Dual</div>
+        <div class="card-desc">
+          Prueba la experiencia completa en una sola pantalla: Smartphone del técnico simulado al lado del Cockpit del especialista con video industrial dinámico.
+        </div>
+        <span class="btn btn-primary" style="width:100%;">
+          Abrir Banco de Pruebas
+        </span>
+      </a>
+
+      <!-- Option 2: Remote Expert Cockpit -->
+      <a href="remote-expert.html?room=SALA-1" class="launch-card">
+        <div class="card-icon" style="background:rgba(255, 214, 0, 0.12); border-color:rgba(255, 214, 0, 0.3); color:var(--neon-amber);">
+          🎯
+        </div>
+        <div class="card-title">Cockpit de Especialista</div>
+        <div class="card-desc">
+          Consola para el ingeniero senior o especialista remoto. Control de puntero láser, rotulador AR, generador de pines 1-2-3 y biblioteca de esquemas.
+        </div>
+        <span class="btn btn-secondary" style="width:100%;">
+          Iniciar como Experto
+        </span>
+      </a>
+
+      <!-- Option 3: Field Tech Mobile PWA -->
+      <a href="field-tech.html?room=SALA-1" class="launch-card">
+        <div class="card-icon" style="background:rgba(0, 230, 118, 0.12); border-color:rgba(0, 230, 118, 0.3); color:var(--neon-emerald);">
+          📱
+        </div>
+        <div class="card-title">Técnico en Campo (Móvil)</div>
+        <div class="card-desc">
+          Vista optimizada para smartphone con transmisión de cámara trasera, linterna para tableros oscuros y receptor de anotaciones y planos técnicos.
+        </div>
+        <span class="btn btn-secondary" style="width:100%;">
+          Iniciar como Técnico
+        </span>
+      </a>
+
+    </div>
+
+    <!-- Core Value Propositions -->
+    <div class="features-strip">
+      <div class="feat-item">
+        <span class="feat-num">01 / TACTILE POINTER</span>
+        <div class="feat-title">Puntero Láser & Toque Directo</div>
+        <div class="feat-desc">Al hacer clic en el monitor remoto, un pulso radar y un haz láser iluminan exactamente la pieza en el teléfono del técnico.</div>
+      </div>
+
+      <div class="feat-item">
+        <span class="feat-num">02 / STEP BY STEP</span>
+        <div class="feat-title">Pines Guiados 1, 2, 3</div>
+        <div class="feat-desc">Coloca instrucciones secuenciales sobre tornillos, válvulas o fusibles para evitar confusiones operativas.</div>
+      </div>
+
+      <div class="feat-item">
+        <span class="feat-num">03 / SCHEMATICS HUD</span>
+        <div class="feat-title">Proyector de Diagramas</div>
+        <div class="feat-desc">Envía planos unifilares, despieces mecánicos y manuales directamente a la pantalla del técnico en formato flotante.</div>
+      </div>
+
+      <div class="feat-item">
+        <span class="feat-num">04 / FIELD REPORT</span>
+        <div class="feat-title">Informe de Orden de Trabajo</div>
+        <div class="feat-desc">Compila automáticamente fotos congeladas con marcas, notas técnicas y firmas listo para imprimir o exportar a PDF.</div>
+      </div>
+    </div>
+
+  </div>
+
+</body>
+</html>
