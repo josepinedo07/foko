@@ -280,7 +280,13 @@
         </div>
 
         <div style="display:flex; align-items:center; gap:12px;">
-          <span class="badge badge-live" id="expertLiveBadge">CONECTADO</span>
+          <!-- Invite Mobile Technician Button -->
+          <button class="btn btn-primary" id="btnInviteMobile" style="display:flex; align-items:center; gap:8px; font-weight:700; box-shadow:0 0 20px rgba(0, 240, 255, 0.4); padding:7px 16px; font-size:0.85rem;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+            <span>📲 Conectar Teléfono (Android / iPhone)</span>
+          </button>
+
+          <span class="badge badge-live" id="expertLiveBadge">EN ESPERA</span>
           <span class="badge badge-cyan" id="expertRoomBadge">SALA: SALA-1</span>
           <span class="telemetry-tag" id="pingDisplay">LATENCIA: 14ms</span>
         </div>
@@ -412,6 +418,10 @@
           <strong style="color:#fff;">Técnico en Campo:</strong> Carlos M.<br>
           <strong style="color:#fff;">Ubicación:</strong> Planta Norte • Nave 4
         </div>
+        <button class="btn btn-secondary" id="btnSidebarInvite" style="width:100%; margin-top:12px; font-size:0.82rem; display:flex; align-items:center; justify-content:center; gap:8px; border-color:var(--neon-cyan);">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+          <span>Generar Enlace Móvil & QR</span>
+        </button>
       </div>
 
       <!-- Realtime Guidance Checklist -->
@@ -505,6 +515,151 @@
       </div>
     </div>
   </div>
+
+  <!-- Modal: Invite Field Technician (Android / iPhone Link & QR Generator) -->
+  <div class="modal-backdrop" id="inviteModal" style="display:none;">
+    <div class="modal-content" style="max-width:780px;">
+      
+      <!-- Modal Header -->
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:18px;">
+        <div>
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+            <span style="font-size:1.4rem;">📲</span>
+            <h2 style="font-size:1.3rem; font-weight:800; color:var(--neon-cyan);">Generar Enlace para Técnico (Android / iPhone)</h2>
+          </div>
+          <p style="font-size:0.85rem; color:var(--text-secondary);">
+            El técnico en campo abrirá la cámara de su smartphone para que lo guíes con Realidad Aumentada sin descargar ninguna app.
+          </p>
+        </div>
+        <button class="btn btn-secondary btn-icon" id="btnCloseInviteModal">✕</button>
+      </div>
+
+      <!-- OS Compatibility Pill Strip -->
+      <div style="display:flex; gap:12px; margin-bottom:20px; flex-wrap:wrap;">
+        <div style="background:rgba(0, 230, 118, 0.1); border:1px solid rgba(0, 230, 118, 0.3); padding:6px 12px; border-radius:var(--radius-sm); font-size:0.78rem; display:flex; align-items:center; gap:6px; color:var(--neon-emerald);">
+          <span>🤖</span>
+          <strong>Android:</strong> Compatible con Chrome, Edge y control de linterna
+        </div>
+        <div style="background:rgba(0, 240, 255, 0.1); border:1px solid rgba(0, 240, 255, 0.3); padding:6px 12px; border-radius:var(--radius-sm); font-size:0.78rem; display:flex; align-items:center; gap:6px; color:var(--neon-cyan);">
+          <span>🍎</span>
+          <strong>iPhone / iPad:</strong> Compatible con Safari y Chrome (WebRTC 60 FPS)
+        </div>
+      </div>
+
+      <!-- Modal Body Grid: Left Controls + Right QR Card -->
+      <div style="display:grid; grid-template-columns:1.2fr 0.8fr; gap:22px; align-items:start;">
+        
+        <!-- Left Side: Room Config, Host Selection & Quick Share -->
+        <div style="display:flex; flex-direction:column; gap:16px;">
+          
+          <!-- Room ID input & generator -->
+          <div style="background:rgba(255,255,255,0.03); border:1px solid var(--border-glass); border-radius:var(--radius-sm); padding:12px;">
+            <label style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:700; letter-spacing:0.05em; display:block; margin-bottom:6px;">
+              Código de Sala / Intervención:
+            </label>
+            <div style="display:flex; gap:8px;">
+              <input type="text" id="inviteRoomInput" style="flex:1; padding:8px 12px; background:rgba(0,0,0,0.5); border:1px solid rgba(255,255,255,0.2); border-radius:6px; color:#fff; font-family:var(--font-mono); font-size:0.95rem; text-transform:uppercase; font-weight:700;" />
+              <button class="btn btn-secondary" id="btnRegenerateRoom" title="Generar nueva sala aleatoria" style="font-size:0.8rem; padding:8px 12px;">
+                🎲 Nueva
+              </button>
+            </div>
+          </div>
+
+          <!-- Network Host Mode (Local Wi-Fi vs Current Domain vs Custom) -->
+          <div style="background:rgba(255,255,255,0.03); border:1px solid var(--border-glass); border-radius:var(--radius-sm); padding:12px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+              <label style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:700; letter-spacing:0.05em;">
+                Dirección de Red (Host):
+              </label>
+              <span id="detectedHostBadge" style="font-size:0.7rem; color:var(--neon-amber); font-family:var(--font-mono);">
+                IP Wi-Fi detectada
+              </span>
+            </div>
+            <select id="selectHostTarget" style="width:100%; padding:8px 10px; background:rgba(0,0,0,0.5); border:1px solid rgba(255,255,255,0.2); border-radius:6px; color:#fff; font-size:0.82rem; font-family:var(--font-mono); outline:none;">
+              <!-- Populated dynamically -->
+            </select>
+          </div>
+
+          <!-- Generated Link & Copy Field -->
+          <div>
+            <label style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:700; letter-spacing:0.05em; display:block; margin-bottom:6px;">
+              Enlace Directo para el Smartphone:
+            </label>
+            <div style="display:flex; gap:8px;">
+              <input type="text" id="inviteGeneratedLink" readonly style="flex:1; padding:10px 12px; background:rgba(0,240,255,0.06); border:1px solid var(--neon-cyan); border-radius:6px; color:var(--neon-cyan); font-family:var(--font-mono); font-size:0.82rem;" />
+              <button class="btn btn-primary" id="btnCopyInviteLink" style="padding:10px 16px; white-space:nowrap;">
+                <span id="copyLinkBtnText">📋 Copiar</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Fast Share Actions (WhatsApp, SMS, Email, Open Tab) -->
+          <div>
+            <label style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:700; letter-spacing:0.05em; display:block; margin-bottom:8px;">
+              Enviar al técnico con 1 Clic:
+            </label>
+            <div style="display:grid; grid-template-columns:repeat(2, 1fr); gap:8px;">
+              <!-- WhatsApp -->
+              <button class="btn btn-secondary" id="btnShareWhatsapp" style="display:flex; align-items:center; justify-content:center; gap:8px; background:rgba(37, 211, 102, 0.15); border-color:rgba(37, 211, 102, 0.5); color:#25d366; font-size:0.82rem;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.816 9.816 0 0 0 12.04 2m.01 1.67c2.2 0 4.26.86 5.82 2.42a8.225 8.225 0 0 1 2.41 5.83c0 4.54-3.7 8.24-8.24 8.24-1.48 0-2.93-.4-4.2-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.196 8.196 0 0 1-1.26-4.38c0-4.54 3.7-8.24 8.24-8.24m4.52 11.66c-.25-.13-1.47-.72-1.7-.81-.23-.08-.39-.13-.56.13-.17.25-.64.81-.79.97-.14.17-.29.19-.54.06-.25-.13-1.06-.39-2.03-1.25-.75-.67-1.26-1.5-1.41-1.75-.14-.25-.02-.39.11-.51.11-.11.25-.29.37-.44.13-.14.17-.25.25-.42.08-.17.04-.31-.02-.44-.06-.13-.56-1.34-.76-1.84-.2-.49-.4-.42-.56-.43h-.47c-.17 0-.44.06-.67.31-.23.25-.88.86-.88 2.1 0 1.24.9 2.44 1.03 2.61.13.17 1.77 2.7 4.29 3.78.6.26 1.07.41 1.43.53.6.19 1.15.16 1.58.1.48-.07 1.47-.6 1.68-1.18.21-.58.21-1.07.14-1.18-.06-.12-.22-.19-.47-.31Z"/></svg>
+                <span>WhatsApp</span>
+              </button>
+
+              <!-- SMS -->
+              <button class="btn btn-secondary" id="btnShareSMS" style="display:flex; align-items:center; justify-content:center; gap:8px; font-size:0.82rem;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                <span>Mensaje SMS</span>
+              </button>
+
+              <!-- Email -->
+              <button class="btn btn-secondary" id="btnShareEmail" style="display:flex; align-items:center; justify-content:center; gap:8px; font-size:0.82rem;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                <span>Email</span>
+              </button>
+
+              <!-- Test in Tab -->
+              <button class="btn btn-secondary" id="btnTestInTab" style="display:flex; align-items:center; justify-content:center; gap:8px; font-size:0.82rem;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                <span>Probar PWA</span>
+              </button>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Right Side: High-Contrast QR Code Card & Live Status -->
+        <div style="background:rgba(255,255,255,0.03); border:1px solid var(--border-glass); border-radius:var(--radius-md); padding:20px; display:flex; flex-direction:column; align-items:center; text-align:center;">
+          
+          <div style="font-size:0.82rem; font-weight:700; color:#fff; margin-bottom:12px;">
+            Escanear con Cámara Móvil
+          </div>
+
+          <div id="inviteQrContainer" style="background:#fff; padding:14px; border-radius:12px; width:200px; height:200px; display:flex; align-items:center; justify-content:center; margin-bottom:14px; box-shadow:0 0 25px rgba(0,240,255,0.25);">
+            <!-- Rendered by QRCode -->
+          </div>
+
+          <div style="font-size:0.75rem; color:var(--text-muted); line-height:1.4; margin-bottom:14px;">
+            Apunta la cámara de tu iPhone o Android a este código para abrir la app PWA instantáneamente.
+          </div>
+
+          <div id="inviteLiveStatus" style="width:100%; padding:8px 10px; border-radius:6px; background:rgba(255,214,0,0.1); border:1px solid rgba(255,214,0,0.3); color:var(--neon-amber); font-size:0.78rem; font-weight:600;">
+            ⏳ Esperando conexión del técnico...
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- Footer Info Tip -->
+      <div style="margin-top:20px; padding-top:14px; border-top:1px solid var(--border-subtle); display:flex; justify-content:space-between; align-items:center; font-size:0.78rem; color:var(--text-muted);">
+        <span>🔒 Conexión cifrada punto a punto WebRTC (P2P DataChannel y MediaStream).</span>
+        <button class="btn btn-secondary" id="btnDoneInvite" style="padding:6px 16px;">Listo</button>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="js/vendor/qrcode.min.js"></script>
 
   <script type="module">
     import { ARCanvas } from './js/ar-canvas.js';
@@ -772,6 +927,204 @@
     document.getElementById('btnPrintReport').addEventListener('click', () => {
       window.print();
     });
+
+    // ==========================================
+    // MOBILE INVITE & QR CODE GENERATOR LOGIC
+    // ==========================================
+    const inviteModal = document.getElementById('inviteModal');
+    const btnInviteMobile = document.getElementById('btnInviteMobile');
+    const btnSidebarInvite = document.getElementById('btnSidebarInvite');
+    const btnCloseInviteModal = document.getElementById('btnCloseInviteModal');
+    const btnDoneInvite = document.getElementById('btnDoneInvite');
+    const inviteRoomInput = document.getElementById('inviteRoomInput');
+    const btnRegenerateRoom = document.getElementById('btnRegenerateRoom');
+    const selectHostTarget = document.getElementById('selectHostTarget');
+    const inviteGeneratedLink = document.getElementById('inviteGeneratedLink');
+    const btnCopyInviteLink = document.getElementById('btnCopyInviteLink');
+    const copyLinkBtnText = document.getElementById('copyLinkBtnText');
+    const inviteQrContainer = document.getElementById('inviteQrContainer');
+    const inviteLiveStatus = document.getElementById('inviteLiveStatus');
+    const detectedHostBadge = document.getElementById('detectedHostBadge');
+
+    let currentInviteRoom = roomId;
+    let localLanIp = null;
+    let qrInstance = null;
+
+    // Detect server local LAN IP
+    async function fetchServerInfo() {
+      try {
+        const res = await fetch('/api/info');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.local_ip && data.local_ip !== '127.0.0.1') {
+            localLanIp = `${data.local_ip}:${data.port || 8000}`;
+          }
+        }
+      } catch (e) {
+        console.warn('API /api/info no disponible, usando host por defecto');
+      }
+    }
+
+    function populateHostOptions() {
+      selectHostTarget.innerHTML = '';
+      const currentHost = window.location.host;
+
+      if (localLanIp) {
+        const optLan = document.createElement('option');
+        optLan.value = localLanIp;
+        optLan.textContent = `📶 Wi-Fi Red Local (http://${localLanIp}) [Recomendado para Móvil]`;
+        optLan.selected = true;
+        selectHostTarget.appendChild(optLan);
+        detectedHostBadge.textContent = `IP Wi-Fi: ${localLanIp}`;
+      }
+
+      if (!localLanIp || currentHost !== localLanIp) {
+        const optCurrent = document.createElement('option');
+        optCurrent.value = currentHost;
+        optCurrent.textContent = `🌐 Host Actual (${currentHost})`;
+        if (!localLanIp) optCurrent.selected = true;
+        selectHostTarget.appendChild(optCurrent);
+      }
+
+      const optCustom = document.createElement('option');
+      optCustom.value = 'CUSTOM';
+      optCustom.textContent = `⚙️ Personalizado (Túnel ngrok / Cloudflare / Dominio externo)...`;
+      selectHostTarget.appendChild(optCustom);
+    }
+
+    function computeMobileUrl() {
+      const selectedHost = selectHostTarget.value;
+      const room = inviteRoomInput.value.trim().toUpperCase() || currentInviteRoom;
+      const protocol = window.location.protocol;
+      return `${protocol}//${selectedHost}/field-tech.html?room=${room}&auto=1`;
+    }
+
+    function updateInviteUI() {
+      const url = computeMobileUrl();
+      inviteGeneratedLink.value = url;
+
+      // Render QR Code
+      inviteQrContainer.innerHTML = '';
+      if (typeof QRCode !== 'undefined') {
+        qrInstance = new QRCode(inviteQrContainer, {
+          text: url,
+          width: 190,
+          height: 190,
+          colorDark: '#060911',
+          colorLight: '#ffffff',
+          correctLevel: QRCode.CorrectLevel.M
+        });
+      } else {
+        inviteQrContainer.innerHTML = `<a href="${url}" target="_blank" style="color:var(--neon-cyan); font-weight:bold; font-size:0.8rem; word-break:break-all;">${url}</a>`;
+      }
+    }
+
+    async function openInviteModal() {
+      await fetchServerInfo();
+      populateHostOptions();
+      inviteRoomInput.value = currentInviteRoom;
+      updateInviteUI();
+      inviteModal.style.display = 'flex';
+    }
+
+    btnInviteMobile.addEventListener('click', openInviteModal);
+    btnSidebarInvite.addEventListener('click', openInviteModal);
+    btnCloseInviteModal.addEventListener('click', () => { inviteModal.style.display = 'none'; });
+    btnDoneInvite.addEventListener('click', () => { inviteModal.style.display = 'none'; });
+
+    // Regenerate room ID
+    btnRegenerateRoom.addEventListener('click', () => {
+      const randomCode = 'OP-' + Math.floor(1000 + Math.random() * 9000);
+      inviteRoomInput.value = randomCode;
+      currentInviteRoom = randomCode;
+      updateInviteUI();
+    });
+
+    inviteRoomInput.addEventListener('input', () => {
+      currentInviteRoom = inviteRoomInput.value.trim().toUpperCase();
+      updateInviteUI();
+    });
+
+    selectHostTarget.addEventListener('change', () => {
+      if (selectHostTarget.value === 'CUSTOM') {
+        const customHost = prompt('Ingresa tu dominio o dirección de túnel (ejemplo: abc123.ngrok.app o 192.168.1.50:8000):');
+        if (customHost && customHost.trim()) {
+          const opt = document.createElement('option');
+          opt.value = customHost.trim();
+          opt.textContent = `🌐 Personalizado (${customHost.trim()})`;
+          selectHostTarget.insertBefore(opt, selectHostTarget.firstChild);
+          selectHostTarget.value = customHost.trim();
+        } else {
+          selectHostTarget.selectedIndex = 0;
+        }
+      }
+      updateInviteUI();
+    });
+
+    // Copy to clipboard
+    btnCopyInviteLink.addEventListener('click', async () => {
+      const url = inviteGeneratedLink.value;
+      try {
+        await navigator.clipboard.writeText(url);
+        copyLinkBtnText.textContent = '✓ ¡Copiado!';
+        btnCopyInviteLink.style.background = 'var(--neon-emerald)';
+        setTimeout(() => {
+          copyLinkBtnText.textContent = '📋 Copiar';
+          btnCopyInviteLink.style.background = '';
+        }, 2200);
+      } catch (err) {
+        inviteGeneratedLink.select();
+        document.execCommand('copy');
+        alert('Enlace copiado al portapapeles');
+      }
+    });
+
+    // Share via WhatsApp
+    document.getElementById('btnShareWhatsapp').addEventListener('click', () => {
+      const url = inviteGeneratedLink.value;
+      const room = inviteRoomInput.value.trim().toUpperCase();
+      const message = encodeURIComponent(
+        `🚨 *FieldLens AR - Asistencia Técnica en Vivo*\n\nHola, el especialista remoto te invita a una sesión técnica con Realidad Aumentada.\n\n👉 *Pulsa el enlace en tu smartphone (Android o iPhone) para transmitir tu cámara:*\n${url}\n\nCódigo de Sala: *${room}*`
+      );
+      window.open(`https://api.whatsapp.com/send?text=${message}`, '_blank');
+    });
+
+    // Share via SMS
+    document.getElementById('btnShareSMS').addEventListener('click', () => {
+      const url = inviteGeneratedLink.value;
+      const message = encodeURIComponent(`FieldLens AR: Pulsa para activar asistencia en vivo: ${url}`);
+      window.open(`sms:?body=${message}`, '_blank');
+    });
+
+    // Share via Email
+    document.getElementById('btnShareEmail').addEventListener('click', () => {
+      const url = inviteGeneratedLink.value;
+      const room = inviteRoomInput.value.trim().toUpperCase();
+      const subject = encodeURIComponent(`Sesión de Asistencia Técnica FieldLens AR - Sala ${room}`);
+      const body = encodeURIComponent(
+        `Hola,\n\nSe ha iniciado una sesión de teleasistencia técnica con Realidad Aumentada.\n\nPor favor pulsa en el siguiente enlace desde tu teléfono móvil (Android o iPhone) para activar la cámara:\n${url}\n\nCódigo de Sala: ${room}\n\nEl sistema se conectará directamente con la consola del especialista remoto.`
+      );
+      window.location.href = `mailto:?subject=${subject}&body=${body}`;
+    });
+
+    // Test in Tab
+    document.getElementById('btnTestInTab').addEventListener('click', () => {
+      window.open(inviteGeneratedLink.value, '_blank');
+    });
+
+    // Listen to incoming remote technician connection
+    const origOnConnectionStatus = webrtc.onConnectionStatus;
+    webrtc.onConnectionStatus = (info) => {
+      if (origOnConnectionStatus) origOnConnectionStatus(info);
+      if (info && (info.status === 'p2p_active' || info.status === 'connected_peer')) {
+        document.getElementById('expertLiveBadge').textContent = 'CONECTADO';
+        document.getElementById('expertLiveBadge').style.background = 'rgba(0, 230, 118, 0.2)';
+        inviteLiveStatus.innerHTML = `🟢 <strong>¡Técnico Conectado!</strong> Enlace P2P WebRTC activo.`;
+        inviteLiveStatus.style.background = 'rgba(0, 230, 118, 0.15)';
+        inviteLiveStatus.style.borderColor = 'rgba(0, 230, 118, 0.4)';
+        inviteLiveStatus.style.color = 'var(--neon-emerald)';
+      }
+    };
 
   </script>
 </body>

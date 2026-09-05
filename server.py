@@ -9,6 +9,7 @@ import socketserver
 import socket
 import os
 import sys
+import json
 
 PORT = 8000
 DIRECTORY = os.path.dirname(os.path.abspath(__file__))
@@ -26,6 +27,20 @@ def get_local_ip():
 class FieldLensHandler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=DIRECTORY, **kwargs)
+
+    def do_GET(self):
+        if self.path == '/api/info':
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            payload = json.dumps({
+                "local_ip": get_local_ip(),
+                "port": PORT,
+                "status": "online"
+            })
+            self.wfile.write(payload.encode('utf-8'))
+            return
+        super().do_GET()
 
     def end_headers(self):
         # Enable CORS and Cache-Control for rapid development

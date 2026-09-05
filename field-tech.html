@@ -329,11 +329,23 @@
     const urlParams = new URLSearchParams(window.location.search);
     const initialRoom = urlParams.get('room') || 'SALA-1';
     const autoConnect = urlParams.get('auto') === '1' || urlParams.get('auto') === 'true';
+    const isInIframe = window.self !== window.top;
     document.getElementById('inputRoomId').value = initialRoom;
+
     if (autoConnect) {
-      setTimeout(() => {
-        document.getElementById('btnStartCall').click();
-      }, 200);
+      if (isInIframe) {
+        // Inside simulator iframe: auto-connect immediately
+        setTimeout(() => {
+          document.getElementById('btnStartCall').click();
+        }, 200);
+      } else {
+        // Standalone smartphone (Android / iOS): prepare 1-tap activation to satisfy browser gesture policies
+        const btnCall = document.getElementById('btnStartCall');
+        btnCall.innerHTML = `📹 Iniciar Cámara en Vivo (Sala ${initialRoom})`;
+        btnCall.style.boxShadow = '0 0 30px rgba(0, 240, 255, 0.7)';
+        btnCall.style.fontSize = '1.05rem';
+        btnCall.style.fontWeight = '800';
+      }
     }
 
     let arCanvas = null;

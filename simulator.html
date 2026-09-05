@@ -224,7 +224,7 @@
     </div>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+  <script src="js/vendor/qrcode.min.js"></script>
   <script>
     const techIframe = document.getElementById('techIframe');
     const expertIframe = document.getElementById('expertIframe');
@@ -243,16 +243,35 @@
     const qrContainer = document.getElementById('qrContainer');
     const mobileUrlDisplay = document.getElementById('mobileUrlDisplay');
 
-    document.getElementById('btnShowMobileQR').addEventListener('click', () => {
-      // Build mobile link based on current location
-      const mobileUrl = `${window.location.protocol}//${window.location.host}/field-tech.html?room=SIM-01`;
+    document.getElementById('btnShowMobileQR').addEventListener('click', async () => {
+      let host = window.location.host;
+      // If running on localhost, query /api/info for the real LAN IP so phone can reach it
+      if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        try {
+          const res = await fetch('/api/info');
+          if (res.ok) {
+            const data = await res.json();
+            if (data.local_ip && data.local_ip !== '127.0.0.1') {
+              host = `${data.local_ip}:${data.port || 8000}`;
+            }
+          }
+        } catch (e) {
+          console.warn('No se pudo obtener IP local:', e);
+        }
+      }
+
+      const mobileUrl = `${window.location.protocol}//${host}/field-tech.html?room=SIM-01&auto=1`;
       mobileUrlDisplay.textContent = mobileUrl;
 
       qrContainer.innerHTML = '';
       if (typeof QRCode !== 'undefined') {
-        const canvas = document.createElement('canvas');
-        QRCode.toCanvas(canvas, mobileUrl, { width: 190, margin: 1 }, (err) => {
-          if (!err) qrContainer.appendChild(canvas);
+        new QRCode(qrContainer, {
+          text: mobileUrl,
+          width: 190,
+          height: 190,
+          colorDark: "#060911",
+          colorLight: "#ffffff",
+          correctLevel: QRCode.CorrectLevel.M
         });
       } else {
         qrContainer.innerHTML = `<a href="${mobileUrl}" target="_blank" style="color:#0284c7; font-weight:bold;">${mobileUrl}</a>`;
