@@ -325,10 +325,16 @@
     import { WebRTCManager } from './js/webrtc-manager.js';
     import { EquipmentSimulator } from './js/equipment-simulator.js';
 
-    // Parse URL room parameter if available: ?room=SALA-1
+    // Parse URL room parameter if available: ?room=SALA-1&auto=1
     const urlParams = new URLSearchParams(window.location.search);
     const initialRoom = urlParams.get('room') || 'SALA-1';
+    const autoConnect = urlParams.get('auto') === '1' || urlParams.get('auto') === 'true';
     document.getElementById('inputRoomId').value = initialRoom;
+    if (autoConnect) {
+      setTimeout(() => {
+        document.getElementById('btnStartCall').click();
+      }, 200);
+    }
 
     let arCanvas = null;
     let webrtc = null;

@@ -552,8 +552,8 @@ export class ARCanvas {
     offscreen.height = this.canvas.height;
     const offCtx = offscreen.getContext('2d');
 
-    // Draw video background
-    if (videoElement && videoElement.videoWidth) {
+    // Draw video or canvas background
+    if (videoElement && (videoElement.videoWidth || (videoElement.width && videoElement.tagName === 'CANVAS') || videoElement.width)) {
       offCtx.drawImage(videoElement, 0, 0, offscreen.width, offscreen.height);
     } else if (this.frozenImage) {
       offCtx.drawImage(this.frozenImage, 0, 0, offscreen.width, offscreen.height);
