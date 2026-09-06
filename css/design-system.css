@@ -1,135 +1,396 @@
-/* FieldLens - estilos base. Tema oscuro sobrio, pensado para ver video. */
+/* ============================================================================
+   FOKO — sistema de componentes. Instrumento de precisión, no app de consumo.
+   Los tokens viven en tokens.css. Aquí solo primitivas que los consumen.
+   Los bordes separan, no las sombras. Un solo elemento flotante lleva sombra.
+   ============================================================================ */
 
-:root {
-  --bg: #0f1115;
-  --surface: #171a21;
-  --surface-2: #1e222b;
-  --border: #2b2f3a;
-  --text: #e8eaed;
-  --text-dim: #9aa0ab;
-  --accent: #3b82f6;
-  --accent-hover: #2f6fd6;
-  --danger: #ef4444;
-  --ok: #22c55e;
-  --warn: #f59e0b;
-  --radius: 10px;
-  --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --mono: ui-monospace, "SF Mono", Menlo, monospace;
-}
+@import url('tokens.css');
 
-* { box-sizing: border-box; margin: 0; padding: 0; }
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 [hidden] { display: none !important; }
 
 html, body {
   height: 100%;
   background: var(--bg);
   color: var(--text);
-  font-family: var(--font);
+  font-family: var(--font-ui);
+  font-size: var(--fs-16);
+  line-height: var(--lh-body);
   -webkit-font-smoothing: antialiased;
 }
 
-button { font-family: inherit; }
+button, input, select, textarea { font: inherit; color: inherit; }
+svg { display: block; }
+::selection { background: var(--accent-wash); }
 
-::-webkit-scrollbar { width: 8px; height: 8px; }
-::-webkit-scrollbar-thumb { background: #3a3f4b; border-radius: 8px; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 0; }
+::-webkit-scrollbar-track { background: var(--surface); }
 
-/* Botones */
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  font-size: 0.9rem;
-  font-weight: 600;
-  padding: 9px 16px;
-  border-radius: var(--radius);
-  border: 1px solid var(--border);
-  background: var(--surface-2);
-  color: var(--text);
-  cursor: pointer;
-  transition: background 0.15s, border-color 0.15s, transform 0.1s;
-  text-decoration: none;
-  white-space: nowrap;
+/* -- Tipografía utilitaria -------------------------------------------------- */
+.display {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-stretch: 125%;
+  letter-spacing: var(--tracking-display);
+  line-height: 1.1;
 }
-.btn:hover { background: #262b36; border-color: #3a4150; }
-.btn:active { transform: scale(0.97); }
-.btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
-.btn-primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
-.btn-danger { background: var(--danger); border-color: var(--danger); color: #fff; }
-.btn-danger:hover { background: #d63c3c; }
-.btn-ghost { background: transparent; }
-.btn:disabled { opacity: 0.45; cursor: not-allowed; }
-.btn.on { background: var(--accent); border-color: var(--accent); color: #fff; }
-.btn.rec-on { background: var(--danger); border-color: var(--danger); color: #fff; }
-
-/* Badge de estado */
-.status {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  font-size: 0.8rem;
-  font-weight: 600;
-  padding: 4px 11px;
-  border-radius: 999px;
-  background: var(--surface-2);
+.mono { font-family: var(--font-mono); font-weight: 400; }
+.label {
+  font-family: var(--font-mono);
+  font-weight: 500;
+  font-size: var(--fs-11);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
   color: var(--text-dim);
-  border: 1px solid var(--border);
 }
-.status::before {
-  content: '';
-  width: 8px; height: 8px;
-  border-radius: 50%;
-  background: var(--text-dim);
-}
-.status.waiting::before { background: var(--warn); }
-.status.connected { color: var(--ok); border-color: rgba(34,197,94,0.35); }
-.status.connected::before { background: var(--ok); animation: blink 1.6s infinite; }
-.status.error { color: var(--danger); border-color: rgba(239,68,68,0.35); }
-.status.error::before { background: var(--danger); }
+.text-dim { color: var(--text-dim); }
+.text-mute { color: var(--text-mute); }
+a { color: var(--accent-text); text-underline-offset: 2px; }
 
-@keyframes blink { 50% { opacity: 0.35; } }
-
-/* Modal */
-.modal {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.65);
-  display: none;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-  z-index: 100;
+/* -- Íconos -------------------------------------------------------------- */
+.icon {
+  width: 20px; height: 20px; flex: none;
+  stroke: currentColor; fill: none;
+  stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round;
 }
-.modal.open { display: flex; }
-.modal-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 24px;
-  width: 100%;
-  max-width: 560px;
-  max-height: 90vh;
-  overflow-y: auto;
-}
+.icon--sm { width: 16px; height: 16px; }
 
-/* Campos */
-.field {
-  width: 100%;
-  padding: 10px 12px;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
+/* -- Dot de estado (único uso de radio full) ---------------------------- */
+.dot {
+  width: 8px; height: 8px; border-radius: var(--r-full);
+  background: var(--text-mute); flex: none;
+}
+.dot--ok { background: var(--ok); }
+.dot--warn { background: var(--warn); }
+.dot--critical { background: var(--critical); }
+.dot--accent { background: var(--accent); }
+.dot--live { background: var(--accent); animation: pulse 1.6s steps(1, end) infinite; }
+.dot--rec { background: var(--critical); animation: pulse 1s steps(1, end) infinite; }
+
+@keyframes pulse { 0%, 50% { opacity: 1; } 51%, 100% { opacity: 0.25; } }
+
+/* ============================================================================
+   Botones
+   ============================================================================ */
+.btn {
+  --_bg: var(--surface-2);
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--s-2);
+  min-height: 36px; padding: var(--s-2) var(--s-4);
+  background: var(--_bg);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r);
   color: var(--text);
-  font-size: 0.95rem;
-  font-family: var(--mono);
+  font-size: var(--fs-14); font-weight: 500;
+  text-decoration: none;
+  cursor: pointer; user-select: none; white-space: nowrap;
+  transition: background var(--snap), border-color var(--snap);
+}
+.btn:hover { border-color: var(--text-mute); background: var(--surface-2); }
+.btn:active { transform: translateY(0.5px); }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Acción primaria: relleno lima, on-accent, sin borde. Una por pantalla. */
+.btn--primary {
+  background: var(--accent); border-color: var(--accent); color: var(--on-accent);
+  font-weight: 600;
+}
+.btn--primary:hover { background: var(--accent-pressed); border-color: var(--accent-pressed); }
+
+.btn--ghost { background: transparent; border-color: transparent; color: var(--text-dim); }
+.btn--ghost:hover { background: var(--surface-2); color: var(--text); border-color: transparent; }
+
+.btn--danger { border-color: var(--critical); color: var(--critical); background: transparent; }
+.btn--danger:hover { background: var(--critical); color: var(--on-critical); }
+
+.btn--block { width: 100%; }
+
+/* Botón en estado activo (toggles del tray) */
+.btn[aria-pressed='true'] {
+  background: var(--accent-wash); border-color: var(--accent); color: var(--accent-text);
+}
+.btn.is-rec { background: var(--critical); border-color: var(--critical); color: var(--on-critical); }
+
+/* Botón-ícono cuadrado */
+.btn-icon {
+  min-height: 0; width: 36px; height: 36px; padding: 0;
+}
+
+/* ============================================================================
+   Campos
+   ============================================================================ */
+.field {
+  width: 100%; min-height: 36px; padding: var(--s-2) var(--s-3);
+  background: var(--bg);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r);
+  color: var(--text);
+  font-family: var(--font-mono); font-size: var(--fs-14);
 }
 .field:focus { outline: none; border-color: var(--accent); }
+textarea.field { min-height: 96px; resize: vertical; line-height: 1.5; }
+select.field { -webkit-appearance: none; appearance: none; }
 
-.label {
-  display: block;
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+/* ============================================================================
+   1 · VISOR — el canvas de video es dueño del marco
+   ============================================================================ */
+.viewer {
+  position: relative;
+  width: 100%; height: 100%;
+  background: var(--video-void);
+  overflow: hidden;
+}
+.viewer__video,
+.viewer__layer {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+}
+.viewer__video { object-fit: contain; }
+.viewer__layer { z-index: 2; }               /* capa de anotación */
+
+/* Corchetes de esquina — enmarcan el área activa como una cámara */
+.viewer__brackets { position: absolute; inset: var(--s-3); pointer-events: none; z-index: 3; }
+.viewer__brackets::before,
+.viewer__brackets::after,
+.viewer__brackets > i::before,
+.viewer__brackets > i::after {
+  content: ''; position: absolute;
+  width: 18px; height: 18px;
+  border: 1px solid var(--text-dim);
+}
+.viewer__brackets::before { top: 0; left: 0; border-right: 0; border-bottom: 0; }
+.viewer__brackets::after  { top: 0; right: 0; border-left: 0; border-bottom: 0; }
+.viewer__brackets > i::before { bottom: 0; left: 0; border-right: 0; border-top: 0; }
+.viewer__brackets > i::after  { bottom: 0; right: 0; border-left: 0; border-top: 0; }
+.viewer--pointing .viewer__brackets::before,
+.viewer--pointing .viewer__brackets::after,
+.viewer--pointing .viewer__brackets > i::before,
+.viewer--pointing .viewer__brackets > i::after { border-color: var(--accent); }
+
+/* Retícula central — visible solo cuando el experto está apuntando */
+.viewer__reticle {
+  position: absolute; top: 50%; left: 50%; z-index: 3;
+  width: 28px; height: 28px; margin: -14px 0 0 -14px;
+  pointer-events: none; opacity: 0;
+  transition: opacity var(--snap);
+}
+.viewer__reticle::before, .viewer__reticle::after {
+  content: ''; position: absolute; background: var(--accent);
+}
+.viewer__reticle::before { left: 50%; top: 0; width: 1px; height: 100%; margin-left: -0.5px; }
+.viewer__reticle::after  { top: 50%; left: 0; height: 1px; width: 100%; margin-top: -0.5px; }
+.viewer--pointing .viewer__reticle { opacity: 1; }
+
+/* ============================================================================
+   2 · HUD DE CONEXIÓN — franja superior, todo mono
+   ============================================================================ */
+.hud {
+  display: flex; align-items: center; gap: var(--s-4);
+  padding: var(--s-2) var(--s-3);
+  background: color-mix(in srgb, var(--bg) 82%, transparent);
+  border-bottom: 1px solid var(--border);
+  font-family: var(--font-mono); font-size: var(--fs-11);
+  letter-spacing: 0.04em;
+}
+.hud__group { display: flex; align-items: center; gap: var(--s-2); }
+.hud__group + .hud__group { padding-left: var(--s-4); border-left: 1px solid var(--border); }
+.hud__metric { color: var(--text); }
+.hud__metric b { color: var(--text-dim); font-weight: 400; margin-right: var(--s-1); text-transform: uppercase; letter-spacing: var(--tracking-label); }
+.hud__metric.is-warn { color: var(--warn); }
+.hud__metric.is-critical { color: var(--critical); }
+.hud .spacer { flex: 1; }
+
+/* Barras de señal */
+.bars { display: flex; align-items: flex-end; gap: 2px; height: 12px; }
+.bars i { width: 3px; background: var(--border-strong); }
+.bars i:nth-child(1) { height: 25%; }
+.bars i:nth-child(2) { height: 50%; }
+.bars i:nth-child(3) { height: 75%; }
+.bars i:nth-child(4) { height: 100%; }
+.bars[data-level='1'] i:nth-child(-n+1),
+.bars[data-level='2'] i:nth-child(-n+2),
+.bars[data-level='3'] i:nth-child(-n+3),
+.bars[data-level='4'] i:nth-child(-n+4) { background: var(--text-dim); }
+.bars[data-level='1'] { --_b: var(--critical); }
+.bars[data-level='2'] { --_b: var(--warn); }
+.bars[data-level='1'] i:nth-child(-n+1),
+.bars[data-level='2'] i:nth-child(-n+2) { background: var(--_b); }
+
+/* ============================================================================
+   3 · PILL LIVE
+   ============================================================================ */
+.pill {
+  display: inline-flex; align-items: center; gap: var(--s-2);
+  padding: var(--s-1) var(--s-2);
+  border: 1px solid var(--border-strong); border-radius: var(--r-cell);
+  font-family: var(--font-mono); font-size: var(--fs-11);
+  letter-spacing: var(--tracking-label); text-transform: uppercase;
   color: var(--text-dim);
-  margin-bottom: 6px;
+}
+.pill--live { border-color: var(--accent); color: var(--accent-text); background: var(--accent-wash); }
+.pill--rec  { border-color: var(--critical); color: var(--critical); }
+
+/* ============================================================================
+   4 · TOOLKIT DE ANOTACIÓN — herramienta activa = subrayado de acento
+   ============================================================================ */
+.toolkit {
+  display: flex; gap: var(--s-1);
+  padding: var(--s-1);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+}
+.toolkit--v { flex-direction: column; }
+.tool {
+  position: relative;
+  display: flex; align-items: center; justify-content: center; gap: var(--s-2);
+  min-width: 40px; height: 40px; padding: 0 var(--s-2);
+  background: transparent; border: 0; border-radius: var(--r-cell);
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: color var(--snap), background var(--snap);
+}
+.tool:hover { color: var(--text); background: var(--surface-2); }
+.tool:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.tool[aria-pressed='true'] { color: var(--text); }
+.tool[aria-pressed='true']::after {
+  content: ''; position: absolute; left: var(--s-2); right: var(--s-2); bottom: 3px;
+  height: 2px; background: var(--accent);
+}
+.tool__label { font-size: var(--fs-12); font-weight: 500; }
+
+/* Muestras de color de anotación (forma + label = pista no cromática) */
+.swatches { display: flex; gap: var(--s-1); padding-left: var(--s-2); border-left: 1px solid var(--border); }
+.swatch {
+  width: 24px; height: 24px; border: 1px solid var(--border-strong); border-radius: var(--r-cell);
+  cursor: pointer; padding: 0;
+}
+.swatch[aria-pressed='true'] { outline: 2px solid var(--text); outline-offset: 1px; }
+.swatch--signal   { background: var(--accent); }
+.swatch--critical { background: var(--critical); }
+.swatch--info     { background: var(--info); }
+.swatch--neutral  { background: var(--text); }
+
+/* ============================================================================
+   6 · TRAY DE CONTROLES — el único elemento con sombra
+   ============================================================================ */
+.tray {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  box-shadow: var(--shadow-float);
+}
+.tray--dock {
+  display: flex; align-items: center; gap: var(--s-2);
+  padding: var(--s-2);
+}
+.tray--sheet {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  border-radius: var(--r) var(--r) 0 0;
+  border-bottom: 0;
+  padding: var(--s-3) var(--s-4) calc(var(--s-4) + env(safe-area-inset-bottom));
+  display: flex; align-items: center; justify-content: space-around; gap: var(--s-3);
+}
+
+/* Botón grande táctil (app de campo, guantes) */
+.fab {
+  display: flex; align-items: center; justify-content: center;
+  width: 56px; height: 56px; flex: none;
+  background: var(--surface-2); border: 1px solid var(--border-strong); border-radius: var(--r);
+  color: var(--text); cursor: pointer;
+  transition: background var(--snap), border-color var(--snap);
+}
+.fab:active { background: var(--surface); }
+.fab[aria-pressed='true'] { background: var(--accent-wash); border-color: var(--accent); color: var(--accent-text); }
+.fab--primary {
+  width: 72px; height: 72px;
+  background: var(--accent); border-color: var(--accent); color: var(--on-accent);
+  flex-direction: column; gap: 2px;
+  font-family: var(--font-mono); font-size: var(--fs-11); font-weight: 500;
+  letter-spacing: var(--tracking-label); text-transform: uppercase;
+}
+.fab--primary:active { background: var(--accent-pressed); }
+
+/* ============================================================================
+   7 · CHEQUEO PREVIO — "systems check"
+   ============================================================================ */
+.syscheck { display: flex; flex-direction: column; gap: var(--s-1); width: 100%; max-width: 340px; }
+.syscheck__row {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--s-4);
+  padding: var(--s-3) var(--s-3);
+  border: 1px solid var(--border);
+  border-radius: var(--r-cell);
+  font-family: var(--font-mono); font-size: var(--fs-12);
+}
+.syscheck__label { color: var(--text-dim); letter-spacing: var(--tracking-label); text-transform: uppercase; }
+.syscheck__state { display: flex; align-items: center; gap: var(--s-2); color: var(--text-mute); }
+.syscheck__row.is-checking .syscheck__state { color: var(--text-dim); }
+.syscheck__row.is-ok .syscheck__state { color: var(--ok); }
+.syscheck__row.is-ok { border-color: color-mix(in srgb, var(--ok) 40%, var(--border)); }
+.syscheck__row.is-fail .syscheck__state { color: var(--critical); }
+.syscheck__row.is-fail { border-color: color-mix(in srgb, var(--critical) 45%, var(--border)); }
+
+/* ============================================================================
+   8 · TOAST — entra desde el borde, estilo transmisión
+   ============================================================================ */
+.toast-stack {
+  position: fixed; top: var(--s-4); left: 50%; transform: translateX(-50%);
+  display: flex; flex-direction: column; gap: var(--s-2); z-index: 200;
+  pointer-events: none;
+}
+.toast {
+  display: flex; align-items: center; gap: var(--s-2);
+  padding: var(--s-2) var(--s-3);
+  background: var(--surface); border: 1px solid var(--border-strong); border-radius: var(--r-cell);
+  box-shadow: var(--shadow-float);
+  font-family: var(--font-mono); font-size: var(--fs-12);
+  transform: translateY(-12px); opacity: 0;
+  transition: transform var(--snap), opacity var(--snap);
+}
+.toast.is-in { transform: translateY(0); opacity: 1; }
+.toast--ok { border-left: 2px solid var(--ok); }
+.toast--warn { border-left: 2px solid var(--warn); }
+.toast--critical { border-left: 2px solid var(--critical); }
+.toast--info { border-left: 2px solid var(--info); }
+
+/* ============================================================================
+   Modal — segunda (y última) capa que puede llevar sombra
+   ============================================================================ */
+.modal {
+  position: fixed; inset: 0; z-index: 150;
+  display: none; align-items: center; justify-content: center;
+  padding: var(--s-4);
+  background: color-mix(in srgb, var(--video-void) 62%, transparent);
+}
+.modal.open { display: flex; }
+.modal__card {
+  width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r);
+  box-shadow: var(--shadow-float);
+  padding: var(--s-6);
+}
+.modal__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--s-4); }
+.modal__title { font-size: var(--fs-20); font-weight: 600; }
+
+/* ============================================================================
+   Estado de conexión (texto corto reutilizable)
+   ============================================================================ */
+.conn { display: inline-flex; align-items: center; gap: var(--s-2); font-family: var(--font-mono); font-size: var(--fs-11); letter-spacing: var(--tracking-label); text-transform: uppercase; color: var(--text-dim); }
+.conn--ok { color: var(--ok); }
+.conn--warn { color: var(--warn); }
+.conn--critical { color: var(--critical); }
+
+/* ============================================================================
+   Movimiento reducido
+   ============================================================================ */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+  .dot--live, .dot--rec { opacity: 1 !important; }
 }

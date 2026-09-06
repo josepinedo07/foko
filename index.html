@@ -3,53 +3,47 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>FieldLens · Soporte remoto por video</title>
+  <title>FOKO · Soporte visual remoto</title>
   <link rel="stylesheet" href="css/design-system.css">
   <style>
     .wrap {
       min-height: 100%;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 32px 20px;
-      gap: 28px;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: var(--s-8) var(--s-4); gap: var(--s-8);
     }
-    h1 { font-size: 1.7rem; font-weight: 700; }
-    .sub { color: var(--text-dim); max-width: 440px; text-align: center; line-height: 1.5; }
-    .cards { display: grid; gap: 16px; width: 100%; max-width: 440px; }
-    .card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 22px;
-    }
-    .card h2 { font-size: 1.05rem; margin-bottom: 6px; }
-    .card p { color: var(--text-dim); font-size: 0.88rem; margin-bottom: 16px; line-height: 1.45; }
-    .join-row { display: flex; gap: 8px; }
-    .join-row .field { text-transform: uppercase; }
+    .mark { text-align: center; }
+    .mark h1 { font-size: var(--fs-40); }
+    .mark p { color: var(--text-dim); font-size: var(--fs-14); margin-top: var(--s-2); max-width: 34ch; }
+    .paths { display: grid; gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: var(--r); overflow: hidden; width: 100%; max-width: 420px; }
+    .path { background: var(--surface); padding: var(--s-5); display: flex; flex-direction: column; gap: var(--s-3); }
+    .path h2 { font-size: var(--fs-16); font-weight: 600; }
+    .path p { color: var(--text-dim); font-size: var(--fs-12); }
+    .join { display: flex; gap: var(--s-2); }
+    .join .field { text-transform: uppercase; }
   </style>
 </head>
 <body>
   <div class="wrap">
-    <div style="text-align:center;">
-      <h1>FieldLens</h1>
-      <p class="sub">Videollamada de soporte entre un técnico remoto y un técnico en campo, con puntero, dibujo, congelado, fotos y grabación.</p>
+    <div class="mark">
+      <h1 class="display">FOKO</h1>
+      <p>El teléfono del técnico de campo se convierte en los ojos del técnico de oficina.</p>
     </div>
 
-    <div class="cards">
-      <div class="card">
-        <h2>Soy el técnico remoto</h2>
-        <p>Abre la consola, genera un enlace o QR y compártelo con quien está en campo.</p>
-        <a class="btn btn-primary" href="remote-expert.html" style="width:100%;">Abrir consola</a>
+    <div class="paths">
+      <div class="path">
+        <span class="label">Técnico de oficina</span>
+        <h2>Abrir consola</h2>
+        <p>Genera un enlace o QR, ve el feed y guía al de campo.</p>
+        <a class="btn btn--primary btn--block" href="remote-expert.html">Abrir consola</a>
       </div>
 
-      <div class="card">
-        <h2>Estoy en campo</h2>
-        <p>Normalmente entrarás por el enlace que te envíen. Si tienes un código, escríbelo aquí.</p>
-        <div class="join-row">
-          <input id="code" class="field" placeholder="FL-XXXX" maxlength="12" autocomplete="off">
-          <button class="btn btn-primary" id="join">Entrar</button>
+      <div class="path">
+        <span class="label">Técnico de campo</span>
+        <h2>Entrar con código</h2>
+        <p>Normalmente entras por el enlace que te envían.</p>
+        <div class="join">
+          <input id="code" class="field" placeholder="FK-XXXX" maxlength="12" autocomplete="off" aria-label="Código de sesión">
+          <button class="btn btn--primary" id="join">Entrar</button>
         </div>
       </div>
     </div>

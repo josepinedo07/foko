@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-FieldLens - servidor estático para desarrollo.
+FOKO - servidor estático para desarrollo.
 
   python3 server.py            -> HTTP  en :8000  (localhost)
   python3 server.py --https    -> HTTPS en :8443  (para probar con un teléfono
@@ -106,7 +106,7 @@ def ensure_cert(ips):
         [
             "openssl", "req", "-x509", "-newkey", "rsa:2048", "-nodes",
             "-keyout", KEY_FILE, "-out", CERT_FILE, "-days", "825",
-            "-subj", "/CN=FieldLens", "-addext", san,
+            "-subj", "/CN=FOKO", "-addext", san,
         ],
         check=True,
     )
@@ -133,7 +133,7 @@ def run():
         httpd.socket = ctx.wrap_socket(httpd.socket, server_side=True)
 
     print("\n" + "=" * 60)
-    print(" FieldLens - Soporte remoto por video")
+    print(" FOKO - Soporte visual remoto")
     print("=" * 60)
     print(f"\n Servidor {scheme.upper()} en :{port}\n")
     print(f"   Esta compu:   {scheme}://localhost:{port}/remote-expert.html")

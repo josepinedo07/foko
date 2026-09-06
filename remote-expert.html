@@ -3,259 +3,229 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>FieldLens · Consola del técnico remoto</title>
+  <title>FOKO · Consola de oficina</title>
   <link rel="stylesheet" href="css/design-system.css">
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <style>
     body { overflow: hidden; }
     .app { display: flex; flex-direction: column; height: 100vh; }
 
-    header {
-      display: flex; align-items: center; gap: 14px;
-      padding: 10px 16px;
-      background: var(--surface);
-      border-bottom: 1px solid var(--border);
+    /* Fila 1: identidad + acciones */
+    .topbar {
+      display: flex; align-items: center; gap: var(--s-3);
+      padding: var(--s-2) var(--s-3);
+      background: var(--surface); border-bottom: 1px solid var(--border);
     }
-    .brand { font-weight: 700; }
-    header .spacer { flex: 1; }
+    .topbar__mark { font-family: var(--font-display); font-weight: 700; font-stretch: 125%; letter-spacing: var(--tracking-display); }
+    .topbar .spacer { flex: 1; }
 
-    .stage {
-      position: relative;
-      flex: 1;
-      background: #000;
-      overflow: hidden;
-    }
-    #feed { width: 100%; height: 100%; object-fit: contain; display: block; }
-    #ar { position: absolute; inset: 0; width: 100%; height: 100%; cursor: crosshair; }
+    /* Fila 2: HUD de conexión (todo mono) */
+    .hud .pill { margin-left: var(--s-1); }
+
+    .stage { position: relative; flex: 1; background: var(--video-void); overflow: hidden; }
+    #ar { cursor: crosshair; }
 
     .placeholder {
-      position: absolute; inset: 0;
+      position: absolute; inset: 0; z-index: 4;
       display: flex; flex-direction: column; align-items: center; justify-content: center;
-      gap: 12px; color: var(--text-dim); text-align: center; padding: 20px;
+      gap: var(--s-3); text-align: center; padding: var(--s-6);
     }
+    .placeholder h2 { font-size: var(--fs-20); font-weight: 600; }
+    .placeholder p { color: var(--text-dim); font-size: var(--fs-14); max-width: 40ch; }
 
-    .toolbar {
-      position: absolute; top: 14px; left: 14px;
-      display: flex; flex-direction: column; gap: 6px;
-      background: rgba(23,26,33,0.92);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 8px;
-    }
-    .tool {
-      display: flex; align-items: center; gap: 8px;
-      padding: 7px 12px;
-      border-radius: 8px;
-      background: transparent;
-      border: 1px solid transparent;
-      color: var(--text-dim);
-      font-size: 0.85rem; font-weight: 600;
-      cursor: pointer;
-      text-align: left;
-    }
-    .tool:hover { background: var(--surface-2); color: var(--text); }
-    .tool.active { background: var(--accent); border-color: var(--accent); color: #fff; }
-    .swatches { display: flex; gap: 6px; padding: 6px 4px; border-top: 1px solid var(--border); margin-top: 2px; }
-    .swatch { width: 22px; height: 22px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; }
-    .swatch.active { border-color: #fff; }
+    /* Toolkit vertical persistente (bordeado, sin sombra) */
+    .toolkit--v { position: absolute; top: var(--s-4); left: var(--s-4); z-index: 5; }
 
-    .freeze-tag {
-      position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
-      background: var(--warn); color: #1a1200; font-weight: 700; font-size: 0.8rem;
-      padding: 6px 14px; border-radius: 999px; display: none;
-    }
-    .rec-tag {
-      position: absolute; top: 14px; right: 14px;
-      background: var(--danger); color: #fff; font-weight: 700; font-size: 0.8rem;
-      padding: 6px 12px; border-radius: 999px; display: none; align-items: center; gap: 7px;
-    }
-    .rec-tag::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: #fff; animation: blink 1s infinite; }
+    /* Tray de controles: el ÚNICO elemento flotante con sombra */
+    .tray--dock { position: absolute; left: 50%; bottom: var(--s-4); transform: translateX(-50%); z-index: 5; }
 
-    .actions {
-      display: flex; align-items: center; gap: 8px;
-      padding: 10px 16px;
-      background: var(--surface);
-      border-top: 1px solid var(--border);
-      overflow-x: auto;
-    }
-    .actions .spacer { flex: 1; }
+    .shots { display: flex; gap: var(--s-1); }
+    .shots img { width: 44px; height: 44px; object-fit: cover; border: 1px solid var(--border-strong); border-radius: var(--r-cell); cursor: pointer; }
 
-    .shots { display: flex; gap: 6px; }
-    .shots img {
-      width: 46px; height: 46px; object-fit: cover;
-      border-radius: 6px; border: 1px solid var(--border); cursor: pointer;
+    /* Panel de notas */
+    .panel {
+      position: fixed; top: 0; right: 0; bottom: 0; width: 380px; max-width: 92vw; z-index: 90;
+      background: var(--surface); border-left: 1px solid var(--border-strong);
+      display: flex; flex-direction: column;
+      transform: translateX(100%); transition: transform var(--snap);
+      box-shadow: var(--shadow-float);
     }
-
-    /* Modal invitar */
-    .invite-grid { display: grid; grid-template-columns: 1fr auto; gap: 20px; align-items: start; }
-    #qr { background: #fff; padding: 10px; border-radius: 10px; width: 176px; height: 176px; }
-    .link-row { display: flex; gap: 8px; margin-top: 4px; }
-    .muted { color: var(--text-dim); font-size: 0.82rem; line-height: 1.5; }
-    @media (max-width: 560px) { .invite-grid { grid-template-columns: 1fr; } }
-
-    /* Panel de notas IA */
-    .notes-panel {
-      position: fixed; top: 0; right: 0; bottom: 0; width: 380px; max-width: 90vw;
-      background: var(--surface); border-left: 1px solid var(--border);
-      display: flex; flex-direction: column; z-index: 80;
-      transform: translateX(100%); transition: transform 0.2s ease;
-    }
-    .notes-panel.open { transform: translateX(0); }
-    .notes-panel header { justify-content: space-between; }
-    .notes-body { flex: 1; overflow-y: auto; padding: 14px 16px; display: flex; flex-direction: column; gap: 14px; }
-    .notes-body h3 { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-dim); margin-bottom: 6px; }
+    .panel.open { transform: translateX(0); }
+    .panel__head { display: flex; align-items: center; justify-content: space-between; padding: var(--s-3) var(--s-4); border-bottom: 1px solid var(--border); }
+    .panel__body { flex: 1; overflow-y: auto; padding: var(--s-4); display: flex; flex-direction: column; gap: var(--s-4); }
+    .panel__foot { padding: var(--s-3) var(--s-4); border-top: 1px solid var(--border); display: flex; gap: var(--s-2); align-items: center; }
+    .stack { display: flex; flex-direction: column; gap: var(--s-2); }
     #transcriptBox {
-      background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius);
-      padding: 10px; font-size: 0.85rem; line-height: 1.5; min-height: 120px; max-height: 34vh;
-      overflow-y: auto; white-space: pre-wrap; color: var(--text-dim);
+      background: var(--bg); border: 1px solid var(--border-strong); border-radius: var(--r-cell);
+      padding: var(--s-2) var(--s-3); font-family: var(--font-mono); font-size: var(--fs-12); line-height: 1.5;
+      min-height: 110px; max-height: 32vh; overflow-y: auto; white-space: pre-wrap; color: var(--text-dim);
     }
-    #notesBox {
-      width: 100%; min-height: 130px; resize: vertical;
-      background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius);
-      color: var(--text); padding: 10px; font-size: 0.9rem; font-family: var(--font); line-height: 1.5;
-    }
-    #notesBox:focus, #transcriptBox:focus { outline: none; border-color: var(--accent); }
-    .notes-foot { padding: 12px 16px; border-top: 1px solid var(--border); display: flex; gap: 8px; align-items: center; }
-    .rec-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--danger); animation: blink 1s infinite; }
+    .field-row { display: flex; gap: var(--s-2); }
 
     #reportOut {
-      background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius);
-      padding: 14px 16px; font-size: 0.9rem; line-height: 1.55; max-height: 55vh; overflow-y: auto;
-      white-space: pre-wrap;
+      background: var(--bg); border: 1px solid var(--border-strong); border-radius: var(--r-cell);
+      padding: var(--s-4); font-size: var(--fs-14); line-height: 1.6; max-height: 55vh; overflow-y: auto; white-space: pre-wrap;
     }
-    #reportOut h1 { font-size: 1.15rem; margin: 0 0 10px; }
-    #reportOut h2 { font-size: 0.98rem; margin: 14px 0 4px; color: var(--accent); }
-    .settings-row { margin-bottom: 14px; }
+    #reportOut h1 { font-size: var(--fs-20); margin: 0 0 var(--s-2); }
+    #reportOut h2 { font-size: var(--fs-16); margin: var(--s-4) 0 var(--s-1); color: var(--accent-text); }
+    .settings-row { margin-bottom: var(--s-4); }
+    .settings-row .label { display: block; margin-bottom: var(--s-1); }
+    .check { display: flex; gap: var(--s-2); align-items: flex-start; }
+
+    #qr { background: var(--qr-bg); padding: var(--s-2); border-radius: var(--r-cell); width: 172px; height: 172px; }
+    .invite-grid { display: grid; grid-template-columns: 1fr auto; gap: var(--s-5); align-items: start; }
+    @media (max-width: 560px) { .invite-grid { grid-template-columns: 1fr; } }
   </style>
 </head>
 <body>
   <div class="app">
-    <header>
-      <span class="brand">FieldLens</span>
-      <span id="status" class="status">iniciando…</span>
+    <div class="topbar">
+      <span class="topbar__mark">FOKO</span>
+      <span id="status" class="conn">iniciando</span>
       <span class="spacer"></span>
-      <button class="btn" id="btnNotes" hidden>Notas IA</button>
-      <button class="btn btn-ghost" id="btnSettings" title="Ajustes">⚙</button>
-      <button class="btn btn-primary" id="btnInvite">Invitar a campo</button>
-    </header>
-
-    <div class="stage" id="stage">
-      <video id="feed" autoplay playsinline></video>
-      <canvas id="ar"></canvas>
-
-      <div class="placeholder" id="placeholder">
-        <div style="font-size:1.05rem; color:var(--text);">Esperando al técnico de campo</div>
-        <div class="muted">Comparte el enlace o el QR. En cuanto abra la cámara, aparecerá aquí.</div>
-        <button class="btn btn-primary" id="btnInvite2">Ver enlace y QR</button>
-      </div>
-
-      <div class="toolbar" id="toolbar" hidden>
-        <button class="tool active" data-tool="pointer">Puntero</button>
-        <button class="tool" data-tool="pen">Lápiz</button>
-        <button class="tool" data-tool="arrow">Flecha</button>
-        <button class="tool" data-tool="ellipse">Círculo</button>
-        <div class="swatches">
-          <span class="swatch active" data-color="#ff3b30" style="background:#ff3b30"></span>
-          <span class="swatch" data-color="#ffd60a" style="background:#ffd60a"></span>
-          <span class="swatch" data-color="#30d158" style="background:#30d158"></span>
-          <span class="swatch" data-color="#0a84ff" style="background:#0a84ff"></span>
-        </div>
-        <button class="tool" id="btnUndo">Deshacer</button>
-        <button class="tool" id="btnClear">Limpiar</button>
-      </div>
-
-      <div class="freeze-tag" id="freezeTag">Imagen congelada</div>
-      <div class="rec-tag" id="recTag">Grabando</div>
+      <button class="btn btn--ghost" id="btnNotes" hidden>Notas</button>
+      <button class="btn btn--ghost btn-icon" id="btnSettings" aria-label="Ajustes">
+        <svg class="icon icon--sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.4-2.3 1a7 7 0 0 0-1.7-1L14.5 2h-5l-.4 2.6a7 7 0 0 0-1.7 1l-2.3-1-2 3.4L3 11a7 7 0 0 0 0 2l-2 1.5 2 3.4 2.3-1a7 7 0 0 0 1.7 1l.4 2.6h5l.4-2.6a7 7 0 0 0 1.7-1l2.3 1 2-3.4-2-1.5a7 7 0 0 0 .1-1z"/></svg>
+      </button>
+      <button class="btn btn--primary" id="btnInvite">Invitar a campo</button>
     </div>
 
-    <div class="actions" id="actions" hidden>
-      <button class="btn" id="btnFreeze">Congelar</button>
-      <button class="btn" id="btnPhoto">Foto</button>
-      <button class="btn" id="btnRecord">Grabar</button>
-      <button class="btn" id="btnScreen">Compartir pantalla</button>
-      <button class="btn" id="btnMic">Silenciar mic</button>
+    <div class="hud">
+      <span class="bars" data-hud="bars" data-level="0"><i></i><i></i><i></i><i></i></span>
+      <span class="hud__metric" data-hud="lat"><b>lat</b>— MS</span>
+      <span class="hud__metric" data-hud="res"><b>res</b>—</span>
+      <span class="hud__metric" data-hud="fps"><b>fps</b>—</span>
+      <span class="hud__metric" data-hud="time"><b>sesión</b>00:00:00</span>
       <span class="spacer"></span>
-      <div class="shots" id="shots"></div>
+      <span class="pill pill--live" id="freezeTag" hidden>CONGELADO</span>
+      <span class="pill pill--live" id="drawPill" hidden>DIBUJANDO</span>
+      <span class="pill pill--rec" id="recPill" hidden><span class="dot dot--rec"></span>REC</span>
+    </div>
+
+    <div class="stage" id="stage">
+      <div class="viewer" id="viewer">
+        <video class="viewer__video" id="feed" autoplay playsinline></video>
+        <canvas class="viewer__layer" id="ar"></canvas>
+        <div class="viewer__brackets"><i></i></div>
+        <div class="viewer__reticle"></div>
+      </div>
+
+      <div class="placeholder" id="placeholder">
+        <h2>Esperando al técnico de campo</h2>
+        <p>Comparte el enlace o el QR. En cuanto abra la cámara aparece aquí.</p>
+        <button class="btn btn--primary" id="btnInvite2">Ver enlace y QR</button>
+      </div>
+
+      <div class="toolkit toolkit--v" id="toolbar" hidden role="toolbar" aria-label="Anotación">
+        <button class="tool" data-tool="pointer" aria-pressed="true" title="Puntero láser">
+          <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+        </button>
+        <button class="tool" data-tool="pen" aria-pressed="false" title="Trazo a mano">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M4 20c3-1 4-3 6-8s4-8 8-8c2 0 2 3-1 5s-6 3-9 8"/></svg>
+        </button>
+        <button class="tool" data-tool="arrow" aria-pressed="false" title="Flecha">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M5 19L19 5M10 5h9v9"/></svg>
+        </button>
+        <button class="tool" data-tool="ellipse" aria-pressed="false" title="Elipse">
+          <svg class="icon" viewBox="0 0 24 24"><ellipse cx="12" cy="12" rx="9" ry="6"/></svg>
+        </button>
+        <button class="tool" data-tool="text" aria-pressed="false" title="Texto">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M5 6h14M12 6v12M9 18h6"/></svg>
+        </button>
+        <div class="swatches">
+          <button class="swatch swatch--signal" aria-pressed="true" title="Señal (por defecto)"></button>
+          <button class="swatch swatch--critical" aria-pressed="false" title="Crítico"></button>
+          <button class="swatch swatch--info" aria-pressed="false" title="Info"></button>
+          <button class="swatch swatch--neutral" aria-pressed="false" title="Neutro"></button>
+        </div>
+        <button class="tool" id="btnUndo" title="Deshacer">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10H9"/></svg>
+        </button>
+        <button class="tool" id="btnClear" title="Limpiar todo">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>
+        </button>
+      </div>
+
+      <div class="tray tray--dock" id="actions" hidden>
+        <button class="btn" id="btnFreeze" aria-pressed="false">Congelar</button>
+        <button class="btn" id="btnPhoto">Foto</button>
+        <button class="btn" id="btnRecord">Grabar</button>
+        <button class="btn" id="btnScreen" aria-pressed="false">Compartir pantalla</button>
+        <button class="btn" id="btnMic" aria-pressed="false">Silenciar mic</button>
+        <div class="shots" id="shots"></div>
+      </div>
     </div>
   </div>
 
+  <!-- Invitar -->
   <div class="modal" id="inviteModal">
-    <div class="modal-card">
-      <h2 style="margin-bottom:4px;">Invitar al técnico de campo</h2>
-      <p class="muted" style="margin-bottom:18px;">Que abra el enlace en su teléfono (Android o iPhone) y permita la cámara. No necesita instalar nada.</p>
-
+    <div class="modal__card">
+      <div class="modal__head"><h2 class="modal__title">Invitar al técnico de campo</h2></div>
+      <p class="text-dim" style="font-size:var(--fs-14); margin-bottom:var(--s-5);">Que abra el enlace en su teléfono y permita la cámara. No instala nada.</p>
       <div class="invite-grid">
-        <div>
-          <label class="label">Código de sala</label>
-          <input class="field" id="roomField" readonly style="margin-bottom:14px;">
-          <label class="label">Enlace</label>
-          <div class="link-row">
-            <input class="field" id="linkField" readonly>
-            <button class="btn" id="btnCopy">Copiar</button>
+        <div class="stack">
+          <div><span class="label">Código de sesión</span><input class="field" id="roomField" readonly></div>
+          <div><span class="label">Enlace</span>
+            <div class="field-row"><input class="field" id="linkField" readonly><button class="btn" id="btnCopy">Copiar</button></div>
           </div>
-          <div class="link-row">
-            <button class="btn" id="btnWhats" style="flex:1;">WhatsApp</button>
-            <button class="btn" id="btnOpen" style="flex:1;">Abrir en pestaña</button>
+          <div class="field-row">
+            <button class="btn btn--block" id="btnWhats">WhatsApp</button>
+            <button class="btn btn--block" id="btnOpen">Abrir</button>
           </div>
-          <p class="muted" id="inviteStatus" style="margin-top:14px;">Esperando conexión…</p>
+          <p class="conn" id="inviteStatus">Esperando conexión</p>
         </div>
         <div style="text-align:center;">
           <div id="qr"></div>
-          <p class="muted" style="margin-top:8px;">Escanear con la cámara</p>
+          <p class="label" style="margin-top:var(--s-2);">Escanear</p>
         </div>
       </div>
-
-      <div style="text-align:right; margin-top:20px;">
-        <button class="btn btn-primary" id="btnDone">Listo</button>
-      </div>
+      <div style="text-align:right; margin-top:var(--s-5);"><button class="btn btn--primary" id="btnDone">Listo</button></div>
     </div>
   </div>
 
-  <!-- Panel de notas IA -->
-  <aside class="notes-panel" id="notesPanel">
-    <header>
+  <!-- Panel de notas -->
+  <aside class="panel" id="notesPanel" aria-label="Asistente de notas">
+    <div class="panel__head">
       <strong>Asistente de notas</strong>
-      <button class="btn btn-ghost" id="btnNotesClose" title="Cerrar">✕</button>
-    </header>
-    <div class="notes-body">
-      <div>
-        <h3 id="transcriptTitle">Transcripción</h3>
-        <div id="transcriptBox" tabindex="0">La transcripción de tu voz aparecerá aquí…</div>
-        <div class="notes-foot" style="padding:8px 0 0; border:0;">
-          <button class="btn" id="btnMicTranscribe">Iniciar transcripción</button>
-          <button class="btn btn-ghost" id="btnTranscriptClear">Borrar</button>
+      <button class="btn btn--ghost btn-icon" id="btnNotesClose" aria-label="Cerrar">
+        <svg class="icon icon--sm" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+    <div class="panel__body">
+      <div class="stack">
+        <span class="label" id="transcriptTitle">Transcripción</span>
+        <div id="transcriptBox" tabindex="0">La transcripción de tu voz aparece aquí.</div>
+        <div class="field-row">
+          <button class="btn" id="btnMicTranscribe" aria-pressed="false">Iniciar transcripción</button>
+          <button class="btn btn--ghost" id="btnTranscriptClear">Borrar</button>
         </div>
       </div>
-      <div>
-        <h3>Notas</h3>
-        <textarea id="notesBox" placeholder="Apunta lo relevante: síntoma, lo que probaron, resultado, repuestos, pendientes…"></textarea>
+      <div class="stack">
+        <span class="label">Notas</span>
+        <textarea class="field" id="notesBox" placeholder="Síntoma · qué se probó · resultado · repuestos · pendientes"></textarea>
       </div>
     </div>
-    <div class="notes-foot">
-      <button class="btn btn-primary" id="btnGenReport" style="flex:1;">Generar reporte</button>
-      <span class="muted" id="sessionClock" style="font-family:var(--mono);">00:00</span>
+    <div class="panel__foot">
+      <button class="btn btn--primary btn--block" id="btnGenReport">Generar reporte</button>
+      <span class="mono text-dim" id="sessionClock">00:00</span>
     </div>
   </aside>
 
   <!-- Ajustes -->
   <div class="modal" id="settingsModal">
-    <div class="modal-card" style="max-width:460px;">
-      <h2 style="margin-bottom:16px;">Ajustes</h2>
-      <label class="settings-row" style="display:flex; gap:10px; align-items:flex-start;">
-        <input type="checkbox" id="setNotesEnabled" style="margin-top:3px;">
-        <span>
-          <strong>Asistente de notas IA</strong>
-          <span class="muted" style="display:block;">Transcribe la llamada y genera un reporte de servicio.</span>
-        </span>
+    <div class="modal__card" style="max-width:460px;">
+      <div class="modal__head"><h2 class="modal__title">Ajustes</h2></div>
+      <label class="check settings-row">
+        <input type="checkbox" id="setNotesEnabled">
+        <span><strong>Asistente de notas IA</strong><span class="text-dim" style="display:block; font-size:var(--fs-12);">Transcribe la llamada y redacta un reporte de servicio.</span></span>
       </label>
       <div class="settings-row">
         <label class="label" for="setAccessCode">Código de acceso</label>
-        <input class="field" id="setAccessCode" type="password" placeholder="El que configuraste en el servidor" autocomplete="off">
+        <input class="field" id="setAccessCode" type="password" autocomplete="off" placeholder="El configurado en el servidor">
       </div>
       <div class="settings-row">
         <label class="label" for="setEndpoint">Endpoint del reporte</label>
         <input class="field" id="setEndpoint" placeholder="/api/report">
-        <span class="muted">Déjalo así si la app está en el mismo dominio que la función.</span>
       </div>
       <div class="settings-row">
         <label class="label" for="setLang">Idioma de transcripción</label>
@@ -267,22 +237,22 @@
           <option value="en-US">English (US)</option>
         </select>
       </div>
-      <p class="muted" id="settingsNote"></p>
-      <div style="text-align:right; margin-top:16px;">
-        <button class="btn btn-primary" id="btnSettingsSave">Guardar</button>
-      </div>
+      <p class="text-mute mono" style="font-size:var(--fs-11);" id="settingsNote"></p>
+      <div style="text-align:right; margin-top:var(--s-4);"><button class="btn btn--primary" id="btnSettingsSave">Guardar</button></div>
     </div>
   </div>
 
   <!-- Reporte -->
   <div class="modal" id="reportModal">
-    <div class="modal-card" style="max-width:640px;">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-        <h2>Reporte de servicio</h2>
-        <button class="btn btn-ghost" id="btnReportClose">✕</button>
+    <div class="modal__card" style="max-width:640px;">
+      <div class="modal__head">
+        <h2 class="modal__title">Reporte de servicio</h2>
+        <button class="btn btn--ghost btn-icon" id="btnReportClose" aria-label="Cerrar">
+          <svg class="icon icon--sm" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
       </div>
-      <div id="reportOut">…</div>
-      <div style="display:flex; gap:8px; margin-top:14px; justify-content:flex-end;">
+      <div id="reportOut">—</div>
+      <div class="field-row" style="margin-top:var(--s-4); justify-content:flex-end;">
         <button class="btn" id="btnReportCopy">Copiar</button>
         <button class="btn" id="btnReportDownload">Descargar .md</button>
         <button class="btn" id="btnReportPrint">Imprimir</button>
@@ -295,46 +265,65 @@
     import { ARCanvas } from './js/ar-canvas.js';
     import { WebRTCManager } from './js/webrtc-manager.js';
     import { NotesAssistant, TRANSCRIPTION_SUPPORTED } from './js/notes-assistant.js';
+    import { Hud, toast } from './js/ui.js';
 
     const $ = (id) => document.getElementById(id);
     const params = new URLSearchParams(location.search);
 
-    function newCode() { return 'FL-' + Math.random().toString(16).slice(2, 6).toUpperCase(); }
+    function newCode() { return 'FK-' + Math.random().toString(16).slice(2, 6).toUpperCase(); }
     let roomCode = (params.get('room') || newCode()).toUpperCase();
 
     const feed = $('feed');
     const statusEl = $('status');
-    let connected = false;
-    let frozen = false;
-    let screenOn = false;
-    let micOn = true;
-    let lanHost = null; // IP de la Wi-Fi cuando la consola se abre en localhost
-    let photoCount = 0;
-    let sessionStart = null;
+    let connected = false, frozen = false, screenOn = false, micOn = true;
+    let lanHost = null, photoCount = 0, sessionStart = null;
+
+    const CONN = { ok: 'conn conn--ok', warn: 'conn conn--warn', crit: 'conn conn--critical', idle: 'conn' };
 
     // ---- AR overlay ----
     const ar = new ARCanvas($('ar'), {
       interactive: true,
       getAspect: () => (feed.videoWidth ? feed.videoWidth / feed.videoHeight : null),
-      onEmit: (msg) => webrtc.send(msg),
+      onEmit: (msg) => {
+        webrtc.send(msg);
+        if (msg.type === 'cursor' || msg.type === 'live') showDrawing(true);
+        if (msg.type === 'cursor' && msg.hidden) showDrawing(false);
+        if (msg.type === 'commit') showDrawing(false);
+      },
     });
+    function showDrawing(on) {
+      $('drawPill').hidden = !on;
+      $('viewer').classList.toggle('viewer--pointing', on);
+    }
 
     $('toolbar').querySelectorAll('.tool[data-tool]').forEach((b) => {
       b.addEventListener('click', () => {
-        $('toolbar').querySelectorAll('.tool[data-tool]').forEach((x) => x.classList.remove('active'));
-        b.classList.add('active');
+        $('toolbar').querySelectorAll('.tool[data-tool]').forEach((x) => x.setAttribute('aria-pressed', 'false'));
+        b.setAttribute('aria-pressed', 'true');
         ar.tool = b.dataset.tool;
       });
     });
     $('toolbar').querySelectorAll('.swatch').forEach((s) => {
       s.addEventListener('click', () => {
-        $('toolbar').querySelectorAll('.swatch').forEach((x) => x.classList.remove('active'));
-        s.classList.add('active');
-        ar.color = s.dataset.color;
+        $('toolbar').querySelectorAll('.swatch').forEach((x) => x.setAttribute('aria-pressed', 'false'));
+        s.setAttribute('aria-pressed', 'true');
+        ar.color = getComputedStyle(s).backgroundColor; // color viene del token, no del HTML
       });
     });
     $('btnUndo').addEventListener('click', () => ar.undo());
     $('btnClear').addEventListener('click', () => ar.clear());
+
+    // Atajos de teclado (consola)
+    window.addEventListener('keydown', (e) => {
+      if (e.target.matches('input, textarea')) return;
+      const map = { p: 'pointer', d: 'pen', a: 'arrow', o: 'ellipse', t: 'text' };
+      if (map[e.key]) document.querySelector(`.tool[data-tool="${map[e.key]}"]`)?.click();
+      if (e.key.toLowerCase() === 'z' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); ar.undo(); }
+      if (e.key === 'f' && !$('actions').hidden) $('btnFreeze').click();
+    });
+
+    // ---- HUD ----
+    const hud = new Hud({ root: document.querySelector('.hud'), pc: () => webrtc.getPeerConnection(), video: feed, since: () => sessionStart });
 
     // ---- WebRTC ----
     const webrtc = new WebRTCManager({
@@ -347,82 +336,70 @@
         $('toolbar').hidden = false;
         $('actions').hidden = false;
         if (!sessionStart) sessionStart = Date.now();
+        hud.start();
       },
-      onData: (msg) => {
-        if (msg.type === 'hello') return;
-        ar.handleRemote(msg);
-      },
+      onData: (msg) => { if (msg.type !== 'hello') ar.handleRemote(msg); },
       onScreenShareStopped: () => screenDone(),
       onStatus: (s) => {
         if (s.state === 'connected') {
           connected = true;
-          statusEl.className = 'status connected';
-          statusEl.textContent = 'Conectado';
-          $('inviteStatus').textContent = 'Técnico conectado ✓';
+          statusEl.className = CONN.ok; statusEl.textContent = 'Conectado';
+          $('inviteStatus').className = CONN.ok; $('inviteStatus').textContent = 'Técnico conectado';
         } else if (s.state === 'waiting') {
-          statusEl.className = 'status waiting';
-          statusEl.textContent = 'Sala ' + roomCode + ' · esperando';
+          statusEl.className = CONN.warn; statusEl.textContent = 'Sesión ' + roomCode + ' · esperando';
         } else if (s.state === 'disconnected') {
           connected = false;
-          statusEl.className = 'status waiting';
-          statusEl.textContent = 'Técnico desconectado';
+          statusEl.className = CONN.warn; statusEl.textContent = 'Técnico desconectado';
+          toast('El técnico de campo se desconectó', 'warn');
         } else if (s.state === 'error') {
           if (s.message && s.message.includes('ya está en uso')) {
-            roomCode = newCode();
-            webrtc.roomCode = roomCode;
-            webrtc.destroy();
-            setTimeout(start, 300);
-            return;
+            roomCode = newCode(); webrtc.roomCode = roomCode; webrtc.destroy();
+            setTimeout(start, 300); return;
           }
-          statusEl.className = 'status error';
-          statusEl.textContent = s.message || 'Error';
+          statusEl.className = CONN.crit; statusEl.textContent = s.message || 'Error';
         }
       },
     });
 
     async function start() {
       await detectLanHost();
-      try { await webrtc.startMic(); } catch (_) { /* sin micrófono está bien */ }
+      try { await webrtc.startMic(); } catch (_) {}
       await webrtc.initPeer();
       refreshInvite();
     }
     start();
 
-    // ---- Barra inferior ----
+    // ---- Tray inferior ----
     $('btnFreeze').addEventListener('click', () => {
       if (!frozen && !feed.videoWidth) return;
       frozen = !frozen;
+      $('btnFreeze').setAttribute('aria-pressed', String(frozen));
+      $('btnFreeze').textContent = frozen ? 'Reanudar' : 'Congelar';
+      $('freezeTag').hidden = !frozen;
       if (frozen) {
         const shot = ar.composite(feed).toDataURL('image/jpeg', 0.85);
         ar.setFrozen(shot);
         webrtc.send({ type: 'freeze', dataUrl: shot });
-        $('freezeTag').style.display = 'block';
-        $('btnFreeze').classList.add('on');
-        $('btnFreeze').textContent = 'Reanudar';
       } else {
         ar.clearFrozen();
         webrtc.send({ type: 'freeze', dataUrl: null });
-        $('freezeTag').style.display = 'none';
-        $('btnFreeze').classList.remove('on');
-        $('btnFreeze').textContent = 'Congelar';
       }
     });
 
     $('btnPhoto').addEventListener('click', () => {
       if (!feed.videoWidth) return;
-      const canvas = ar.composite(feed);
-      canvas.toBlob((blob) => {
+      ar.composite(feed).toBlob((blob) => {
         const url = URL.createObjectURL(blob);
         const name = `foto-${roomCode}-${stamp()}.jpg`;
         downloadUrl(url, name);
         const img = document.createElement('img');
-        img.src = url;
-        img.title = name;
+        img.src = url; img.title = name;
         img.addEventListener('click', () => window.open(url, '_blank'));
         $('shots').prepend(img);
         photoCount++;
       }, 'image/jpeg', 0.9);
       flash();
+      toast('Foto guardada', 'ok', 1800);
     });
 
     // ---- Grabación ----
@@ -432,8 +409,7 @@
     function startRec() {
       if (!feed.videoWidth) return;
       const c = document.createElement('canvas');
-      c.width = feed.videoWidth;
-      c.height = feed.videoHeight;
+      c.width = feed.videoWidth; c.height = feed.videoHeight;
       const g = c.getContext('2d');
       const draw = () => {
         g.drawImage(feed, 0, 0, c.width, c.height);
@@ -452,11 +428,7 @@
       const vStream = c.captureStream(30);
       recAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
       const dest = recAudioCtx.createMediaStreamDestination();
-      const addAudio = (s) => {
-        if (s && s.getAudioTracks().length) {
-          try { recAudioCtx.createMediaStreamSource(s).connect(dest); } catch (_) {}
-        }
-      };
+      const addAudio = (st) => { if (st && st.getAudioTracks().length) { try { recAudioCtx.createMediaStreamSource(st).connect(dest); } catch (_) {} } };
       addAudio(feed.srcObject);
       addAudio(webrtc.localStream);
 
@@ -472,16 +444,16 @@
         rec = null;
       };
       rec.start();
-      $('btnRecord').classList.add('rec-on');
+      $('btnRecord').classList.add('is-rec');
       $('btnRecord').textContent = 'Detener';
-      $('recTag').style.display = 'flex';
+      $('recPill').hidden = false;
     }
 
     function stopRec() {
       rec && rec.state !== 'inactive' && rec.stop();
-      $('btnRecord').classList.remove('rec-on');
+      $('btnRecord').classList.remove('is-rec');
       $('btnRecord').textContent = 'Grabar';
-      $('recTag').style.display = 'none';
+      $('recPill').hidden = true;
     }
 
     function pickMime() {
@@ -496,26 +468,25 @@
       try {
         await webrtc.startScreenShare();
         screenOn = true;
-        $('btnScreen').classList.add('on');
+        $('btnScreen').setAttribute('aria-pressed', 'true');
         $('btnScreen').textContent = 'Dejar de compartir';
       } catch (_) {}
     });
     function screenDone() {
       screenOn = false;
-      $('btnScreen').classList.remove('on');
+      $('btnScreen').setAttribute('aria-pressed', 'false');
       $('btnScreen').textContent = 'Compartir pantalla';
     }
 
     $('btnMic').addEventListener('click', () => {
       micOn = !micOn;
       webrtc.setMicEnabled(micOn);
-      $('btnMic').classList.toggle('on', !micOn);
+      $('btnMic').setAttribute('aria-pressed', String(!micOn));
       $('btnMic').textContent = micOn ? 'Silenciar mic' : 'Activar mic';
     });
 
     // ---- Invitar / QR ----
     const inviteModal = $('inviteModal');
-
     async function detectLanHost() {
       if (!/^(localhost|127\.|0\.0\.0\.0)/.test(location.hostname)) return;
       try {
@@ -524,12 +495,10 @@
         if (ips && ips[0] && ips[0] !== '127.0.0.1') lanHost = `${ips[0]}:${location.port || (location.protocol === 'https:' ? 443 : 80)}`;
       } catch (_) {}
     }
-
     function linkFor() {
-      // Relativo al directorio actual (funciona también en subrutas tipo GitHub Pages)
       const url = new URL('field-tech.html', location.href);
       url.search = '?room=' + encodeURIComponent(roomCode);
-      if (lanHost) url.host = lanHost; // solo cuando la consola se abrió en localhost
+      if (lanHost) url.host = lanHost;
       return url.toString();
     }
     function refreshInvite() {
@@ -538,17 +507,17 @@
       $('linkField').value = url;
       $('qr').innerHTML = '';
       if (window.QRCode) new QRCode($('qr'), { text: url, width: 156, height: 156, correctLevel: QRCode.CorrectLevel.M });
-      if (connected) $('inviteStatus').textContent = 'Técnico conectado ✓';
+      if (connected) $('inviteStatus').textContent = 'Técnico conectado';
     }
     const openInvite = () => { refreshInvite(); inviteModal.classList.add('open'); };
     $('btnInvite').addEventListener('click', openInvite);
     $('btnInvite2').addEventListener('click', openInvite);
     $('btnDone').addEventListener('click', () => inviteModal.classList.remove('open'));
     $('btnCopy').addEventListener('click', async () => {
-      try { await navigator.clipboard.writeText(linkFor()); $('btnCopy').textContent = 'Copiado'; setTimeout(() => $('btnCopy').textContent = 'Copiar', 1500); } catch (_) {}
+      try { await navigator.clipboard.writeText(linkFor()); toast('Enlace copiado', 'ok', 1600); } catch (_) {}
     });
     $('btnWhats').addEventListener('click', () => {
-      const t = encodeURIComponent(`Soporte por video FieldLens. Abre este enlace en tu teléfono y permite la cámara:\n${linkFor()}`);
+      const t = encodeURIComponent(`Soporte por video FOKO. Abre este enlace en tu teléfono y permite la cámara:\n${linkFor()}`);
       window.open(`https://wa.me/?text=${t}`, '_blank');
     });
     $('btnOpen').addEventListener('click', () => window.open(linkFor(), '_blank'));
@@ -561,14 +530,16 @@
       document.body.appendChild(a); a.click(); a.remove();
     }
     function flash() {
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
       const f = document.createElement('div');
-      f.style.cssText = 'position:absolute;inset:0;background:#fff;opacity:.6;transition:opacity .35s;pointer-events:none;z-index:60';
+      f.style.cssText = 'position:absolute;inset:0;background:#fff;opacity:.5;transition:opacity .3s;pointer-events:none;z-index:60';
       $('stage').appendChild(f);
       requestAnimationFrame(() => { f.style.opacity = '0'; });
-      setTimeout(() => f.remove(), 400);
+      setTimeout(() => f.remove(), 350);
     }
-    // ---- Asistente de notas IA ----
-    const CFG_KEY = 'fieldlens.notes.cfg';
+
+    // ---- Asistente de notas ----
+    const CFG_KEY = 'foko.notes.cfg';
     const cfg = Object.assign(
       { enabled: false, accessCode: '', endpoint: '/api/report', lang: 'es-MX' },
       JSON.parse(localStorage.getItem(CFG_KEY) || '{}')
@@ -578,20 +549,18 @@
       lang: cfg.lang,
       onUpdate: (text, err) => {
         const box = $('transcriptBox');
-        box.textContent = text || 'La transcripción de tu voz aparecerá aquí…';
+        box.textContent = text || 'La transcripción de tu voz aparece aquí.';
         box.scrollTop = box.scrollHeight;
         if (err) $('transcriptTitle').textContent = 'Transcripción · ' + err;
       },
     });
-    let transcribing = false;
-    let lastReport = '';
+    let transcribing = false, lastReport = '';
 
     function applyCfg() {
       $('btnNotes').hidden = !cfg.enabled;
       if (!cfg.enabled) closeNotes();
     }
 
-    // Settings modal
     $('btnSettings').addEventListener('click', () => {
       $('setNotesEnabled').checked = cfg.enabled;
       $('setAccessCode').value = cfg.accessCode;
@@ -599,7 +568,7 @@
       $('setLang').value = cfg.lang;
       $('settingsNote').textContent = TRANSCRIPTION_SUPPORTED
         ? ''
-        : 'Nota: este navegador no soporta transcripción por voz (usa Chrome). Las notas manuales y el reporte sí funcionan.';
+        : 'Este navegador no transcribe por voz (usa Chrome). Las notas y el reporte sí funcionan.';
       $('settingsModal').classList.add('open');
     });
     $('btnSettingsSave').addEventListener('click', () => {
@@ -612,78 +581,55 @@
       $('settingsModal').classList.remove('open');
       applyCfg();
     });
-    $('settingsModal').addEventListener('click', (e) => {
-      if (e.target === $('settingsModal')) $('settingsModal').classList.remove('open');
-    });
+    $('settingsModal').addEventListener('click', (e) => { if (e.target === $('settingsModal')) $('settingsModal').classList.remove('open'); });
 
-    // Panel
     function openNotes() { $('notesPanel').classList.add('open'); }
     function closeNotes() { $('notesPanel').classList.remove('open'); }
     $('btnNotes').addEventListener('click', openNotes);
     $('btnNotesClose').addEventListener('click', closeNotes);
 
-    // Transcripción
     $('btnMicTranscribe').addEventListener('click', () => {
       if (transcribing) {
         notes.stopTranscription();
         transcribing = false;
+        $('btnMicTranscribe').setAttribute('aria-pressed', 'false');
         $('btnMicTranscribe').textContent = 'Iniciar transcripción';
-        $('btnMicTranscribe').classList.remove('on');
       } else {
-        if (!notes.startTranscription()) {
-          $('transcriptTitle').textContent = 'Transcripción · no disponible en este navegador';
-          return;
-        }
+        if (!notes.startTranscription()) { $('transcriptTitle').textContent = 'Transcripción · no disponible'; return; }
         transcribing = true;
+        $('btnMicTranscribe').setAttribute('aria-pressed', 'true');
         $('btnMicTranscribe').textContent = 'Detener transcripción';
-        $('btnMicTranscribe').classList.add('on');
       }
     });
     $('btnTranscriptClear').addEventListener('click', () => notes.clear());
 
-    // Reloj de sesión
     setInterval(() => {
       if (!sessionStart) return;
       const s = Math.floor((Date.now() - sessionStart) / 1000);
-      $('sessionClock').textContent =
-        String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
+      $('sessionClock').textContent = String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
     }, 1000);
-
     function sessionDuration() {
       if (!sessionStart) return 'No especificado';
-      const m = Math.round((Date.now() - sessionStart) / 60000);
-      return `${m} min`;
+      return `${Math.round((Date.now() - sessionStart) / 60000)} min`;
     }
 
-    // Generar reporte
     $('btnGenReport').addEventListener('click', async () => {
-      if (!cfg.accessCode) {
-        alert('Configura el código de acceso en Ajustes (⚙).');
-        return;
-      }
+      if (!cfg.accessCode) { toast('Configura el código de acceso en Ajustes', 'warn'); return; }
       const btn = $('btnGenReport');
-      btn.disabled = true;
-      btn.textContent = 'Generando…';
+      btn.disabled = true; btn.textContent = 'Generando…';
       try {
-        const report = await notes.generateReport({
+        lastReport = await notes.generateReport({
           endpoint: cfg.endpoint,
           accessCode: cfg.accessCode,
           notes: $('notesBox').value,
-          meta: {
-            date: new Date().toLocaleString('es-MX'),
-            room: roomCode,
-            duration: sessionDuration(),
-            photos: photoCount,
-          },
+          meta: { date: new Date().toLocaleString('es-MX'), room: roomCode, duration: sessionDuration(), photos: photoCount },
         });
-        lastReport = report;
-        $('reportOut').innerHTML = renderMd(report);
+        $('reportOut').innerHTML = renderMd(lastReport);
         $('reportModal').classList.add('open');
       } catch (e) {
-        alert('No se pudo generar el reporte: ' + e.message);
+        toast('No se pudo generar el reporte: ' + e.message, 'critical', 5000);
       } finally {
-        btn.disabled = false;
-        btn.textContent = 'Generar reporte';
+        btn.disabled = false; btn.textContent = 'Generar reporte';
       }
     });
 
@@ -698,22 +644,20 @@
     }
     $('btnReportClose').addEventListener('click', () => $('reportModal').classList.remove('open'));
     $('btnReportCopy').addEventListener('click', async () => {
-      try { await navigator.clipboard.writeText(lastReport); $('btnReportCopy').textContent = 'Copiado'; setTimeout(() => $('btnReportCopy').textContent = 'Copiar', 1500); } catch (_) {}
+      try { await navigator.clipboard.writeText(lastReport); toast('Reporte copiado', 'ok', 1600); } catch (_) {}
     });
     $('btnReportDownload').addEventListener('click', () => {
-      const blob = new Blob([lastReport], { type: 'text/markdown' });
-      downloadUrl(URL.createObjectURL(blob), `reporte-${roomCode}-${stamp()}.md`);
+      downloadUrl(URL.createObjectURL(new Blob([lastReport], { type: 'text/markdown' })), `reporte-${roomCode}-${stamp()}.md`);
     });
     $('btnReportPrint').addEventListener('click', () => {
       const w = window.open('', '_blank');
-      w.document.write('<pre style="font:14px/1.5 system-ui;white-space:pre-wrap;padding:24px;max-width:720px;margin:auto">' +
+      w.document.write('<pre style="font:14px/1.6 ui-monospace,monospace;white-space:pre-wrap;padding:32px;max-width:720px;margin:auto">' +
         lastReport.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c])) + '</pre>');
       w.document.close(); w.focus(); w.print();
     });
 
     applyCfg();
-
-    window.addEventListener('beforeunload', () => { notes.stopTranscription(); webrtc.destroy(); });
+    window.addEventListener('beforeunload', () => { hud.stop(); notes.stopTranscription(); webrtc.destroy(); });
   </script>
 </body>
 </html>

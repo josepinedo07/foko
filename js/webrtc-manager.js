@@ -1,5 +1,5 @@
 /**
- * FieldLens - Gestor de conexión WebRTC (PeerJS)
+ * FOKO - Gestor de conexión WebRTC (PeerJS)
  *
  * Roles:
  *   - 'expert' : técnico remoto. Su Peer ID ES el código de sala. Espera a que
@@ -121,6 +121,16 @@ export class WebRTCManager {
     if (this.dataConn && this.dataConn.open) {
       try { this.dataConn.send(payload); } catch (_) {}
     }
+  }
+
+  /** RTCPeerConnection activo (para leer estadísticas reales en el HUD). */
+  getPeerConnection() {
+    return (
+      (this.cameraCall && this.cameraCall.peerConnection) ||
+      (this.screenCall && this.screenCall.peerConnection) ||
+      (this.dataConn && this.dataConn.peerConnection) ||
+      null
+    );
   }
 
   // ---- Cámara del campo ----------------------------------------------------

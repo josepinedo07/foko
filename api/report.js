@@ -1,5 +1,5 @@
 /**
- * POST /api/report  — genera un reporte de servicio a partir de la
+ * FOKO — POST /api/report  — genera un reporte de servicio a partir de la
  * transcripción + notas de la llamada, usando Claude.
  *
  * Protegido por un código de acceso simple (env APP_PASSWORD). La API key

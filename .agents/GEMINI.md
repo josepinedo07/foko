@@ -1,29 +1,58 @@
-# FieldLens - Contexto para agentes
+# FOKO - Contexto para agentes
 
-App web de **soporte remoto por video**. Sin build, sin framework: HTML + JS módulos
-+ un servidor estático de Python para desarrollo.
+App web de **soporte visual remoto**. Sin build, sin framework: HTML + JS módulos
++ un servidor estático de Python para desarrollo. El teléfono del técnico de campo
+es la cámara; la consola del técnico de oficina es donde se dibuja y se dirige.
 
-## Objetivo
+## Dirección de producto y diseño
 
-Práctico y directo. El técnico remoto genera un enlace/QR, el de campo lo abre y se
-conectan en una videollamada con puntero, dibujo, congelado, foto, grabación y
-compartir pantalla. Evitar relleno: nada de datos falsos, simuladores, estética
-"tactical HUD", telemetría inventada ni funciones que no se pidieron.
+Instrumento de precisión, no app de consumo: oscuro por defecto, denso en datos
+pero nunca saturado, un único color de acento (lima, `--accent`) que **siempre**
+significa "mira aquí / en vivo / lo que se está señalando" — nunca decorativo.
+Toda la telemetría (latencia, resolución, FPS, timer de sesión) es real, leída de
+`RTCPeerConnection.getStats()`; no se inventa ni se hardcodea. Ver [`DESIGN.md`](../DESIGN.md)
+para tokens, componentes y reglas de movimiento — es la fuente de verdad de UI.
+
+Evitar relleno: nada de datos falsos, simuladores, funciones no pedidas,
+gradientes/glassmorphism genéricos de SaaS ni íconos emoji en la UI final
+(se reemplazan por SVG inline con `currentColor`).
 
 ## Piezas
 
-- `remote-expert.html` - consola del técnico remoto (rol `expert`).
-- `field-tech.html` - vista móvil del técnico en campo (rol `field`).
-- `js/webrtc-manager.js` - `WebRTCManager`. PeerJS; el Peer ID del experto **es** el
-  código de sala. El campo envía cámara+mic, el experto responde con mic y puede
-  llamar de vuelta con la pantalla (`metadata.kind`: `camera` | `screen`).
+- `remote-expert.html` - consola del técnico de oficina (rol `expert`).
+- `field-tech.html` - vista móvil del técnico de campo (rol `field`), con
+  chequeo de sistemas (cámara/mic/red) antes de conectar.
+- `js/webrtc-manager.js` - `WebRTCManager`. PeerJS; el Peer ID del técnico de
+  oficina **es** el código de sesión (`FK-XXXX`). El de campo envía cámara+mic,
+  el de oficina responde con mic y puede llamar de vuelta con la pantalla
+  (`metadata.kind`: `camera` | `screen`). `getPeerConnection()` expone el
+  `RTCPeerConnection` para leer estadísticas reales.
 - `js/ar-canvas.js` - `ARCanvas`. Coordenadas normalizadas `[0,1]` relativas al
-  **rectángulo real del video** (object-fit: contain en ambos lados) para que las
-  anotaciones caigan en el mismo punto. `composite()` fusiona video + anotaciones.
-- `js/rtc-config.js` - `ICE_SERVERS` (STUN + hueco para TURN).
+  **rectángulo real del video** (object-fit: contain en ambos lados) para que
+  las anotaciones caigan en el mismo punto. Herramientas: puntero, trazo,
+  flecha, elipse, texto. Cada trazo confirmado "se transmite": draw-on +
+  destello de acento que decae en ~240ms (respeta `prefers-reduced-motion`).
+  `composite()` fusiona video + anotaciones para foto/grabación.
+- `js/ui.js` - `toast()`, `Hud` (telemetría real desde `getStats()`),
+  `runSystemsCheck()` (chequeo previo cámara/mic/red).
+- `js/notes-assistant.js` - transcripción por voz (Web Speech API, solo mic
+  local) + `generateReport()` contra `/api/report`.
+- `js/rtc-config.js` - `ICE_SERVERS` (STUN + TURN públicos de prueba).
+- `api/report.js` - función serverless (Vercel/Netlify Functions). Genera el
+  reporte con Claude (`claude-haiku-4-5` por defecto); protegida por
+  `APP_PASSWORD`; `ANTHROPIC_API_KEY` solo vive en el servidor.
+- `css/tokens.css` - única fuente de verdad de color/tipografía/espacio/radio/
+  movimiento (oscuro + claro). Ningún hex fuera de este archivo (excepto
+  literales funcionales documentados: negro tras el video, blanco del QR).
+- `css/design-system.css` - primitivas de componentes que consumen los tokens.
 
 ## Reglas
 
 - Mantener ambos lados con `object-fit: contain` en el `<video>`; si se cambia,
   las anotaciones se desalinean.
-- No añadir dependencias más allá de PeerJS y el qrcode local en `js/vendor/`.
+- No añadir dependencias más allá de PeerJS y el qrcode local en `js/vendor/`
+  (más `@anthropic-ai/sdk` en `api/`, que solo corre en el servidor).
+- Un solo color de acento en toda la UI. Antes de usar un color nuevo, revisar
+  si ya existe un token de estado (`--ok/--warn/--critical/--info`) para eso.
+- Nada de emoji en botones/UI de producto; usar los SVG inline existentes como
+  plantilla para íconos nuevos.

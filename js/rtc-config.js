@@ -1,5 +1,5 @@
 /**
- * Servidores ICE para WebRTC.
+ * FOKO - Servidores ICE para WebRTC.
  *
  * - STUN: basta cuando ninguno de los dos lados tiene NAT restrictivo.
  * - TURN: necesario cuando la conexión P2P directa falla — típico con VPN

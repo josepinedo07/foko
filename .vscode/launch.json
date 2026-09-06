@@ -2,7 +2,7 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Abrir FieldLens en Navegador",
+      "name": "Abrir FOKO en el navegador",
       "type": "chrome",
       "request": "launch",
       "url": "http://localhost:8000/remote-expert.html",

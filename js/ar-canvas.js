@@ -1,12 +1,19 @@
 /**
- * FieldLens - Capa de anotación sincronizada.
+ * FOKO - Capa de anotación sincronizada.
  *
  * Las coordenadas viajan normalizadas [0,1] relativas al RECTÁNGULO REAL del
  * video (no al elemento), asumiendo object-fit: contain en ambos lados. Así un
  * punto cae sobre la misma pieza en la pantalla del experto y del técnico.
  *
  * Herramientas: pointer (cursor en vivo), pen, arrow, ellipse. Deshacer / limpiar.
+ * Cada trazo confirmado "se transmite": se dibuja en ~240ms con un destello lima
+ * que decae (salvo prefers-reduced-motion, donde aparece instantáneo).
  */
+
+// Espejo de tokens.css para compositing en canvas (no se pueden leer CSS vars
+// de forma fiable dentro del bucle de render).
+const ACCENT = '#C6FF00';
+const INK = '#0F1009';
 
 export class ARCanvas {
   constructor(canvas, options = {}) {
@@ -17,8 +24,9 @@ export class ARCanvas {
     // Devuelve el aspect ratio (ancho/alto) de la fuente de video, o null.
     this.getAspect = options.getAspect || (() => null);
 
+    this.reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     this.tool = 'pointer';
-    this.color = '#ff3b30';
+    this.color = ACCENT;
     this.width = 4;
 
     this.strokes = [];            // trazos confirmados
@@ -93,6 +101,15 @@ export class ARCanvas {
         this.onEmit({ type: 'ping', x, y, color: this.color });
         return;
       }
+      if (this.tool === 'text') {
+        const text = (window.prompt('Etiqueta:') || '').trim();
+        if (text) {
+          const s = { id: 't' + Date.now(), kind: 'text', x1: x, y1: y, text, color: this.color, _t0: performance.now() };
+          this.strokes.push(s);
+          this.onEmit({ type: 'commit', stroke: s });
+        }
+        return;
+      }
       this._drawingId = 'l' + Date.now() + Math.random().toString(36).slice(2, 6);
       const stroke = this.tool === 'pen'
         ? { id: this._drawingId, kind: 'pen', points: [{ x, y }], color: this.color, width: this.width }
@@ -132,6 +149,7 @@ export class ARCanvas {
       this.live.delete(this._drawingId);
       this._drawingId = null;
       if (s) {
+        s._t0 = performance.now();
         this.strokes.push(s);
         this.onEmit({ type: 'commit', stroke: s });
       }
@@ -177,6 +195,7 @@ export class ARCanvas {
         break;
       case 'commit':
         this.live.delete(msg.stroke.id);
+        msg.stroke._t0 = performance.now();
         this.strokes.push(msg.stroke);
         break;
       case 'undo':
@@ -196,7 +215,7 @@ export class ARCanvas {
   undo() { this.strokes.pop(); this.onEmit({ type: 'undo' }); }
   clear() { this.strokes = []; this.live.clear(); this.onEmit({ type: 'clear' }); }
 
-  addPing(x, y, color) { this.pings.push({ x, y, color: color || '#ff3b30', start: performance.now() }); }
+  addPing(x, y, color) { this.pings.push({ x, y, color: color || ACCENT, start: performance.now() }); }
 
   setFrozen(dataUrl) {
     const img = new Image();
@@ -216,17 +235,19 @@ export class ARCanvas {
       ctx.drawImage(this.frozen, cr.x, cr.y, cr.w, cr.h);
     }
 
-    this.strokes.forEach((s) => this._drawStroke(s));
-    this.live.forEach((s) => this._drawStroke(s));
-
-    // Pings (anillo que se expande, ~700ms)
     const now = performance.now();
-    this.pings = this.pings.filter((p) => now - p.start < 700);
+    this.strokes.forEach((s) => this._drawStroke(s, now));
+    this.live.forEach((s) => this._drawStroke(s, now));
+
+    // Pings — anillo que marca un punto. Se expande (~700ms) salvo reduced-motion.
+    const pingDur = this.reduceMotion ? 500 : 700;
+    this.pings = this.pings.filter((p) => now - p.start < pingDur);
     this.pings.forEach((p) => {
-      const t = (now - p.start) / 700;
+      const t = (now - p.start) / pingDur;
       const { x, y } = this._fromNorm(p.x, p.y);
+      const r = this.reduceMotion ? 18 : 6 + t * 34;
       ctx.beginPath();
-      ctx.arc(x, y, 6 + t * 34, 0, Math.PI * 2);
+      ctx.arc(x, y, r, 0, Math.PI * 2);
       ctx.strokeStyle = p.color;
       ctx.globalAlpha = 1 - t;
       ctx.lineWidth = 3;
@@ -251,8 +272,21 @@ export class ARCanvas {
     requestAnimationFrame(this._loop);
   }
 
-  _drawStroke(s) {
+  _drawStroke(s, now = performance.now()) {
     const ctx = this.ctx;
+
+    // "Se transmite": draw-on + destello lima que decae (~240ms)
+    let reveal = 1;
+    ctx.save();
+    if (!this.reduceMotion && s._t0) {
+      const t = Math.min(1, (now - s._t0) / 240);
+      if (t < 1) {
+        reveal = t;
+        ctx.shadowColor = '#C6FF00';
+        ctx.shadowBlur = 14 * (1 - t);
+      }
+    }
+
     ctx.strokeStyle = s.color;
     ctx.fillStyle = s.color;
     ctx.lineWidth = s.width || 4;
@@ -260,16 +294,19 @@ export class ARCanvas {
     ctx.lineJoin = 'round';
 
     if (s.kind === 'pen') {
-      if (!s.points.length) return;
+      if (!s.points.length) { ctx.restore(); return; }
+      const n = Math.max(2, Math.ceil(s.points.length * reveal));
       ctx.beginPath();
-      s.points.forEach((pt, i) => {
+      s.points.slice(0, n).forEach((pt, i) => {
         const { x, y } = this._fromNorm(pt.x, pt.y);
         i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
       });
       ctx.stroke();
+      ctx.restore();
       return;
     }
 
+    if (reveal < 1) ctx.globalAlpha = reveal;
     const a = this._fromNorm(s.x1, s.y1);
     const b = this._fromNorm(s.x2, s.y2);
 
@@ -290,7 +327,17 @@ export class ARCanvas {
       ctx.beginPath();
       ctx.ellipse((a.x + b.x) / 2, (a.y + b.y) / 2, Math.abs(b.x - a.x) / 2, Math.abs(b.y - a.y) / 2, 0, 0, Math.PI * 2);
       ctx.stroke();
+    } else if (s.kind === 'text') {
+      ctx.font = '600 15px "JetBrains Mono", monospace';
+      const w = ctx.measureText(s.text).width;
+      ctx.globalAlpha *= 0.9;
+      ctx.fillStyle = INK;
+      ctx.fillRect(a.x - 4, a.y - 16, w + 8, 22);
+      ctx.globalAlpha = reveal;
+      ctx.fillStyle = s.color;
+      ctx.fillText(s.text, a.x, a.y);
     }
+    ctx.restore();
   }
 
   /**

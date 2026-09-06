@@ -2,118 +2,141 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>FieldLens · Técnico en campo</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>FOKO · Campo</title>
   <link rel="stylesheet" href="css/design-system.css">
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <style>
-    body { overflow: hidden; touch-action: none; background: #000; }
-    .view { position: fixed; inset: 0; }
+    body { overflow: hidden; touch-action: none; }
+    .screen { position: fixed; inset: 0; }
 
-    #feed { width: 100%; height: 100%; object-fit: contain; background: #000; }
-    #ar { position: absolute; inset: 0; width: 100%; height: 100%; }
-
-    .topbar {
-      position: absolute; top: 12px; left: 12px; right: 12px;
-      display: flex; justify-content: space-between; align-items: center;
+    /* HUD de campo: mínimo, siempre visible */
+    .fieldhud {
+      position: absolute; top: 0; left: 0; right: 0; z-index: 4;
+      display: flex; align-items: center; gap: var(--s-3);
+      padding: calc(var(--s-2) + env(safe-area-inset-top)) var(--s-3) var(--s-2);
+      font-family: var(--font-mono); font-size: var(--fs-11); letter-spacing: 0.04em;
+      background: linear-gradient(var(--bg), transparent);
       pointer-events: none;
     }
-    .topbar .status { pointer-events: auto; }
-
-    .dock {
-      position: absolute; left: 0; right: 0; bottom: 22px;
-      display: flex; justify-content: center; align-items: center; gap: 16px;
-    }
-    .fab {
-      width: 52px; height: 52px; border-radius: 50%;
-      background: rgba(23,26,33,0.9);
-      border: 1px solid var(--border);
-      color: #fff;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 1.3rem;
-      cursor: pointer;
-    }
-    .fab.on { background: var(--accent); border-color: var(--accent); }
-    .fab.point {
-      width: 72px; height: 72px; font-size: 0.85rem; font-weight: 700;
-      background: var(--accent); border: none;
-    }
+    .fieldhud .spacer { flex: 1; }
+    .fieldhud [data-hud="lat"].is-warn { color: var(--warn); }
+    .fieldhud [data-hud="lat"].is-critical { color: var(--critical); }
 
     .freeze-tag {
-      position: absolute; top: 52px; left: 50%; transform: translateX(-50%);
-      background: var(--warn); color: #1a1200; font-weight: 700; font-size: 0.78rem;
-      padding: 5px 12px; border-radius: 999px; display: none;
+      position: absolute; top: 54px; left: 50%; transform: translateX(-50%); z-index: 4;
+      display: none;
     }
+    .freeze-tag.on { display: inline-flex; }
 
-    .screen-overlay {
-      position: absolute; inset: 0; background: #000; z-index: 20;
-      display: none; flex-direction: column;
-    }
-    .screen-overlay.on { display: flex; }
-    .screen-overlay video { flex: 1; width: 100%; object-fit: contain; }
-    .screen-overlay .bar { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: var(--surface); }
+    /* Screen share del experto */
+    .screenshare { position: absolute; inset: 0; z-index: 20; background: var(--video-void); display: none; flex-direction: column; }
+    .screenshare.on { display: flex; }
+    .screenshare__bar { display: flex; align-items: center; justify-content: space-between; padding: calc(var(--s-2) + env(safe-area-inset-top)) var(--s-3) var(--s-2); background: var(--surface); }
+    .screenshare video { flex: 1; width: 100%; object-fit: contain; }
 
+    /* Gate / systems check */
     .gate {
-      position: absolute; inset: 0; z-index: 30;
-      background: var(--bg);
+      position: absolute; inset: 0; z-index: 30; background: var(--bg);
       display: flex; flex-direction: column; align-items: center; justify-content: center;
-      gap: 16px; padding: 28px; text-align: center;
+      gap: var(--s-5); padding: var(--s-6);
+      padding-top: calc(var(--s-6) + env(safe-area-inset-top));
     }
-    .gate h1 { font-size: 1.4rem; }
-    .gate p { color: var(--text-dim); max-width: 320px; line-height: 1.5; }
-    .gate .field { text-align: center; text-transform: uppercase; max-width: 220px; }
+    .gate__mark { text-align: center; }
+    .gate__mark h1 { font-size: var(--fs-28); }
+    .gate__mark p { color: var(--text-dim); font-size: var(--fs-12); margin-top: var(--s-2); max-width: 30ch; }
+    .gate .field { text-transform: uppercase; text-align: center; max-width: 220px; }
+    #gateErr { color: var(--critical); font-family: var(--font-mono); font-size: var(--fs-12); display: none; }
   </style>
 </head>
 <body>
-  <div class="view">
-    <video id="feed" autoplay playsinline muted></video>
-    <canvas id="ar"></canvas>
-    <audio id="expertAudio" autoplay></audio>
-
-    <div class="topbar">
-      <span id="status" class="status">conectando…</span>
+  <div class="screen">
+    <div class="viewer" id="viewer">
+      <video class="viewer__video" id="feed" autoplay playsinline muted></video>
+      <canvas class="viewer__layer" id="ar"></canvas>
+      <div class="viewer__brackets"><i></i></div>
+      <div class="viewer__reticle"></div>
+      <audio id="expertAudio" autoplay></audio>
     </div>
 
-    <div class="freeze-tag" id="freezeTag">El remoto congeló la imagen</div>
-
-    <div class="dock" id="dock" hidden>
-      <button class="fab" id="btnMic" title="Silenciar">🎤</button>
-      <button class="fab point" id="btnPoint" title="Señalar">Señalar</button>
-      <button class="fab" id="btnFlip" title="Voltear cámara">🔄</button>
-      <button class="fab" id="btnTorch" title="Linterna">🔦</button>
+    <div class="fieldhud">
+      <span class="pill" id="livePill"><span class="dot" id="liveDot"></span><span id="liveText">OFFLINE</span></span>
+      <span class="bars" data-hud="bars" data-level="0"><i></i><i></i><i></i><i></i></span>
+      <span data-hud="lat">— MS</span>
+      <span class="spacer"></span>
+      <span data-hud="res">—</span>
     </div>
 
-    <div class="screen-overlay" id="screenOverlay">
-      <div class="bar">
-        <span class="status">Pantalla del remoto</span>
-        <button class="btn" id="btnCloseScreen">Ocultar</button>
+    <span class="pill pill--live freeze-tag" id="freezeTag">CUADRO CONGELADO</span>
+
+    <div class="screenshare" id="screenshare">
+      <div class="screenshare__bar">
+        <span class="pill pill--live">PANTALLA DEL EXPERTO</span>
+        <button class="btn btn--ghost btn-icon" id="btnCloseScreen" aria-label="Ocultar">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
       </div>
       <video id="screenVideo" autoplay playsinline></video>
     </div>
 
+    <nav class="tray tray--sheet" id="dock" hidden aria-label="Controles">
+      <button class="fab" id="btnMic" aria-pressed="false" aria-label="Micrófono">
+        <svg class="icon" id="micIcon" viewBox="0 0 24 24"><path d="M12 3a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3z"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+      </button>
+      <button class="fab fab--primary" id="btnPoint" aria-label="Señalar un punto al experto">
+        <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+        <span>Señalar</span>
+      </button>
+      <button class="fab" id="btnFlip" aria-label="Voltear cámara">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M4 8a8 8 0 0 1 13-2M20 16A8 8 0 0 1 7 18"/><path d="M17 3v3h-3M7 21v-3h3"/></svg>
+      </button>
+      <button class="fab" id="btnTorch" aria-pressed="false" aria-label="Linterna">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M9 2h6l-1 6H10zM10 8h4v5l-2 9-2-9z"/></svg>
+      </button>
+    </nav>
+
     <div class="gate" id="gate">
-      <h1>FieldLens</h1>
-      <p>Vas a compartir la cámara de tu teléfono con el técnico remoto.</p>
-      <input class="field" id="codeInput" placeholder="FL-XXXX" maxlength="12" autocomplete="off">
-      <button class="btn btn-primary" id="btnConnect" style="min-width:200px;">Conectar cámara</button>
-      <p id="gateErr" style="color:var(--danger); display:none;"></p>
+      <div class="gate__mark">
+        <h1 class="display">FOKO</h1>
+        <p>Vas a compartir la cámara de tu teléfono con el técnico de oficina.</p>
+      </div>
+
+      <div class="syscheck" id="syscheck">
+        <div class="syscheck__row" data-key="camera">
+          <span class="syscheck__label">Cámara</span>
+          <span class="syscheck__state"><span class="dot"></span>—</span>
+        </div>
+        <div class="syscheck__row" data-key="mic">
+          <span class="syscheck__label">Micrófono</span>
+          <span class="syscheck__state"><span class="dot"></span>—</span>
+        </div>
+        <div class="syscheck__row" data-key="net">
+          <span class="syscheck__label">Red</span>
+          <span class="syscheck__state"><span class="dot"></span>—</span>
+        </div>
+      </div>
+
+      <input class="field" id="codeInput" placeholder="FK-XXXX" maxlength="12" autocomplete="off" aria-label="Código de sesión">
+      <button class="btn btn--primary btn--block" id="btnConnect" style="max-width:340px;" disabled>Verificando…</button>
+      <p id="gateErr"></p>
     </div>
   </div>
 
   <script type="module">
     import { ARCanvas } from './js/ar-canvas.js';
     import { WebRTCManager } from './js/webrtc-manager.js';
+    import { Hud, toast, runSystemsCheck } from './js/ui.js';
 
     const $ = (id) => document.getElementById(id);
     const params = new URLSearchParams(location.search);
     const feed = $('feed');
-    const statusEl = $('status');
     let webrtc = null;
     let micOn = true;
+    let sessionStart = null;
 
     const initialRoom = (params.get('room') || '').toUpperCase();
     $('codeInput').value = initialRoom;
-    if (initialRoom) $('codeInput').style.display = 'none';
+    if (initialRoom) $('codeInput').hidden = true;
 
     const ar = new ARCanvas($('ar'), {
       interactive: true,
@@ -121,57 +144,103 @@
       onEmit: (msg) => webrtc && webrtc.send(msg),
     });
     ar.tool = 'pointer';
-    ar.color = '#ffd60a';
+
+    const hud = new Hud({
+      root: document.querySelector('.fieldhud'),
+      pc: () => webrtc && webrtc.getPeerConnection(),
+      video: feed,
+      since: () => sessionStart,
+    });
+
+    function setLive(state) {
+      const dot = $('liveDot'), txt = $('liveText'), pill = $('livePill');
+      pill.className = 'pill';
+      dot.className = 'dot';
+      if (state === 'connected') { pill.classList.add('pill--live'); dot.classList.add('dot--live'); txt.textContent = 'LIVE'; }
+      else if (state === 'waiting') { dot.classList.add('dot--warn'); txt.textContent = 'ENLAZANDO'; }
+      else { pill.classList.add('pill--rec'); dot.classList.add('dot--critical'); txt.textContent = 'SIN ENLACE'; }
+    }
+    setLive('offline');
+
+    // ---- Systems check ----
+    let preflightOk = false;
+    (async () => {
+      const r = await runSystemsCheck($('syscheck'), [
+        {
+          key: 'camera', label: 'Cámara',
+          run: async () => {
+            const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: true });
+            window.__pf = s;
+            return s.getVideoTracks().length ? true : 'sin cámara';
+          },
+        },
+        {
+          key: 'mic', label: 'Micrófono',
+          run: async () => (window.__pf && window.__pf.getAudioTracks().length ? true : 'sin micrófono'),
+        },
+        {
+          key: 'net', label: 'Red',
+          run: async () => {
+            if (!navigator.onLine) return 'sin conexión';
+            try { await fetch(location.href, { method: 'HEAD', cache: 'no-store' }); return true; }
+            catch { return 'sin conexión'; }
+          },
+        },
+      ]);
+      // liberar el stream de prueba; connect() adquiere uno fresco
+      if (window.__pf) { window.__pf.getTracks().forEach((t) => t.stop()); window.__pf = null; }
+      preflightOk = r.camera && r.net;
+      const btn = $('btnConnect');
+      btn.disabled = !preflightOk;
+      btn.textContent = preflightOk ? 'Conectar' : 'Revisa los permisos';
+      if (!preflightOk && !r.camera) showErr('Concede acceso a la cámara y recarga.');
+    })();
 
     $('btnConnect').addEventListener('click', connect);
     $('codeInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') connect(); });
 
     async function connect() {
+      if (!preflightOk) return;
       const room = ($('codeInput').value || initialRoom).trim().toUpperCase();
-      if (!room) { showErr('Escribe el código de sala.'); return; }
+      if (!room) { showErr('Escribe el código de sesión.'); return; }
 
       webrtc = new WebRTCManager({
         role: 'field',
         roomCode: room,
-        onRemoteStream: (stream) => {
-          $('expertAudio').srcObject = stream;      // audio del experto
-          $('expertAudio').play().catch(() => {});
-        },
-        onScreenStream: (stream) => {
-          $('screenVideo').srcObject = stream;
-          $('screenOverlay').classList.add('on');
-        },
-        onScreenStreamEnded: () => $('screenOverlay').classList.remove('on'),
+        onRemoteStream: (stream) => { $('expertAudio').srcObject = stream; $('expertAudio').play().catch(() => {}); },
+        onScreenStream: (stream) => { $('screenVideo').srcObject = stream; $('screenshare').classList.add('on'); },
+        onScreenStreamEnded: () => $('screenshare').classList.remove('on'),
         onData: (msg) => {
           if (msg.type === 'hello') return;
-          if (msg.type === 'screen') { if (!msg.active) $('screenOverlay').classList.remove('on'); return; }
-          if (msg.type === 'freeze') { $('freezeTag').style.display = msg.dataUrl ? 'block' : 'none'; }
+          if (msg.type === 'screen') { if (!msg.active) $('screenshare').classList.remove('on'); return; }
+          if (msg.type === 'freeze') { $('freezeTag').classList.toggle('on', !!msg.dataUrl); }
+          const pointing = $('viewer').classList;
+          if ((msg.type === 'cursor' && !msg.hidden) || msg.type === 'live') pointing.add('viewer--pointing');
+          if ((msg.type === 'cursor' && msg.hidden) || msg.type === 'commit') pointing.remove('viewer--pointing');
           ar.handleRemote(msg);
         },
         onStatus: (s) => {
-          if (s.state === 'connected') { statusEl.className = 'status connected'; statusEl.textContent = 'Conectado'; }
-          else if (s.state === 'waiting') { statusEl.className = 'status waiting'; statusEl.textContent = 'Buscando al remoto…'; }
-          else if (s.state === 'disconnected') { statusEl.className = 'status waiting'; statusEl.textContent = 'Remoto desconectado'; }
-          else if (s.state === 'error') { showErr(s.message || 'Error de conexión'); statusEl.className = 'status error'; statusEl.textContent = 'Error'; }
+          if (s.state === 'connected') { setLive('connected'); if (!sessionStart) sessionStart = Date.now(); toast('Enlace establecido', 'ok'); }
+          else if (s.state === 'waiting') setLive('waiting');
+          else if (s.state === 'disconnected') { setLive('offline'); toast('El experto se desconectó', 'warn'); }
+          else if (s.state === 'error') { setLive('offline'); showErr(s.message || 'Error de conexión'); }
         },
       });
 
       try {
-        const stream = await webrtc.startCamera();
-        feed.srcObject = stream;
+        feed.srcObject = await webrtc.startCamera();
       } catch (e) {
-        showErr('No se pudo acceder a la cámara. Revisa los permisos del navegador.');
+        showErr('No se pudo abrir la cámara.');
         return;
       }
-
       await webrtc.initPeer();
-      $('gate').style.display = 'none';
+      hud.start();
+      $('gate').hidden = true;
       $('dock').hidden = false;
     }
 
     function showErr(m) { const el = $('gateErr'); el.textContent = m; el.style.display = 'block'; }
 
-    // Señalar: toque en el video ya emite ping vía ARCanvas; el botón manda uno al centro.
     $('btnPoint').addEventListener('click', () => {
       ar.addPing(0.5, 0.5, ar.color);
       webrtc && webrtc.send({ type: 'ping', x: 0.5, y: 0.5, color: ar.color });
@@ -180,22 +249,24 @@
     $('btnMic').addEventListener('click', () => {
       micOn = !micOn;
       webrtc.setMicEnabled(micOn);
-      $('btnMic').classList.toggle('on', !micOn);
-      $('btnMic').textContent = micOn ? '🎤' : '🔇';
+      $('btnMic').setAttribute('aria-pressed', String(!micOn));
+      $('micIcon').innerHTML = micOn
+        ? '<path d="M12 3a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3z"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>'
+        : '<path d="M12 3a3 3 0 0 1 3 3v5M9 9v3a3 3 0 0 0 5 2.2"/><path d="M5 11a7 7 0 0 0 11.3 5.5M12 18v3"/><path d="M4 4l16 16"/>';
     });
 
     $('btnFlip').addEventListener('click', async () => {
       try { feed.srcObject = await webrtc.switchCamera(); } catch (_) {}
     });
 
-    const btnTorch = $('btnTorch');
-    btnTorch.addEventListener('click', async () => {
+    $('btnTorch').addEventListener('click', async () => {
       const on = await webrtc.toggleTorch();
-      btnTorch.classList.toggle('on', on);
+      $('btnTorch').setAttribute('aria-pressed', String(on));
+      if (!on) toast('Este teléfono no permite la linterna por web', 'info');
     });
 
-    $('btnCloseScreen').addEventListener('click', () => $('screenOverlay').classList.remove('on'));
-    window.addEventListener('beforeunload', () => webrtc && webrtc.destroy());
+    $('btnCloseScreen').addEventListener('click', () => $('screenshare').classList.remove('on'));
+    window.addEventListener('beforeunload', () => { hud.stop(); webrtc && webrtc.destroy(); });
   </script>
 </body>
 </html>

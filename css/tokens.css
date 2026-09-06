@@ -1,0 +1,103 @@
+/* ============================================================================
+   FOKO — tokens. Única fuente de verdad. Ningún hex vive fuera de este archivo.
+   Oscuro es primario; claro se deriva por prefers-color-scheme.
+   Regla: `--accent` es el ÚNICO color señal. Significa "mira aquí / en vivo /
+   lo que se está señalando". Nunca se usa como decoración.
+   ============================================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Archivo:wght,wdth@600,125;700,125&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root {
+  /* -- Acento: único color señal ------------------------------------------- */
+  --accent:          #C6FF00;
+  --accent-pressed:  #B2E600;
+  --accent-wash:     rgba(198, 255, 0, 0.14);
+  --on-accent:       #141600;   /* todo texto/ícono sobre acento; nunca blanco */
+
+  /* -- Superficie (oscuro, primario) -------------------------------------- */
+  --bg:            #0F1009;
+  --surface:       #17180E;
+  --surface-2:     #1F2015;
+  --border:        #2E2F23;      /* línea fina 1px — separa */
+  --border-strong: #434435;
+  --text:          #ECEBDE;
+  --text-dim:      #9A9C88;
+  --text-mute:     #6A6C5A;
+
+  /* -- Estado (nunca lima) ----------------------------------------------- */
+  --ok:          #1E9E5A;
+  --warn:        #E8A317;
+  --critical:    #E5484D;   /* también: grabando */
+  --info:        #2E7DD1;
+  --on-critical: #FFFFFF;   /* texto sobre fondo crítico, ambos temas */
+
+  /* -- Literales funcionales (no son "color", son requisitos técnicos) --- */
+  --video-void: #000000;    /* fondo tras un <video> con object-fit: contain */
+  --qr-bg:      #FFFFFF;     /* un QR solo escanea sobre blanco */
+
+  /* -- Acento legible como texto (el lima no lo es sobre claro) ---------- */
+  --accent-text: var(--accent);
+
+  /* -- Tipografía ------------------------------------------------------- */
+  --font-ui:      'Archivo', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-display: 'Archivo', system-ui, sans-serif;   /* + font-stretch:125% en .display */
+  --font-mono:    'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+
+  --fs-11: 11px;  --fs-12: 12px;  --fs-14: 14px;  --fs-16: 16px;
+  --fs-20: 20px;  --fs-28: 28px;  --fs-40: 40px;
+  --lh-body: 1.6;
+  --tracking-label: 0.08em;
+  --tracking-display: -0.02em;
+
+  /* -- Espaciado: rejilla de 4px --------------------------------------- */
+  --s-1: 4px;  --s-2: 8px;  --s-3: 12px;  --s-4: 16px;  --s-5: 20px;
+  --s-6: 24px; --s-8: 32px; --s-10: 40px; --s-12: 48px; --s-16: 64px;
+
+  /* -- Radio ---------------------------------------------------------- */
+  --r:      4px;   /* default */
+  --r-cell: 2px;   /* celdas de datos */
+  --r-full: 999px; /* solo dots de estado */
+
+  /* -- Elevación: solo la única capa flotante (tray / modal) --------- */
+  --shadow-float: 0 16px 40px -8px rgba(0, 0, 0, 0.55), 0 0 0 1px var(--border);
+
+  /* -- Movimiento --------------------------------------------------- */
+  --snap: 120ms cubic-bezier(0.2, 0, 0, 1);   /* cambios de estado: "snap" */
+  --draw: 240ms cubic-bezier(0.2, 0, 0, 1);   /* anotación "se transmite" */
+
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg:            #F1F0E9;
+    --surface:       #FBFAF4;
+    --surface-2:     #ECEBE0;
+    --border:        #D9D7C7;
+    --border-strong: #C4C2AE;
+    --text:          #191A10;
+    --text-dim:      #5B5D4C;
+    --text-mute:     #8A8C78;
+    --accent-text:   #4B7A00;     /* lima ilegible como texto sobre claro */
+    --shadow-float:  0 16px 40px -8px rgba(0, 0, 0, 0.18), 0 0 0 1px var(--border);
+    color-scheme: light;
+  }
+}
+
+/* Permite forzar el tema desde el <html data-theme="..."> si algún día se añade toggle. */
+:root[data-theme='light'] {
+  --bg: #F1F0E9; --surface: #FBFAF4; --surface-2: #ECEBE0;
+  --border: #D9D7C7; --border-strong: #C4C2AE;
+  --text: #191A10; --text-dim: #5B5D4C; --text-mute: #8A8C78;
+  --accent-text: #4B7A00;
+  --shadow-float: 0 16px 40px -8px rgba(0, 0, 0, 0.18), 0 0 0 1px var(--border);
+  color-scheme: light;
+}
+:root[data-theme='dark'] {
+  --bg: #0F1009; --surface: #17180E; --surface-2: #1F2015;
+  --border: #2E2F23; --border-strong: #434435;
+  --text: #ECEBDE; --text-dim: #9A9C88; --text-mute: #6A6C5A;
+  --accent-text: var(--accent);
+  --shadow-float: 0 16px 40px -8px rgba(0, 0, 0, 0.55), 0 0 0 1px var(--border);
+  color-scheme: dark;
+}

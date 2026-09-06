@@ -1,6 +1,6 @@
 /**
- * Asistente de notas: transcripción en vivo de la voz del técnico remoto
- * (Web Speech API del navegador) + generación del reporte vía /api/report.
+ * FOKO - Asistente de notas: transcripción en vivo de la voz del técnico de
+ * oficina (Web Speech API del navegador) + generación del reporte vía /api/report.
  *
  * Nota: la Web Speech API solo transcribe el micrófono local (el técnico
  * remoto). Lo que dice el de campo llega por el audio y solo se capta si el
