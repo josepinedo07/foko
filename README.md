@@ -1,5 +1,7 @@
 # FieldLens
 
+**En vivo:** <https://josepinedo07.github.io/fieldlens/>
+
 Soporte remoto por video entre un **técnico remoto** y un **técnico en campo**.
 
 El técnico remoto abre la consola, genera un enlace / QR y lo comparte. El de campo
