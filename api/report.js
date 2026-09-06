@@ -14,9 +14,10 @@ import { GoogleGenAI } from '@google/genai';
 import { createClient } from '@supabase/supabase-js';
 
 // Modelo para redactar el reporte. Flash-Lite es de sobra para esto y el más
-// barato (fracciones de centavo por reporte). Sube a 'gemini-2.5-flash' o
+// barato (fracciones de centavo por reporte). Nota: 'gemini-2.5-flash-lite' ya
+// no está disponible para cuentas nuevas (Google redirige a este). Sube a
 // 'gemini-3.5-flash' si quieres más calidad.
-const MODEL = process.env.REPORT_MODEL || 'gemini-2.5-flash-lite';
+const MODEL = process.env.REPORT_MODEL || 'gemini-3.5-flash-lite';
 
 const SYSTEM = `Eres un asistente que redacta reportes de servicio técnico en español,
 a partir de la transcripción de una videollamada de soporte remoto y las notas que

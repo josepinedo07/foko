@@ -85,7 +85,7 @@ función serverless `api/report.js`, que solo corre en un host con funciones
    - `SUPABASE_URL` — la URL del proyecto de Supabase (ver abajo).
    - `SUPABASE_SERVICE_ROLE_KEY` — la *service role key* del mismo proyecto
      (Settings → API en el dashboard de Supabase). **Nunca** va en el frontend.
-   - `REPORT_MODEL` (opcional) — por defecto `gemini-2.5-flash-lite`.
+   - `REPORT_MODEL` (opcional) — por defecto `gemini-3.5-flash-lite`.
 3. Deploy. Redespliega solo en cada `git push` si conectas el repo de Git
    (ahora mismo el deploy en producción se hace a mano con `vercel deploy --prod`).
 

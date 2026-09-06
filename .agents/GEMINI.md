@@ -47,7 +47,7 @@ gradientes/glassmorphism genéricos de SaaS ni íconos emoji en la UI final
   color vía `--brand-ink` (no hay dos SVGs por tema, uno con `currentColor`).
 - `api/report.js` - función serverless (Vercel/Netlify Functions). Valida el
   `access_token` de Supabase (service role key, servidor), resuelve la empresa
-  del usuario y genera el reporte con Gemini (`gemini-2.5-flash-lite` por defecto,
+  del usuario y genera el reporte con Gemini (`gemini-3.5-flash-lite` por defecto,
   vía `@google/genai`). `GEMINI_API_KEY` / `SUPABASE_SERVICE_ROLE_KEY` solo viven
   en el servidor.
 - `supabase/schema.sql` - `companies`, `profiles` (1 usuario → 1 empresa, rol
