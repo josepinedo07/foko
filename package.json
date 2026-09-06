@@ -1,11 +1,14 @@
 {
-  "name": "fieldlens-ar",
+  "name": "fieldlens",
   "version": "1.0.0",
-  "description": "Soporte remoto por video: enlace/QR, videollamada WebRTC, puntero, dibujo, congelar, foto, grabación y compartir pantalla.",
-  "main": "server.py",
+  "private": true,
+  "type": "module",
+  "description": "Soporte remoto por video (WebRTC): enlace/QR, puntero, dibujo, congelar, foto, grabación, compartir pantalla y reporte con IA.",
   "scripts": {
-    "start": "python3 server.py",
     "dev": "python3 server.py"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.124.0"
   },
   "keywords": [
     "webrtc",
@@ -14,6 +17,5 @@
     "field-service",
     "annotation"
   ],
-  "author": "",
   "license": "MIT"
 }

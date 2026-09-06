@@ -92,6 +92,40 @@
     .link-row { display: flex; gap: 8px; margin-top: 4px; }
     .muted { color: var(--text-dim); font-size: 0.82rem; line-height: 1.5; }
     @media (max-width: 560px) { .invite-grid { grid-template-columns: 1fr; } }
+
+    /* Panel de notas IA */
+    .notes-panel {
+      position: fixed; top: 0; right: 0; bottom: 0; width: 380px; max-width: 90vw;
+      background: var(--surface); border-left: 1px solid var(--border);
+      display: flex; flex-direction: column; z-index: 80;
+      transform: translateX(100%); transition: transform 0.2s ease;
+    }
+    .notes-panel.open { transform: translateX(0); }
+    .notes-panel header { justify-content: space-between; }
+    .notes-body { flex: 1; overflow-y: auto; padding: 14px 16px; display: flex; flex-direction: column; gap: 14px; }
+    .notes-body h3 { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-dim); margin-bottom: 6px; }
+    #transcriptBox {
+      background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 10px; font-size: 0.85rem; line-height: 1.5; min-height: 120px; max-height: 34vh;
+      overflow-y: auto; white-space: pre-wrap; color: var(--text-dim);
+    }
+    #notesBox {
+      width: 100%; min-height: 130px; resize: vertical;
+      background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius);
+      color: var(--text); padding: 10px; font-size: 0.9rem; font-family: var(--font); line-height: 1.5;
+    }
+    #notesBox:focus, #transcriptBox:focus { outline: none; border-color: var(--accent); }
+    .notes-foot { padding: 12px 16px; border-top: 1px solid var(--border); display: flex; gap: 8px; align-items: center; }
+    .rec-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--danger); animation: blink 1s infinite; }
+
+    #reportOut {
+      background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 14px 16px; font-size: 0.9rem; line-height: 1.55; max-height: 55vh; overflow-y: auto;
+      white-space: pre-wrap;
+    }
+    #reportOut h1 { font-size: 1.15rem; margin: 0 0 10px; }
+    #reportOut h2 { font-size: 0.98rem; margin: 14px 0 4px; color: var(--accent); }
+    .settings-row { margin-bottom: 14px; }
   </style>
 </head>
 <body>
@@ -100,6 +134,8 @@
       <span class="brand">FieldLens</span>
       <span id="status" class="status">iniciando…</span>
       <span class="spacer"></span>
+      <button class="btn" id="btnNotes" hidden>Notas IA</button>
+      <button class="btn btn-ghost" id="btnSettings" title="Ajustes">⚙</button>
       <button class="btn btn-primary" id="btnInvite">Invitar a campo</button>
     </header>
 
@@ -175,10 +211,90 @@
     </div>
   </div>
 
+  <!-- Panel de notas IA -->
+  <aside class="notes-panel" id="notesPanel">
+    <header>
+      <strong>Asistente de notas</strong>
+      <button class="btn btn-ghost" id="btnNotesClose" title="Cerrar">✕</button>
+    </header>
+    <div class="notes-body">
+      <div>
+        <h3 id="transcriptTitle">Transcripción</h3>
+        <div id="transcriptBox" tabindex="0">La transcripción de tu voz aparecerá aquí…</div>
+        <div class="notes-foot" style="padding:8px 0 0; border:0;">
+          <button class="btn" id="btnMicTranscribe">Iniciar transcripción</button>
+          <button class="btn btn-ghost" id="btnTranscriptClear">Borrar</button>
+        </div>
+      </div>
+      <div>
+        <h3>Notas</h3>
+        <textarea id="notesBox" placeholder="Apunta lo relevante: síntoma, lo que probaron, resultado, repuestos, pendientes…"></textarea>
+      </div>
+    </div>
+    <div class="notes-foot">
+      <button class="btn btn-primary" id="btnGenReport" style="flex:1;">Generar reporte</button>
+      <span class="muted" id="sessionClock" style="font-family:var(--mono);">00:00</span>
+    </div>
+  </aside>
+
+  <!-- Ajustes -->
+  <div class="modal" id="settingsModal">
+    <div class="modal-card" style="max-width:460px;">
+      <h2 style="margin-bottom:16px;">Ajustes</h2>
+      <label class="settings-row" style="display:flex; gap:10px; align-items:flex-start;">
+        <input type="checkbox" id="setNotesEnabled" style="margin-top:3px;">
+        <span>
+          <strong>Asistente de notas IA</strong>
+          <span class="muted" style="display:block;">Transcribe la llamada y genera un reporte de servicio.</span>
+        </span>
+      </label>
+      <div class="settings-row">
+        <label class="label" for="setAccessCode">Código de acceso</label>
+        <input class="field" id="setAccessCode" type="password" placeholder="El que configuraste en el servidor" autocomplete="off">
+      </div>
+      <div class="settings-row">
+        <label class="label" for="setEndpoint">Endpoint del reporte</label>
+        <input class="field" id="setEndpoint" placeholder="/api/report">
+        <span class="muted">Déjalo así si la app está en el mismo dominio que la función.</span>
+      </div>
+      <div class="settings-row">
+        <label class="label" for="setLang">Idioma de transcripción</label>
+        <select class="field" id="setLang">
+          <option value="es-MX">Español (MX)</option>
+          <option value="es-ES">Español (ES)</option>
+          <option value="es-AR">Español (AR)</option>
+          <option value="es-CO">Español (CO)</option>
+          <option value="en-US">English (US)</option>
+        </select>
+      </div>
+      <p class="muted" id="settingsNote"></p>
+      <div style="text-align:right; margin-top:16px;">
+        <button class="btn btn-primary" id="btnSettingsSave">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reporte -->
+  <div class="modal" id="reportModal">
+    <div class="modal-card" style="max-width:640px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <h2>Reporte de servicio</h2>
+        <button class="btn btn-ghost" id="btnReportClose">✕</button>
+      </div>
+      <div id="reportOut">…</div>
+      <div style="display:flex; gap:8px; margin-top:14px; justify-content:flex-end;">
+        <button class="btn" id="btnReportCopy">Copiar</button>
+        <button class="btn" id="btnReportDownload">Descargar .md</button>
+        <button class="btn" id="btnReportPrint">Imprimir</button>
+      </div>
+    </div>
+  </div>
+
   <script src="js/vendor/qrcode.min.js"></script>
   <script type="module">
     import { ARCanvas } from './js/ar-canvas.js';
     import { WebRTCManager } from './js/webrtc-manager.js';
+    import { NotesAssistant, TRANSCRIPTION_SUPPORTED } from './js/notes-assistant.js';
 
     const $ = (id) => document.getElementById(id);
     const params = new URLSearchParams(location.search);
@@ -193,6 +309,8 @@
     let screenOn = false;
     let micOn = true;
     let lanHost = null; // IP de la Wi-Fi cuando la consola se abre en localhost
+    let photoCount = 0;
+    let sessionStart = null;
 
     // ---- AR overlay ----
     const ar = new ARCanvas($('ar'), {
@@ -228,6 +346,7 @@
         $('placeholder').hidden = true;
         $('toolbar').hidden = false;
         $('actions').hidden = false;
+        if (!sessionStart) sessionStart = Date.now();
       },
       onData: (msg) => {
         if (msg.type === 'hello') return;
@@ -301,6 +420,7 @@
         img.title = name;
         img.addEventListener('click', () => window.open(url, '_blank'));
         $('shots').prepend(img);
+        photoCount++;
       }, 'image/jpeg', 0.9);
       flash();
     });
@@ -447,7 +567,153 @@
       requestAnimationFrame(() => { f.style.opacity = '0'; });
       setTimeout(() => f.remove(), 400);
     }
-    window.addEventListener('beforeunload', () => webrtc.destroy());
+    // ---- Asistente de notas IA ----
+    const CFG_KEY = 'fieldlens.notes.cfg';
+    const cfg = Object.assign(
+      { enabled: false, accessCode: '', endpoint: '/api/report', lang: 'es-MX' },
+      JSON.parse(localStorage.getItem(CFG_KEY) || '{}')
+    );
+
+    const notes = new NotesAssistant({
+      lang: cfg.lang,
+      onUpdate: (text, err) => {
+        const box = $('transcriptBox');
+        box.textContent = text || 'La transcripción de tu voz aparecerá aquí…';
+        box.scrollTop = box.scrollHeight;
+        if (err) $('transcriptTitle').textContent = 'Transcripción · ' + err;
+      },
+    });
+    let transcribing = false;
+    let lastReport = '';
+
+    function applyCfg() {
+      $('btnNotes').hidden = !cfg.enabled;
+      if (!cfg.enabled) closeNotes();
+    }
+
+    // Settings modal
+    $('btnSettings').addEventListener('click', () => {
+      $('setNotesEnabled').checked = cfg.enabled;
+      $('setAccessCode').value = cfg.accessCode;
+      $('setEndpoint').value = cfg.endpoint;
+      $('setLang').value = cfg.lang;
+      $('settingsNote').textContent = TRANSCRIPTION_SUPPORTED
+        ? ''
+        : 'Nota: este navegador no soporta transcripción por voz (usa Chrome). Las notas manuales y el reporte sí funcionan.';
+      $('settingsModal').classList.add('open');
+    });
+    $('btnSettingsSave').addEventListener('click', () => {
+      cfg.enabled = $('setNotesEnabled').checked;
+      cfg.accessCode = $('setAccessCode').value.trim();
+      cfg.endpoint = $('setEndpoint').value.trim() || '/api/report';
+      cfg.lang = $('setLang').value;
+      localStorage.setItem(CFG_KEY, JSON.stringify(cfg));
+      notes.lang = cfg.lang;
+      $('settingsModal').classList.remove('open');
+      applyCfg();
+    });
+    $('settingsModal').addEventListener('click', (e) => {
+      if (e.target === $('settingsModal')) $('settingsModal').classList.remove('open');
+    });
+
+    // Panel
+    function openNotes() { $('notesPanel').classList.add('open'); }
+    function closeNotes() { $('notesPanel').classList.remove('open'); }
+    $('btnNotes').addEventListener('click', openNotes);
+    $('btnNotesClose').addEventListener('click', closeNotes);
+
+    // Transcripción
+    $('btnMicTranscribe').addEventListener('click', () => {
+      if (transcribing) {
+        notes.stopTranscription();
+        transcribing = false;
+        $('btnMicTranscribe').textContent = 'Iniciar transcripción';
+        $('btnMicTranscribe').classList.remove('on');
+      } else {
+        if (!notes.startTranscription()) {
+          $('transcriptTitle').textContent = 'Transcripción · no disponible en este navegador';
+          return;
+        }
+        transcribing = true;
+        $('btnMicTranscribe').textContent = 'Detener transcripción';
+        $('btnMicTranscribe').classList.add('on');
+      }
+    });
+    $('btnTranscriptClear').addEventListener('click', () => notes.clear());
+
+    // Reloj de sesión
+    setInterval(() => {
+      if (!sessionStart) return;
+      const s = Math.floor((Date.now() - sessionStart) / 1000);
+      $('sessionClock').textContent =
+        String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
+    }, 1000);
+
+    function sessionDuration() {
+      if (!sessionStart) return 'No especificado';
+      const m = Math.round((Date.now() - sessionStart) / 60000);
+      return `${m} min`;
+    }
+
+    // Generar reporte
+    $('btnGenReport').addEventListener('click', async () => {
+      if (!cfg.accessCode) {
+        alert('Configura el código de acceso en Ajustes (⚙).');
+        return;
+      }
+      const btn = $('btnGenReport');
+      btn.disabled = true;
+      btn.textContent = 'Generando…';
+      try {
+        const report = await notes.generateReport({
+          endpoint: cfg.endpoint,
+          accessCode: cfg.accessCode,
+          notes: $('notesBox').value,
+          meta: {
+            date: new Date().toLocaleString('es-MX'),
+            room: roomCode,
+            duration: sessionDuration(),
+            photos: photoCount,
+          },
+        });
+        lastReport = report;
+        $('reportOut').innerHTML = renderMd(report);
+        $('reportModal').classList.add('open');
+      } catch (e) {
+        alert('No se pudo generar el reporte: ' + e.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Generar reporte';
+      }
+    });
+
+    function renderMd(md) {
+      const esc = (t) => t.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+      return esc(md)
+        .replace(/^### (.*)$/gm, '<h3>$1</h3>')
+        .replace(/^## (.*)$/gm, '<h2>$1</h2>')
+        .replace(/^# (.*)$/gm, '<h1>$1</h1>')
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        .replace(/^[-*] (.*)$/gm, '• $1');
+    }
+    $('btnReportClose').addEventListener('click', () => $('reportModal').classList.remove('open'));
+    $('btnReportCopy').addEventListener('click', async () => {
+      try { await navigator.clipboard.writeText(lastReport); $('btnReportCopy').textContent = 'Copiado'; setTimeout(() => $('btnReportCopy').textContent = 'Copiar', 1500); } catch (_) {}
+    });
+    $('btnReportDownload').addEventListener('click', () => {
+      const blob = new Blob([lastReport], { type: 'text/markdown' });
+      downloadUrl(URL.createObjectURL(blob), `reporte-${roomCode}-${stamp()}.md`);
+    });
+    $('btnReportPrint').addEventListener('click', () => {
+      const w = window.open('', '_blank');
+      w.document.write('<pre style="font:14px/1.5 system-ui;white-space:pre-wrap;padding:24px;max-width:720px;margin:auto">' +
+        lastReport.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c])) + '</pre>');
+      w.document.close(); w.focus(); w.print();
+    });
+
+    applyCfg();
+
+    window.addEventListener('beforeunload', () => { notes.stopTranscription(); webrtc.destroy(); });
   </script>
 </body>
 </html>

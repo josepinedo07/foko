@@ -13,6 +13,8 @@ remoto puede:
 - **Tomar fotos** con las anotaciones incrustadas.
 - **Grabar** la sesión en video (imagen + anotaciones + audio).
 - **Compartir su pantalla** hacia el teléfono del técnico.
+- **Asistente de notas IA** (opcional): transcribe la llamada, junta tus notas y
+  genera un reporte de servicio con Claude.
 
 El de campo puede voltear la cámara, encender la linterna, silenciar el micrófono y
 tocar la pantalla para señalar de vuelta.
@@ -46,21 +48,34 @@ El servidor imprime la URL para el teléfono, p. ej. `https://192.168.0.102:8443
 En el teléfono el navegador avisará que el sitio "no es seguro" → **Avanzado →
 continuar** (es tu propio certificado). A partir de ahí la cámara funciona.
 
-## Desplegar (recomendado si usas VPN o quieres probar desde cualquier red)
+## Desplegar
 
-Son archivos estáticos + PeerJS, así que `server.py` NO se usa en producción.
-Sube la carpeta a cualquier hosting estático con HTTPS:
+La videollamada + anotaciones son 100% estáticas (sirven en cualquier host con
+HTTPS: GitHub Pages, Netlify, Vercel…). El **asistente de notas IA** necesita la
+función serverless `api/report.js`, que solo corre en un host con funciones
+(**Vercel** o Netlify Functions), no en GitHub Pages.
 
-- **Netlify Drop** (lo más rápido, sin git): <https://app.netlify.com/drop> — arrastra
-  la carpeta del proyecto. En segundos tienes una URL `*.netlify.app`.
-- **Vercel**: sube el proyecto a un repo de GitHub y en <https://vercel.com/new>
-  impórtalo. Framework: "Other". Sin comandos de build. Redespliega solo en cada push.
-- **Cloudflare Pages / GitHub Pages**: también funcionan (rutas relativas, OK en subcarpeta).
+### Vercel (recomendado)
 
-Con VPN (Surfshark) o datos móviles, la conexión P2P directa suele fallar: el
-proyecto ya trae unos **TURN públicos de prueba** en
-[`js/rtc-config.js`](js/rtc-config.js). Si van lentos o caídos, saca una clave
-gratis en <https://dashboard.metered.ca/> y reemplázalos.
+1. Importa el repo en <https://vercel.com/new>. Framework: **Other**. Sin build.
+2. En *Settings → Environment Variables* añade:
+   - `ANTHROPIC_API_KEY` — tu clave de la API de Anthropic (queda solo en el servidor).
+   - `APP_PASSWORD` — un código de acceso que compartirás con quienes usen el reporte.
+3. Deploy. Redespliega solo en cada `git push`.
+
+En la consola del técnico remoto: **⚙ Ajustes → activar "Asistente de notas IA"**,
+pegar el mismo `APP_PASSWORD` y dejar el endpoint en `/api/report`.
+
+### Solo la videollamada (sin IA)
+
+Cualquier host estático sirve: Netlify Drop, GitHub Pages, Cloudflare Pages.
+`server.py` no se usa en producción.
+
+### Conexión con VPN / datos móviles
+
+La P2P directa suele fallar detrás de VPN (Surfshark) o CGNAT. El proyecto trae
+unos **TURN públicos de prueba** en [`js/rtc-config.js`](js/rtc-config.js); si van
+lentos, saca una clave gratis en <https://dashboard.metered.ca/> y reemplázalos.
 
 ## Estructura
 
@@ -70,6 +85,14 @@ remote-expert.html    Consola del técnico remoto
 field-tech.html       Vista móvil del técnico en campo
 js/webrtc-manager.js  Conexión WebRTC (PeerJS): cámara, mic, pantalla
 js/ar-canvas.js       Capa de anotación sincronizada
+js/notes-assistant.js Transcripción por voz + llamada al reporte
 js/rtc-config.js      Servidores ICE (STUN / TURN)
+api/report.js         Función serverless: genera el reporte con Claude
 server.py             Servidor estático para desarrollo local
 ```
+
+## Para cobrar por esto (siguiente paso)
+
+El código de acceso único (`APP_PASSWORD`) sirve para validar y demostrar. Para
+un producto de verdad falta: cuentas de usuario, medición de uso por cuenta y
+facturación (Stripe). No está incluido.
