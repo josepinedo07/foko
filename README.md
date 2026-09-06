@@ -3,7 +3,8 @@
 **En vivo:** <https://fieldlens-nu.vercel.app>
 (el alias `foko-jpc-hambeo.vercel.app` existe pero aún tiene la protección de
 Vercel activada — ver nota al final. GitHub Pages
-<https://josepinedo07.github.io/foko/> también sirve, pero sin el reporte IA.)
+<https://josepinedo07.github.io/foko/> también sirve la videollamada, pero sin
+el reporte IA porque no corre funciones serverless.)
 
 Soporte visual remoto: el teléfono del **técnico de campo** se convierte en los
 ojos del **técnico de oficina**.
