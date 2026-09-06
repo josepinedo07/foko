@@ -89,12 +89,19 @@
     // ---- Pestañas ----
     const tabs = document.querySelectorAll('.tab');
     const panels = { signin: $('formSignin'), create: $('formCreate'), join: $('formJoin') };
-    tabs.forEach((t) => t.addEventListener('click', () => {
+    function selectTab(name) {
+      const t = document.querySelector(`.tab[data-tab="${name}"]`);
+      if (!t) return;
       tabs.forEach((x) => x.setAttribute('aria-pressed', 'false'));
       t.setAttribute('aria-pressed', 'true');
-      Object.entries(panels).forEach(([k, el]) => { el.hidden = k !== t.dataset.tab; });
+      Object.entries(panels).forEach(([k, el]) => { el.hidden = k !== name; });
       clearMsg();
-    }));
+    }
+    tabs.forEach((t) => t.addEventListener('click', () => selectTab(t.dataset.tab)));
+
+    // Enlace directo a una pestaña, p. ej. login.html?tab=create desde la landing.
+    const wantedTab = new URLSearchParams(location.search).get('tab');
+    if (wantedTab && panels[wantedTab]) selectTab(wantedTab);
 
     function clearMsg() { $('err').style.display = 'none'; $('ok').style.display = 'none'; }
     function showErr(msg) { $('err').textContent = translate(msg); $('err').style.display = 'block'; $('ok').style.display = 'none'; }

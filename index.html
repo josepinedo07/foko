@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>FOKO · Soporte visual remoto</title>
+  <meta name="description" content="El teléfono de tu técnico de campo, los ojos de tu técnico de oficina. Videollamada con puntero, dibujo, congelado, fotos, grabación y reporte con IA.">
   <link rel="icon" href="brand/favicon.svg" type="image/svg+xml">
   <link rel="icon" href="brand/favicon-32.png" sizes="32x32" type="image/png">
   <link rel="apple-touch-icon" href="brand/apple-touch-icon.png">
@@ -11,57 +12,237 @@
   <meta name="theme-color" content="#0F1009">
   <link rel="stylesheet" href="css/design-system.css">
   <style>
-    .wrap {
-      min-height: 100%;
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
-      padding: var(--s-8) var(--s-4); gap: var(--s-8);
+    body { overflow-x: hidden; }
+    .page { max-width: 1080px; margin: 0 auto; padding: 0 var(--s-5); }
+
+    /* -- Nav -------------------------------------------------------- */
+    .nav {
+      display: flex; align-items: center; gap: var(--s-4);
+      padding: var(--s-4) 0;
     }
-    .mark { text-align: center; }
-    .mark p { color: var(--text-dim); font-size: var(--fs-14); margin-top: var(--s-4); max-width: 34ch; }
-    .paths { display: grid; gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: var(--r); overflow: hidden; width: 100%; max-width: 420px; }
-    .path { background: var(--surface); padding: var(--s-5); display: flex; flex-direction: column; gap: var(--s-3); }
-    .path h2 { font-size: var(--fs-16); font-weight: 600; }
-    .path p { color: var(--text-dim); font-size: var(--fs-12); }
+    .nav .spacer { flex: 1; }
+    .nav-links { display: flex; align-items: center; gap: var(--s-2); }
+    @media (max-width: 560px) { .nav-links .btn--ghost span { display: none; } }
+
+    /* -- Hero --------------------------------------------------------- */
+    .hero { padding: var(--s-10) 0 var(--s-8); text-align: center; }
+    .hero .label { display: inline-flex; align-items: center; gap: var(--s-2); }
+    .hero .label::before { content: ''; width: 6px; height: 6px; border-radius: var(--r-full); background: var(--accent); }
+    .headline {
+      font-family: var(--font-display); font-weight: 700; letter-spacing: var(--tracking-display);
+      font-size: clamp(28px, 5vw, var(--fs-40)); line-height: 1.15; margin: var(--s-4) auto var(--s-4);
+      max-width: 22ch;
+    }
+    .headline em { font-style: normal; color: var(--accent-text); }
+    .sub { color: var(--text-dim); font-size: var(--fs-16); max-width: 52ch; margin: 0 auto var(--s-6); }
+    .hero__cta { display: flex; gap: var(--s-3); justify-content: center; flex-wrap: wrap; margin-bottom: var(--s-10); }
+    .hero__cta .btn { min-width: 180px; }
+
+    /* -- Mockup ilustrativo (no es video en vivo) ---------------------- */
+    .mockshell { max-width: 720px; margin: 0 auto; border: 1px solid var(--border-strong); border-radius: var(--r); overflow: hidden; box-shadow: var(--shadow-float); }
+    .mockstage { position: relative; aspect-ratio: 16/10; background:
+      radial-gradient(120% 90% at 20% 15%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 60%),
+      repeating-linear-gradient(115deg, var(--surface-2) 0 2px, var(--bg) 2px 34px);
+    }
+    .mockstage .viewer__brackets, .mockstage .viewer__reticle { position: absolute; }
+    .mockstage .viewer__brackets { inset: var(--s-3); }
+    .mockstage .viewer__reticle { top: 46%; left: 44%; opacity: 1; }
+    .mockstage .viewer__reticle::before, .mockstage .viewer__reticle::after { background: var(--accent); }
+    .mock-hud {
+      position: absolute; top: 0; left: 0; right: 0;
+      display: flex; align-items: center; gap: var(--s-4); padding: var(--s-2) var(--s-3);
+      background: color-mix(in srgb, var(--bg) 78%, transparent);
+      font-family: var(--font-mono); font-size: var(--fs-11); letter-spacing: 0.04em; color: var(--text-dim);
+    }
+    .mock-hud b { color: var(--text-dim); font-weight: 400; text-transform: uppercase; letter-spacing: var(--tracking-label); margin-right: var(--s-1); }
+    .mock-hud .spacer { flex: 1; }
+    .mock-tray {
+      position: absolute; left: 50%; bottom: var(--s-4); transform: translateX(-50%);
+      display: flex; gap: var(--s-2); padding: var(--s-2);
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); box-shadow: var(--shadow-float);
+    }
+    .mock-annot { position: absolute; top: 30%; left: 56%; width: 120px; height: 70px; pointer-events: none; }
+    .mockcaption {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: var(--s-2) var(--s-4); background: var(--surface); border-top: 1px solid var(--border);
+    }
+
+    /* -- Cómo funciona -------------------------------------------------- */
+    section { padding: var(--s-10) 0; border-top: 1px solid var(--border); }
+    .section-head { text-align: center; margin-bottom: var(--s-8); }
+    .section-head h2 { font-size: var(--fs-28); font-weight: 600; margin-top: var(--s-2); }
+    .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--s-5); counter-reset: step; }
+    .step { border: 1px solid var(--border); border-radius: var(--r); padding: var(--s-5); }
+    .step::before {
+      counter-increment: step; content: counter(step);
+      display: flex; align-items: center; justify-content: center;
+      width: 28px; height: 28px; margin-bottom: var(--s-4);
+      border: 1px solid var(--accent); border-radius: var(--r-cell); color: var(--accent-text);
+      font-family: var(--font-mono); font-weight: 500;
+    }
+    .step h3 { font-size: var(--fs-16); font-weight: 600; margin-bottom: var(--s-1); }
+    .step p { color: var(--text-dim); font-size: var(--fs-14); }
+
+    /* -- Funciones -------------------------------------------------- */
+    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: var(--r); overflow: hidden; }
+    .feat { background: var(--surface); padding: var(--s-5); }
+    .feat .icon { color: var(--accent-text); margin-bottom: var(--s-3); }
+    .feat h3 { font-size: var(--fs-14); font-weight: 600; margin-bottom: var(--s-1); }
+    .feat p { color: var(--text-dim); font-size: var(--fs-12); }
+
+    @media (max-width: 720px) {
+      .steps, .grid { grid-template-columns: 1fr; }
+    }
+
+    /* -- Entrar con código -------------------------------------------- */
+    .fieldjoin { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s-5); }
+    .fieldjoin__text h2 { font-size: var(--fs-20); font-weight: 600; margin-bottom: var(--s-1); }
+    .fieldjoin__text p { color: var(--text-dim); font-size: var(--fs-14); max-width: 44ch; }
     .join { display: flex; gap: var(--s-2); }
-    .join .field { text-transform: uppercase; }
+    .join .field { text-transform: uppercase; width: 160px; }
+
+    /* -- Footer -------------------------------------------------------- */
+    footer { padding: var(--s-6) 0 var(--s-10); display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); flex-wrap: wrap; }
+    footer .foot-logo { height: 22px; }
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <div class="mark">
-      <span id="logo" aria-label="Foko"></span>
-      <p>El teléfono del técnico de campo se convierte en los ojos del técnico de oficina.</p>
-    </div>
+  <div class="page">
+    <header class="nav">
+      <span id="navLogo" aria-label="Foko"></span>
+      <span class="spacer"></span>
+      <div class="nav-links">
+        <a class="btn btn--ghost" href="login.html">Iniciar sesión</a>
+        <a class="btn btn--primary" href="login.html?tab=create">Crear cuenta</a>
+      </div>
+    </header>
 
-    <div class="paths">
-      <div class="path">
-        <span class="label">Técnico de oficina</span>
-        <h2>Abrir consola</h2>
-        <p>Genera un enlace o QR, ve el feed y guía al de campo.</p>
-        <a class="btn btn--primary btn--block" href="login.html">Abrir consola</a>
+    <section class="hero" style="border-top: 0;">
+      <span class="label">Soporte visual remoto</span>
+      <h1 class="headline">El teléfono de tu técnico de campo, <em>los ojos</em> de tu técnico de oficina</h1>
+      <p class="sub">Videollamada en vivo entre el celular de campo y la consola de oficina: señala, dibuja, congela el cuadro, toma fotos, graba y comparte pantalla — sin que nadie instale nada.</p>
+      <div class="hero__cta">
+        <a class="btn btn--primary" href="login.html?tab=create">Crear tu cuenta</a>
+        <a class="btn" href="#como-funciona">Ver cómo funciona</a>
       </div>
 
-      <div class="path">
-        <span class="label">Técnico de campo</span>
-        <h2>Entrar con código</h2>
-        <p>Normalmente entras por el enlace que te envían.</p>
-        <div class="join">
-          <input id="code" class="field" placeholder="FK-XXXX" maxlength="12" autocomplete="off" aria-label="Código de sesión">
-          <button class="btn btn--primary" id="join">Entrar</button>
+      <div class="mockshell">
+        <div class="mockstage">
+          <div class="mock-hud">
+            <span class="pill pill--live"><span class="dot dot--live"></span>LIVE</span>
+            <span><b>lat</b>42 MS</span>
+            <span><b>res</b>1080P</span>
+            <span class="spacer"></span>
+            <span>· Tu empresa</span>
+          </div>
+          <div class="viewer__brackets"><i></i></div>
+          <div class="viewer__reticle"></div>
+          <svg class="mock-annot" viewBox="0 0 120 70" fill="none" stroke="var(--accent)" stroke-width="3" stroke-linecap="round">
+            <path d="M8 60 C 40 10, 80 8, 112 34" />
+            <path d="M112 34 l-14 -6 M112 34 l-4 14" />
+          </svg>
+          <div class="mock-tray">
+            <span class="btn btn-icon" aria-hidden="true"><svg class="icon icon--sm" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg></span>
+            <span class="btn btn-icon" aria-hidden="true"><svg class="icon icon--sm" viewBox="0 0 24 24"><path d="M12 2v6M12 16v6M2 12h6M16 12h6"/></svg></span>
+            <span class="btn btn-icon" aria-hidden="true"><svg class="icon icon--sm" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/></svg></span>
+          </div>
+        </div>
+        <div class="mockcaption">
+          <span class="label">Vista previa de la consola</span>
+          <span class="label">Puntero · dibujo · congelar</span>
         </div>
       </div>
-    </div>
+    </section>
+
+    <section id="como-funciona">
+      <div class="section-head">
+        <span class="label">Cómo funciona</span>
+        <h2>Tres pasos, sin instalar nada</h2>
+      </div>
+      <div class="steps">
+        <div class="step">
+          <h3>Genera el enlace</h3>
+          <p>Desde la consola creas un enlace o QR de la sesión y se lo mandas al técnico de campo.</p>
+        </div>
+        <div class="step">
+          <h3>Abre la cámara</h3>
+          <p>El técnico de campo abre el enlace en su teléfono y permite la cámara. Nada que instalar.</p>
+        </div>
+        <div class="step">
+          <h3>Guíalo en vivo</h3>
+          <p>Ves su cámara en tiempo real: señalas, dibujas, congelas el cuadro y documentas lo que hizo falta.</p>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-head">
+        <span class="label">Qué incluye</span>
+        <h2>Todo lo que necesita una llamada de soporte</h2>
+      </div>
+      <div class="grid">
+        <div class="feat">
+          <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+          <h3>Puntero y dibujo en vivo</h3>
+          <p>Señala, traza, marca con flechas y elipses o escribe una etiqueta directo sobre la cámara del técnico.</p>
+        </div>
+        <div class="feat">
+          <svg class="icon" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          <h3>Congelar el cuadro</h3>
+          <p>Detén la imagen para revisar un detalle con calma sin perder la conexión.</p>
+        </div>
+        <div class="feat">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+          <h3>Fotos y grabación</h3>
+          <p>Guarda fotos con las anotaciones incluidas o graba la sesión completa (imagen, marcas y audio).</p>
+        </div>
+        <div class="feat">
+          <svg class="icon" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          <h3>Compartir pantalla</h3>
+          <p>Manda tu pantalla al teléfono del técnico cuando haga falta mostrarle un plano o manual.</p>
+        </div>
+        <div class="feat">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          <h3>Reporte con IA</h3>
+          <p>Transcribe la llamada, junta tus notas y redacta un reporte de servicio en segundos.</p>
+        </div>
+        <div class="feat">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M4 16l4-6 4 4 3-4 5 6"/><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+          <h3>Con tu marca</h3>
+          <p>Tu logo y el nombre de tu empresa aparecen en la consola, la invitación y el reporte.</p>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="fieldjoin">
+        <div class="fieldjoin__text">
+          <h2>¿Ya tienes un código de sesión?</h2>
+          <p>Los técnicos de campo no necesitan cuenta: entran directo con el enlace o el código que les compartieron.</p>
+        </div>
+        <div class="join">
+          <input id="code" class="field" placeholder="FK-XXXX" maxlength="12" autocomplete="off" aria-label="Código de sesión">
+          <button class="btn btn--primary" id="joinBtn">Entrar</button>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      <span id="footLogo" class="foot-logo" aria-label="Foko"></span>
+      <span class="label">Soporte visual remoto</span>
+    </footer>
   </div>
 
   <script type="module">
     import { mountLogo } from './js/logo.js';
-    mountLogo(document.getElementById('logo'), { height: 64 });
+    mountLogo(document.getElementById('navLogo'), { height: 28 });
+    mountLogo(document.getElementById('footLogo'), { height: 22, showDot: false });
 
     const go = () => {
       const c = document.getElementById('code').value.trim().toUpperCase();
       if (c) location.href = `field-tech.html?room=${encodeURIComponent(c)}`;
     };
-    document.getElementById('join').addEventListener('click', go);
+    document.getElementById('joinBtn').addEventListener('click', go);
     document.getElementById('code').addEventListener('keydown', (e) => { if (e.key === 'Enter') go(); });
   </script>
 </body>
