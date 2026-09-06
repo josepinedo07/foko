@@ -19,7 +19,7 @@ el de oficina puede:
 - **Grabar** la sesión en video (imagen + anotaciones + audio).
 - **Compartir su pantalla** hacia el teléfono del técnico.
 - **Asistente de notas IA** (opcional): transcribe la llamada, junta tus notas y
-  genera un reporte de servicio con Claude.
+  genera un reporte de servicio con Gemini (Google AI Studio).
 
 El de campo puede voltear la cámara, encender la linterna, silenciar el micrófono y
 tocar la pantalla para señalar de vuelta. Antes de conectar pasa por un chequeo de
@@ -81,11 +81,11 @@ función serverless `api/report.js`, que solo corre en un host con funciones
 
 1. Importa el repo en <https://vercel.com/new>. Framework: **Other**. Sin build.
 2. En *Settings → Environment Variables* añade:
-   - `ANTHROPIC_API_KEY` — tu clave de la API de Anthropic (queda solo en el servidor).
+   - `GEMINI_API_KEY` — tu clave de Google AI Studio (queda solo en el servidor).
    - `SUPABASE_URL` — la URL del proyecto de Supabase (ver abajo).
    - `SUPABASE_SERVICE_ROLE_KEY` — la *service role key* del mismo proyecto
      (Settings → API en el dashboard de Supabase). **Nunca** va en el frontend.
-   - `REPORT_MODEL` (opcional) — por defecto `claude-haiku-4-5`.
+   - `REPORT_MODEL` (opcional) — por defecto `gemini-2.5-flash-lite`.
 3. Deploy. Redespliega solo en cada `git push` si conectas el repo de Git
    (ahora mismo el deploy en producción se hace a mano con `vercel deploy --prod`).
 
@@ -107,7 +107,7 @@ El login, las empresas y el logo **sí** funcionan en cualquier host estático
 (Netlify Drop, GitHub Pages, Cloudflare Pages) — hablan directo con Supabase
 desde el navegador, no necesitan `api/`. Lo único que exige un host con
 funciones serverless (Vercel/Netlify Functions) es `/api/report`, porque ahí
-vive la API key de Anthropic. `server.py` no se usa en producción en ningún caso.
+vive la API key de Gemini. `server.py` no se usa en producción en ningún caso.
 
 ### Conexión con VPN / datos móviles
 
@@ -158,7 +158,7 @@ js/notes-assistant.js  Transcripción por voz + llamada al reporte
 js/rtc-config.js       Servidores ICE (STUN / TURN)
 js/supabase-client.js  Cliente de Supabase (auth + empresa)
 js/logo.js             Wordmark reutilizable (<Logo>)
-api/report.js          Función serverless: valida sesión, genera el reporte con Claude
+api/report.js          Función serverless: valida sesión, genera el reporte con Gemini
 supabase/schema.sql    Esquema de base de datos (tablas, RLS, RPCs, storage)
 brand/                 Assets de marca (favicons, wordmark) — ver BRAND.md
 server.py              Servidor estático para desarrollo local

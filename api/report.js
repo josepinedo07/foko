@@ -1,21 +1,22 @@
 /**
  * FOKO — POST /api/report — genera un reporte de servicio a partir de la
- * transcripción + notas de la llamada, usando Claude.
+ * transcripción + notas de la llamada, usando Gemini (Google AI Studio).
  *
  * Protegido por cuenta real: el header Authorization trae el access_token de
  * la sesión de Supabase del técnico de oficina (no una contraseña compartida).
  * Se valida con la service role key (nunca sale del servidor) y se resuelve
  * la empresa del usuario para incluirla en el contexto del reporte.
  *
- * Env vars requeridas: ANTHROPIC_API_KEY, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY.
+ * Env vars requeridas: GEMINI_API_KEY, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY.
  */
 
-import Anthropic from '@anthropic-ai/sdk';
+import { GoogleGenAI } from '@google/genai';
 import { createClient } from '@supabase/supabase-js';
 
-// Modelo para redactar el reporte. Haiku es de sobra para esto y el más barato
-// (~1 centavo por reporte). Sube a 'claude-sonnet-5' si quieres más calidad.
-const MODEL = process.env.REPORT_MODEL || 'claude-haiku-4-5';
+// Modelo para redactar el reporte. Flash-Lite es de sobra para esto y el más
+// barato (fracciones de centavo por reporte). Sube a 'gemini-2.5-flash' o
+// 'gemini-3.5-flash' si quieres más calidad.
+const MODEL = process.env.REPORT_MODEL || 'gemini-2.5-flash-lite';
 
 const SYSTEM = `Eres un asistente que redacta reportes de servicio técnico en español,
 a partir de la transcripción de una videollamada de soporte remoto y las notas que
@@ -46,8 +47,8 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(204).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Método no permitido' });
 
-  if (!process.env.ANTHROPIC_API_KEY) {
-    return res.status(500).json({ error: 'Falta ANTHROPIC_API_KEY en el servidor' });
+  if (!process.env.GEMINI_API_KEY) {
+    return res.status(500).json({ error: 'Falta GEMINI_API_KEY en el servidor' });
   }
   if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
     return res.status(500).json({ error: 'Falta configurar Supabase en el servidor' });
@@ -99,18 +100,14 @@ export default async function handler(req, res) {
   ].join('\n');
 
   try {
-    const anthropic = new Anthropic();
-    const msg = await anthropic.messages.create({
+    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+    const response = await ai.models.generateContent({
       model: MODEL,
-      max_tokens: 4000,
-      system: SYSTEM,
-      messages: [{ role: 'user', content: userMsg }],
+      contents: userMsg,
+      config: { systemInstruction: SYSTEM, maxOutputTokens: 4000 },
     });
-    const report = msg.content
-      .filter((b) => b.type === 'text')
-      .map((b) => b.text)
-      .join('\n')
-      .trim();
+    const report = (response.text || '').trim();
+    if (!report) throw new Error('El modelo no devolvió texto (puede haber sido bloqueado por seguridad)');
     return res.status(200).json({ report });
   } catch (err) {
     const status = err?.status || 500;

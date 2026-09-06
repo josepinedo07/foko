@@ -47,8 +47,9 @@ gradientes/glassmorphism genéricos de SaaS ni íconos emoji en la UI final
   color vía `--brand-ink` (no hay dos SVGs por tema, uno con `currentColor`).
 - `api/report.js` - función serverless (Vercel/Netlify Functions). Valida el
   `access_token` de Supabase (service role key, servidor), resuelve la empresa
-  del usuario y genera el reporte con Claude (`claude-haiku-4-5` por defecto).
-  `ANTHROPIC_API_KEY` / `SUPABASE_SERVICE_ROLE_KEY` solo viven en el servidor.
+  del usuario y genera el reporte con Gemini (`gemini-2.5-flash-lite` por defecto,
+  vía `@google/genai`). `GEMINI_API_KEY` / `SUPABASE_SERVICE_ROLE_KEY` solo viven
+  en el servidor.
 - `supabase/schema.sql` - `companies`, `profiles` (1 usuario → 1 empresa, rol
   `owner`/`member`), RLS vía `my_company_id()`/`my_role()` (security definer,
   evita recursión), RPCs `create_company_and_join` / `join_company_by_code`,
@@ -64,7 +65,7 @@ gradientes/glassmorphism genéricos de SaaS ni íconos emoji en la UI final
 - Mantener ambos lados con `object-fit: contain` en el `<video>`; si se cambia,
   las anotaciones se desalinean.
 - No añadir dependencias más allá de PeerJS, el qrcode local en `js/vendor/` y
-  `@supabase/supabase-js` (CDN en el cliente, npm en `api/`); `@anthropic-ai/sdk`
+  `@supabase/supabase-js` (CDN en el cliente, npm en `api/`); `@google/genai`
   solo corre en el servidor.
 - La *service role key* de Supabase NUNCA va al frontend — solo como env var
   de Vercel. La *anon key* en `js/supabase-client.js` sí es pública por diseño.
