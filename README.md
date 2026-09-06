@@ -1,69 +1,73 @@
-# 🚀 FieldLens AR
+# FieldLens
 
-**Asistencia Visual Remota con Realidad Aumentada para Operaciones en Campo**
+Soporte remoto por video entre un **técnico remoto** y un **técnico en campo**.
 
-FieldLens AR permite conectar a un técnico en el lugar de trabajo con un experto remoto a través de video WebRTC de baja latencia con anotaciones interactivas en tiempo real, puntero láser virtual, esquemas técnicos sincronizados y generación automática de reportes de intervención.
+El técnico remoto abre la consola, genera un enlace / QR y lo comparte. El de campo
+lo abre en su teléfono, permite la cámara y quedan conectados. Desde la consola el
+remoto puede:
 
----
+- **Señalar** en tiempo real (puntero) y **dibujar** (lápiz, flecha, círculo).
+- **Congelar** la imagen para revisar un detalle.
+- **Tomar fotos** con las anotaciones incrustadas.
+- **Grabar** la sesión en video (imagen + anotaciones + audio).
+- **Compartir su pantalla** hacia el teléfono del técnico.
 
-## 📋 Estructura del Workspace
+El de campo puede voltear la cámara, encender la linterna, silenciar el micrófono y
+tocar la pantalla para señalar de vuelta.
 
-```text
-fieldlens-ar/
-├── fieldlens-ar.code-workspace # Archivo de espacio de trabajo para el IDE
-├── .vscode/                   # Configuraciones, tareas y depurador
-│   ├── settings.json
-│   ├── tasks.json
-│   └── launch.json
-├── .agents/                   # Configuración y contexto del agente Antigravity
-│   └── GEMINI.md
-├── css/
-│   ├── design-system.css      # Sistema visual industrial táctico oscuro
-│   └── report.css             # Plantilla para exportar reportes a PDF/impresión
-├── js/
-│   ├── webrtc-manager.js      # Conectividad P2P y WebRTC DataChannels (<20ms)
-│   ├── ar-canvas.js           # Motor de renderizado AR a 60 FPS y normalización
-│   ├── schematics-manager.js  # Planos interactivos (eléctrico, HVAC, hidráulica, fibra)
-│   ├── equipment-simulator.js # Simulador de maquinaria industrial animada
-│   └── report-generator.js    # Generador de informes técnicos de intervención
-├── field-tech.html            # Interfaz para el smartphone del técnico
-├── remote-expert.html         # Cockpit de control para el experto remoto
-├── simulator.html             # Banco de pruebas dual (Simulador lado a lado)
-├── index.html                 # Selector de rol y bienvenida
-├── server.py                  # Servidor local HTTP con detección de IP y CORS
-└── package.json               # Metadatos y scripts
-```
+## Cómo funciona
 
----
+- **Video/audio:** WebRTC punto a punto.
+- **Señalización:** broker público de PeerJS (no hace falta servidor propio).
+- **Recorrido de NAT:** STUN de Google. Para redes difíciles (datos móviles, CGNAT)
+  configura un TURN en [`js/rtc-config.js`](js/rtc-config.js).
 
-## ⚡ Inicio Rápido
-
-### 1. Iniciar el servidor local
-Puedes ejecutarlo desde la terminal con:
+## Uso local (dos ventanas en la misma compu)
 
 ```bash
 python3 server.py
 ```
-O con npm:
+
+- Consola del técnico remoto: <http://localhost:8000/remote-expert.html>
+- Copia el enlace que genera y ábrelo en otra ventana para simular al de campo.
+
+## Probar con un teléfono en la misma Wi-Fi
+
+`getUserMedia` solo funciona sobre **HTTPS** (o `localhost`), así que hace falta TLS:
+
 ```bash
-npm start
+python3 server.py --https
 ```
 
-El servidor quedará disponible en:
-- **Banco de Pruebas Dual (Recomendado para pruebas)**: `http://localhost:8000/simulator.html`
-- **Inicio / Selector de Modo**: `http://localhost:8000/`
-- **Cockpit del Experto**: `http://localhost:8000/remote-expert.html?room=SALA-1`
-- **Técnico en Campo**: `http://localhost:8000/field-tech.html?room=SALA-1`
+La primera vez genera un certificado autofirmado (`.cert/`, necesita `openssl`).
+El servidor imprime la URL para el teléfono, p. ej. `https://192.168.0.102:8443/`.
+En el teléfono el navegador avisará que el sitio "no es seguro" → **Avanzado →
+continuar** (es tu propio certificado). A partir de ahí la cámara funciona.
 
-### 2. Uso con Smartphone real
-El servidor imprime en consola tu dirección IP local (por ejemplo `http://192.168.1.X:8000/`). Solo debes abrir esa URL desde el navegador de tu teléfono conectado a la misma red Wi-Fi.
+## Desplegar (recomendado si usas VPN o quieres probar desde cualquier red)
 
----
+Son archivos estáticos + PeerJS, así que `server.py` NO se usa en producción.
+Sube la carpeta a cualquier hosting estático con HTTPS:
 
-## 🎯 Características Principales
+- **Netlify Drop** (lo más rápido, sin git): <https://app.netlify.com/drop> — arrastra
+  la carpeta del proyecto. En segundos tienes una URL `*.netlify.app`.
+- **Vercel**: sube el proyecto a un repo de GitHub y en <https://vercel.com/new>
+  impórtalo. Framework: "Other". Sin comandos de build. Redespliega solo en cada push.
+- **Cloudflare Pages / GitHub Pages**: también funcionan (rutas relativas, OK en subcarpeta).
 
-1. **Puntero Láser Virtual con Ondas de Radar**: Permite al experto señalar componentes con precisión milimétrica.
-2. **Pines Paso a Paso (1, 2, 3...)**: Guía visual numerada secuencial para procedimientos complejos.
-3. **Congelador de Fotograma (Freeze-Frame)**: Permite detener la imagen para examinar detalles finos sin vibraciones.
-4. **Esquemas Industriales Interactivos**: Biblioteca de diagramas técnicos que se envían directamente al teléfono del técnico.
-5. **Generador de Órdenes de Trabajo**: Exportación en un clic de informe técnico formal con capturas de pantalla anotadas.
+Con VPN (Surfshark) o datos móviles, la conexión P2P directa suele fallar: el
+proyecto ya trae unos **TURN públicos de prueba** en
+[`js/rtc-config.js`](js/rtc-config.js). Si van lentos o caídos, saca una clave
+gratis en <https://dashboard.metered.ca/> y reemplázalos.
+
+## Estructura
+
+```
+index.html            Selector de rol
+remote-expert.html    Consola del técnico remoto
+field-tech.html       Vista móvil del técnico en campo
+js/webrtc-manager.js  Conexión WebRTC (PeerJS): cámara, mic, pantalla
+js/ar-canvas.js       Capa de anotación sincronizada
+js/rtc-config.js      Servidores ICE (STUN / TURN)
+server.py             Servidor estático para desarrollo local
+```

@@ -2,10 +2,10 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Abrir Simulador FieldLens AR en Navegador",
+      "name": "Abrir FieldLens en Navegador",
       "type": "chrome",
       "request": "launch",
-      "url": "http://localhost:8000/simulator.html",
+      "url": "http://localhost:8000/remote-expert.html",
       "webRoot": "${workspaceFolder}"
     },
     {

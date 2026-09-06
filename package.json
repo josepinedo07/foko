@@ -1,19 +1,19 @@
 {
   "name": "fieldlens-ar",
   "version": "1.0.0",
-  "description": "Plataforma de tele-asistencia técnica aumentada en tiempo real para operaciones en campo con WebRTC y AR.",
+  "description": "Soporte remoto por video: enlace/QR, videollamada WebRTC, puntero, dibujo, congelar, foto, grabación y compartir pantalla.",
   "main": "server.py",
   "scripts": {
     "start": "python3 server.py",
     "dev": "python3 server.py"
   },
   "keywords": [
-    "augmented-reality",
     "webrtc",
-    "remote-assistance",
+    "remote-support",
+    "video-call",
     "field-service",
-    "pwa"
+    "annotation"
   ],
-  "author": "Antigravity Team",
+  "author": "",
   "license": "MIT"
 }

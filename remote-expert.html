@@ -3,1129 +3,451 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>FieldLens AR • Cockpit de Experto Remoto</title>
-  <meta name="description" content="Consola de especialista remoto para asistencia técnica aumentada con puntero láser, anotaciones AR y esquemas técnicos sincronizados.">
+  <title>FieldLens · Consola del técnico remoto</title>
   <link rel="stylesheet" href="css/design-system.css">
-  <link rel="stylesheet" href="css/report.css">
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <style>
-    body, html {
-      height: 100%;
-      overflow: hidden;
-      background: var(--bg-space);
-    }
+    body { overflow: hidden; }
+    .app { display: flex; flex-direction: column; height: 100vh; }
 
-    .expert-cockpit {
-      display: flex;
-      height: 100vh;
-      width: 100vw;
-      overflow: hidden;
+    header {
+      display: flex; align-items: center; gap: 14px;
+      padding: 10px 16px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
     }
+    .brand { font-weight: 700; }
+    header .spacer { flex: 1; }
 
-    /* Left Control & Inspection Stage */
-    .expert-main-stage {
+    .stage {
+      position: relative;
       flex: 1;
-      display: flex;
-      flex-direction: column;
-      position: relative;
-      background: #030712;
-    }
-
-    /* Top Cockpit Header */
-    .cockpit-header {
-      height: 60px;
-      padding: 0 20px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      background: var(--bg-surface);
-      border-bottom: 1px solid var(--border-glass);
-      z-index: 30;
-    }
-
-    .brand-title {
-      font-size: 1.15rem;
-      font-weight: 800;
-      letter-spacing: 0.04em;
-      color: var(--neon-cyan);
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    /* Center Video Monitor Stage */
-    .monitor-stage-wrapper {
-      flex: 1;
-      position: relative;
-      display: flex;
-      align-items: center;
-      justify-content: center;
       background: #000;
       overflow: hidden;
-      cursor: crosshair;
+    }
+    #feed { width: 100%; height: 100%; object-fit: contain; display: block; }
+    #ar { position: absolute; inset: 0; width: 100%; height: 100%; cursor: crosshair; }
+
+    .placeholder {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 12px; color: var(--text-dim); text-align: center; padding: 20px;
     }
 
-    #expertVideo {
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
+    .toolbar {
+      position: absolute; top: 14px; left: 14px;
+      display: flex; flex-direction: column; gap: 6px;
+      background: rgba(23,26,33,0.92);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 8px;
     }
-
-    #expertSimCanvas {
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
-      display: none;
-    }
-
-    #expertArCanvas {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      z-index: 20;
-    }
-
-    /* Floating Tactical Toolbar */
-    .floating-tools-bar {
-      position: absolute;
-      top: 20px;
-      left: 20px;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      background: var(--bg-glass-strong);
-      padding: 12px;
-      border-radius: var(--radius-md);
-      border: 1px solid var(--border-glass);
-      box-shadow: var(--shadow-md);
-      z-index: 40;
-    }
-
-    .tool-btn {
-      width: 44px;
-      height: 44px;
-      border-radius: var(--radius-sm);
-      background: rgba(255, 255, 255, 0.06);
-      border: 1px solid var(--border-glass);
-      color: #fff;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
+    .tool {
+      display: flex; align-items: center; gap: 8px;
+      padding: 7px 12px;
+      border-radius: 8px;
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--text-dim);
+      font-size: 0.85rem; font-weight: 600;
       cursor: pointer;
-      transition: all 0.2s;
+      text-align: left;
+    }
+    .tool:hover { background: var(--surface-2); color: var(--text); }
+    .tool.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .swatches { display: flex; gap: 6px; padding: 6px 4px; border-top: 1px solid var(--border); margin-top: 2px; }
+    .swatch { width: 22px; height: 22px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; }
+    .swatch.active { border-color: #fff; }
+
+    .freeze-tag {
+      position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
+      background: var(--warn); color: #1a1200; font-weight: 700; font-size: 0.8rem;
+      padding: 6px 14px; border-radius: 999px; display: none;
+    }
+    .rec-tag {
+      position: absolute; top: 14px; right: 14px;
+      background: var(--danger); color: #fff; font-weight: 700; font-size: 0.8rem;
+      padding: 6px 12px; border-radius: 999px; display: none; align-items: center; gap: 7px;
+    }
+    .rec-tag::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: #fff; animation: blink 1s infinite; }
+
+    .actions {
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px 16px;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      overflow-x: auto;
+    }
+    .actions .spacer { flex: 1; }
+
+    .shots { display: flex; gap: 6px; }
+    .shots img {
+      width: 46px; height: 46px; object-fit: cover;
+      border-radius: 6px; border: 1px solid var(--border); cursor: pointer;
     }
 
-    .tool-btn:hover {
-      background: rgba(255, 255, 255, 0.12);
-      border-color: rgba(255, 255, 255, 0.3);
-    }
-
-    .tool-btn.active {
-      background: rgba(0, 240, 255, 0.2);
-      border-color: var(--neon-cyan);
-      color: var(--neon-cyan);
-      box-shadow: 0 0 14px var(--neon-cyan-glow);
-    }
-
-    .color-swatch-picker {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      align-items: center;
-      margin-top: 6px;
-      padding-top: 8px;
-      border-top: 1px solid rgba(255, 255, 255, 0.1);
-    }
-
-    .color-swatch {
-      width: 22px;
-      height: 22px;
-      border-radius: 50%;
-      cursor: pointer;
-      border: 2px solid transparent;
-      transition: transform 0.2s;
-    }
-
-    .color-swatch.active {
-      border-color: #fff;
-      transform: scale(1.15);
-      box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
-    }
-
-    /* Bottom Action Bar */
-    .cockpit-bottom-actions {
-      height: 64px;
-      padding: 0 20px;
-      background: var(--bg-surface);
-      border-top: 1px solid var(--border-glass);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      z-index: 30;
-    }
-
-    /* Right Session & Diagnostics Sidebar */
-    .expert-sidebar {
-      width: 380px;
-      background: var(--bg-surface-elevated);
-      border-left: 1px solid var(--border-glass);
-      display: flex;
-      flex-direction: column;
-      overflow-y: auto;
-      z-index: 30;
-    }
-
-    .sidebar-section {
-      padding: 18px 20px;
-      border-bottom: 1px solid var(--border-subtle);
-    }
-
-    .section-heading {
-      font-size: 0.8rem;
-      font-weight: 700;
-      letter-spacing: 0.08em;
-      color: var(--neon-cyan);
-      text-transform: uppercase;
-      margin-bottom: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .evidence-thumbs-strip {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 10px;
-      margin-top: 10px;
-    }
-
-    .evidence-thumb-item {
-      position: relative;
-      height: 100px;
-      border-radius: var(--radius-sm);
-      overflow: hidden;
-      border: 1px solid var(--border-glass);
-      background: #000;
-      cursor: pointer;
-    }
-
-    .evidence-thumb-item img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-
-    .evidence-thumb-item .time-tag {
-      position: absolute;
-      bottom: 4px;
-      right: 4px;
-      background: rgba(0,0,0,0.7);
-      padding: 2px 6px;
-      border-radius: 4px;
-      font-size: 0.68rem;
-      font-family: var(--font-mono);
-    }
-
-    /* Schematics Modal */
-    .schematics-grid-modal {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 16px;
-      margin-top: 16px;
-    }
-
-    .schematic-card-item {
-      background: var(--bg-surface);
-      border: 1px solid var(--border-glass);
-      border-radius: var(--radius-md);
-      padding: 14px;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-
-    .schematic-card-item:hover {
-      border-color: var(--neon-cyan);
-      box-shadow: 0 0 16px var(--neon-cyan-glow);
-    }
-
-    .schematic-card-item.selected {
-      border-color: var(--neon-amber);
-      background: rgba(255, 214, 0, 0.05);
-    }
-
-    .schematic-preview-box {
-      height: 140px;
-      background: #000;
-      border-radius: 6px;
-      overflow: hidden;
-      margin-bottom: 10px;
-    }
+    /* Modal invitar */
+    .invite-grid { display: grid; grid-template-columns: 1fr auto; gap: 20px; align-items: start; }
+    #qr { background: #fff; padding: 10px; border-radius: 10px; width: 176px; height: 176px; }
+    .link-row { display: flex; gap: 8px; margin-top: 4px; }
+    .muted { color: var(--text-dim); font-size: 0.82rem; line-height: 1.5; }
+    @media (max-width: 560px) { .invite-grid { grid-template-columns: 1fr; } }
   </style>
 </head>
 <body>
+  <div class="app">
+    <header>
+      <span class="brand">FieldLens</span>
+      <span id="status" class="status">iniciando…</span>
+      <span class="spacer"></span>
+      <button class="btn btn-primary" id="btnInvite">Invitar a campo</button>
+    </header>
 
-  <div class="expert-cockpit">
-    
-    <!-- Main Center Inspection Console -->
-    <main class="expert-main-stage">
-      
-      <!-- Top Cockpit Header -->
-      <header class="cockpit-header">
-        <div class="brand-title">
-          <span>FIELDLENS AR</span>
-          <span style="font-size:0.75rem; color:var(--text-muted); font-weight:400;">| COCKPIT ESPECIALISTA REMOTO</span>
-        </div>
+    <div class="stage" id="stage">
+      <video id="feed" autoplay playsinline></video>
+      <canvas id="ar"></canvas>
 
-        <div style="display:flex; align-items:center; gap:12px;">
-          <!-- Invite Mobile Technician Button -->
-          <button class="btn btn-primary" id="btnInviteMobile" style="display:flex; align-items:center; gap:8px; font-weight:700; box-shadow:0 0 20px rgba(0, 240, 255, 0.4); padding:7px 16px; font-size:0.85rem;">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
-            <span>📲 Conectar Teléfono (Android / iPhone)</span>
-          </button>
-
-          <span class="badge badge-live" id="expertLiveBadge">EN ESPERA</span>
-          <span class="badge badge-cyan" id="expertRoomBadge">SALA: SALA-1</span>
-          <span class="telemetry-tag" id="pingDisplay">LATENCIA: 14ms</span>
-        </div>
-      </header>
-
-      <!-- Central Video Monitor -->
-      <div class="monitor-stage-wrapper" id="monitorStage">
-        
-        <!-- Floating Tactical AR Toolbar -->
-        <aside class="floating-tools-bar">
-          <!-- Laser Pointer -->
-          <button class="tool-btn active" id="toolLaser" title="Puntero Láser Pulsante (Hover/Clic)">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/></svg>
-            <span style="font-size:0.62rem; margin-top:2px;">Láser</span>
-          </button>
-
-          <!-- Freehand Pen -->
-          <button class="tool-btn" id="toolPen" title="Rotulador Libre (Dibujo AR)">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/></svg>
-            <span style="font-size:0.62rem; margin-top:2px;">Dibujo</span>
-          </button>
-
-          <!-- Arrow -->
-          <button class="tool-btn" id="toolArrow" title="Flecha de Indicación">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-            <span style="font-size:0.62rem; margin-top:2px;">Flecha</span>
-          </button>
-
-          <!-- Inspection Circle -->
-          <button class="tool-btn" id="toolCircle" title="Círculo de Inspección">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg>
-            <span style="font-size:0.62rem; margin-top:2px;">Zona</span>
-          </button>
-
-          <!-- Step Pins (1, 2, 3...) -->
-          <button class="tool-btn" id="toolStepPin" title="Pines de Pasos Enumerados (1, 2, 3...)">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-            <span style="font-size:0.62rem; margin-top:2px;">Pasos</span>
-          </button>
-
-          <!-- Color Swatches -->
-          <div class="color-swatch-picker">
-            <div class="color-swatch active" data-color="#00f0ff" style="background:#00f0ff;" title="Cian Eléctrico"></div>
-            <div class="color-swatch" data-color="#ffd600" style="background:#ffd600;" title="Amarillo Precaución"></div>
-            <div class="color-swatch" data-color="#ff0055" style="background:#ff0055;" title="Fucsia Alta Visibilidad"></div>
-            <div class="color-swatch" data-color="#00e676" style="background:#00e676;" title="Verde Confirmado"></div>
-          </div>
-
-          <div style="border-top:1px solid rgba(255,255,255,0.1); padding-top:6px; margin-top:4px;">
-            <button class="tool-btn" id="btnUndo" title="Deshacer último trazo" style="height:34px;">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg>
-            </button>
-            <button class="tool-btn" id="btnClear" title="Limpiar todas las anotaciones" style="height:34px; margin-top:4px;">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-            </button>
-          </div>
-        </aside>
-
-        <!-- Video Element from Field Mobile Stream -->
-        <video id="expertVideo" autoplay playsinline></video>
-        <!-- Canvas simulation loop fallback -->
-        <canvas id="expertSimCanvas" width="1280" height="720"></canvas>
-        <!-- Interactive AR Canvas Layer -->
-        <canvas id="expertArCanvas"></canvas>
-
-        <!-- Tactical HUD corner brackets -->
-        <div class="hud-corner-bracket hud-tl"></div>
-        <div class="hud-corner-bracket hud-tr"></div>
-        <div class="hud-corner-bracket hud-bl"></div>
-        <div class="hud-corner-bracket hud-br"></div>
-
-        <!-- Freeze Frame Status Banner -->
-        <div class="freeze-banner" id="freezeIndicator" style="display:none;">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="10" y1="15" x2="10" y2="9"/><line x1="14" y1="15" x2="14" y2="9"/></svg>
-          <span>MODO CONGELADO: INSPECCIÓN EN DETALLE</span>
-        </div>
+      <div class="placeholder" id="placeholder">
+        <div style="font-size:1.05rem; color:var(--text);">Esperando al técnico de campo</div>
+        <div class="muted">Comparte el enlace o el QR. En cuanto abra la cámara, aparecerá aquí.</div>
+        <button class="btn btn-primary" id="btnInvite2">Ver enlace y QR</button>
       </div>
 
-      <!-- Cockpit Bottom Actions Bar -->
-      <footer class="cockpit-bottom-actions">
-        <div style="display:flex; align-items:center; gap:10px;">
-          <!-- Freeze Frame Toggle -->
-          <button class="btn btn-amber" id="btnToggleFreeze">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-            <span id="freezeBtnText">Congelar Imagen</span>
-          </button>
-
-          <!-- Snapshot Evidence -->
-          <button class="btn btn-secondary" id="btnCaptureEvidence">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
-            <span>Capturar Evidencia</span>
-          </button>
-
-          <!-- Share Screen / CAD / Manual -->
-          <button class="btn btn-secondary" id="btnShareScreen">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-            <span id="shareScreenText">Compartir Pantalla</span>
-          </button>
+      <div class="toolbar" id="toolbar" hidden>
+        <button class="tool active" data-tool="pointer">Puntero</button>
+        <button class="tool" data-tool="pen">Lápiz</button>
+        <button class="tool" data-tool="arrow">Flecha</button>
+        <button class="tool" data-tool="ellipse">Círculo</button>
+        <div class="swatches">
+          <span class="swatch active" data-color="#ff3b30" style="background:#ff3b30"></span>
+          <span class="swatch" data-color="#ffd60a" style="background:#ffd60a"></span>
+          <span class="swatch" data-color="#30d158" style="background:#30d158"></span>
+          <span class="swatch" data-color="#0a84ff" style="background:#0a84ff"></span>
         </div>
-
-        <div style="display:flex; align-items:center; gap:10px;">
-          <!-- Open Schematics Library -->
-          <button class="btn btn-primary" id="btnOpenSchematics">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
-            <span>Esquemas y Diagramas</span>
-          </button>
-
-          <!-- Generate Service Report -->
-          <button class="btn btn-secondary" id="btnOpenReport">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-            <span>Informe de Servicio</span>
-          </button>
-        </div>
-      </footer>
-
-    </main>
-
-    <!-- Right Diagnostics & Evidences Sidebar -->
-    <aside class="expert-sidebar">
-      
-      <!-- Session Details -->
-      <div class="sidebar-section">
-        <div class="section-heading">
-          <span>SESIÓN ACTIVA</span>
-          <span class="badge badge-cyan" id="sidebarRoomCode">SALA-1</span>
-        </div>
-        <div style="font-size:0.85rem; color:var(--text-secondary); line-height:1.5;">
-          <strong style="color:#fff;">Equipo Asignado:</strong> Tablero Principal & Bomba #02<br>
-          <strong style="color:#fff;">Técnico en Campo:</strong> Carlos M.<br>
-          <strong style="color:#fff;">Ubicación:</strong> Planta Norte • Nave 4
-        </div>
-        <button class="btn btn-secondary" id="btnSidebarInvite" style="width:100%; margin-top:12px; font-size:0.82rem; display:flex; align-items:center; justify-content:center; gap:8px; border-color:var(--neon-cyan);">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
-          <span>Generar Enlace Móvil & QR</span>
-        </button>
+        <button class="tool" id="btnUndo">Deshacer</button>
+        <button class="tool" id="btnClear">Limpiar</button>
       </div>
 
-      <!-- Realtime Guidance Checklist -->
-      <div class="sidebar-section">
-        <div class="section-heading">
-          <span>SECUENCIA DE PASOS GUIADOS</span>
-          <button class="btn btn-secondary" id="btnAddStepChecklist" style="padding:2px 8px; font-size:0.75rem;">+ Paso</button>
-        </div>
-        <ul id="checklistItems" style="list-style:none; display:flex; flex-direction:column; gap:8px; font-size:0.85rem;">
-          <li style="display:flex; align-items:center; gap:8px;">
-            <input type="checkbox" checked style="accent-color:var(--neon-cyan);">
-            <span>[1] Verificar disparo de guardamotor Q1</span>
-          </li>
-          <li style="display:flex; align-items:center; gap:8px;">
-            <input type="checkbox" checked style="accent-color:var(--neon-cyan);">
-            <span>[2] Comprobar tensión trifásica en bornes</span>
-          </li>
-          <li style="display:flex; align-items:center; gap:8px;">
-            <input type="checkbox" style="accent-color:var(--neon-cyan);">
-            <span>[3] Desmontar tapa de rodamientos de la bomba</span>
-          </li>
-          <li style="display:flex; align-items:center; gap:8px;">
-            <input type="checkbox" style="accent-color:var(--neon-cyan);">
-            <span>[4] Comprobar holgura axial y sello mecánico</span>
-          </li>
-        </ul>
-      </div>
+      <div class="freeze-tag" id="freezeTag">Imagen congelada</div>
+      <div class="rec-tag" id="recTag">Grabando</div>
+    </div>
 
-      <!-- Evidences Gallery -->
-      <div class="sidebar-section" style="flex:1;">
-        <div class="section-heading">
-          <span>EVIDENCIAS ANOTADAS (<span id="evidenceCount">0</span>)</span>
-        </div>
-        <p class="hint-text">Las fotos capturadas con tus marcas y punteros láser se compilarán en el informe final.</p>
-        
-        <div class="evidence-thumbs-strip" id="evidenceThumbList">
-          <!-- Populated dynamically -->
-        </div>
-      </div>
-
-      <!-- Help info -->
-      <div class="sidebar-section" style="background:rgba(0,0,0,0.3); font-size:0.75rem; color:var(--text-muted);">
-        💡 <strong>Tip de Interacción:</strong> Mueve el cursor sobre el video para guiar al técnico con el láser en tiempo real. Usa <em>Pines</em> para marcar los componentes 1, 2, 3 paso a paso.
-      </div>
-    </aside>
-
-  </div>
-
-  <!-- Modal: Schematics & Blueprints Library -->
-  <div class="modal-backdrop" id="schematicsModal" style="display:none;">
-    <div class="modal-content" style="max-width:860px;">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-        <div>
-          <h2 style="font-size:1.3rem; font-weight:800; color:var(--neon-cyan);">Biblioteca de Esquemas Técnicos</h2>
-          <p style="font-size:0.85rem; color:var(--text-secondary);">Selecciona un plano para proyectarlo en el visor del técnico en campo.</p>
-        </div>
-        <button class="btn btn-secondary btn-icon" id="btnCloseSchematicsModal">✕</button>
-      </div>
-
-      <div class="schematics-grid-modal" id="schematicsGrid">
-        <!-- Rendered dynamically -->
-      </div>
-
-      <div style="margin-top:24px; display:flex; justify-content:space-between; align-items:center; padding-top:16px; border-top:1px solid var(--border-glass);">
-        <label class="btn btn-secondary" style="cursor:pointer;">
-          <span>📁 Subir Plano Propio (PNG/JPG/SVG)</span>
-          <input type="file" id="uploadSchematicInput" accept="image/*" style="display:none;">
-        </label>
-
-        <div style="display:flex; gap:10px;">
-          <button class="btn btn-secondary" id="btnCancelPush">Cerrar</button>
-          <button class="btn btn-primary" id="btnPushActiveSchematic">🚀 Enviar al Técnico en Campo</button>
-        </div>
-      </div>
+    <div class="actions" id="actions" hidden>
+      <button class="btn" id="btnFreeze">Congelar</button>
+      <button class="btn" id="btnPhoto">Foto</button>
+      <button class="btn" id="btnRecord">Grabar</button>
+      <button class="btn" id="btnScreen">Compartir pantalla</button>
+      <button class="btn" id="btnMic">Silenciar mic</button>
+      <span class="spacer"></span>
+      <div class="shots" id="shots"></div>
     </div>
   </div>
 
-  <!-- Modal: Service Work Order Report -->
-  <div class="modal-backdrop" id="reportModal" style="display:none;">
-    <div class="modal-content" style="max-width:920px;">
-      <div class="no-print" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-        <h2 style="font-size:1.3rem; font-weight:800; color:#fff;">Informe Técnico de Inspección</h2>
-        <div style="display:flex; gap:10px;">
-          <button class="btn btn-primary" id="btnPrintReport">🖨️ Imprimir / Guardar PDF</button>
-          <button class="btn btn-secondary btn-icon" id="btnCloseReportModal">✕</button>
-        </div>
-      </div>
+  <div class="modal" id="inviteModal">
+    <div class="modal-card">
+      <h2 style="margin-bottom:4px;">Invitar al técnico de campo</h2>
+      <p class="muted" style="margin-bottom:18px;">Que abra el enlace en su teléfono (Android o iPhone) y permita la cámara. No necesita instalar nada.</p>
 
-      <div id="reportContainer" class="report-modal-body">
-        <!-- Rendered dynamically by ReportGenerator -->
-      </div>
-    </div>
-  </div>
-
-  <!-- Modal: Invite Field Technician (Android / iPhone Link & QR Generator) -->
-  <div class="modal-backdrop" id="inviteModal" style="display:none;">
-    <div class="modal-content" style="max-width:780px;">
-      
-      <!-- Modal Header -->
-      <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:18px;">
+      <div class="invite-grid">
         <div>
-          <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
-            <span style="font-size:1.4rem;">📲</span>
-            <h2 style="font-size:1.3rem; font-weight:800; color:var(--neon-cyan);">Generar Enlace para Técnico (Android / iPhone)</h2>
+          <label class="label">Código de sala</label>
+          <input class="field" id="roomField" readonly style="margin-bottom:14px;">
+          <label class="label">Enlace</label>
+          <div class="link-row">
+            <input class="field" id="linkField" readonly>
+            <button class="btn" id="btnCopy">Copiar</button>
           </div>
-          <p style="font-size:0.85rem; color:var(--text-secondary);">
-            El técnico en campo abrirá la cámara de su smartphone para que lo guíes con Realidad Aumentada sin descargar ninguna app.
-          </p>
+          <div class="link-row">
+            <button class="btn" id="btnWhats" style="flex:1;">WhatsApp</button>
+            <button class="btn" id="btnOpen" style="flex:1;">Abrir en pestaña</button>
+          </div>
+          <p class="muted" id="inviteStatus" style="margin-top:14px;">Esperando conexión…</p>
         </div>
-        <button class="btn btn-secondary btn-icon" id="btnCloseInviteModal">✕</button>
-      </div>
-
-      <!-- OS Compatibility Pill Strip -->
-      <div style="display:flex; gap:12px; margin-bottom:20px; flex-wrap:wrap;">
-        <div style="background:rgba(0, 230, 118, 0.1); border:1px solid rgba(0, 230, 118, 0.3); padding:6px 12px; border-radius:var(--radius-sm); font-size:0.78rem; display:flex; align-items:center; gap:6px; color:var(--neon-emerald);">
-          <span>🤖</span>
-          <strong>Android:</strong> Compatible con Chrome, Edge y control de linterna
-        </div>
-        <div style="background:rgba(0, 240, 255, 0.1); border:1px solid rgba(0, 240, 255, 0.3); padding:6px 12px; border-radius:var(--radius-sm); font-size:0.78rem; display:flex; align-items:center; gap:6px; color:var(--neon-cyan);">
-          <span>🍎</span>
-          <strong>iPhone / iPad:</strong> Compatible con Safari y Chrome (WebRTC 60 FPS)
+        <div style="text-align:center;">
+          <div id="qr"></div>
+          <p class="muted" style="margin-top:8px;">Escanear con la cámara</p>
         </div>
       </div>
 
-      <!-- Modal Body Grid: Left Controls + Right QR Card -->
-      <div style="display:grid; grid-template-columns:1.2fr 0.8fr; gap:22px; align-items:start;">
-        
-        <!-- Left Side: Room Config, Host Selection & Quick Share -->
-        <div style="display:flex; flex-direction:column; gap:16px;">
-          
-          <!-- Room ID input & generator -->
-          <div style="background:rgba(255,255,255,0.03); border:1px solid var(--border-glass); border-radius:var(--radius-sm); padding:12px;">
-            <label style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:700; letter-spacing:0.05em; display:block; margin-bottom:6px;">
-              Código de Sala / Intervención:
-            </label>
-            <div style="display:flex; gap:8px;">
-              <input type="text" id="inviteRoomInput" style="flex:1; padding:8px 12px; background:rgba(0,0,0,0.5); border:1px solid rgba(255,255,255,0.2); border-radius:6px; color:#fff; font-family:var(--font-mono); font-size:0.95rem; text-transform:uppercase; font-weight:700;" />
-              <button class="btn btn-secondary" id="btnRegenerateRoom" title="Generar nueva sala aleatoria" style="font-size:0.8rem; padding:8px 12px;">
-                🎲 Nueva
-              </button>
-            </div>
-          </div>
-
-          <!-- Network Host Mode (Local Wi-Fi vs Current Domain vs Custom) -->
-          <div style="background:rgba(255,255,255,0.03); border:1px solid var(--border-glass); border-radius:var(--radius-sm); padding:12px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-              <label style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:700; letter-spacing:0.05em;">
-                Dirección de Red (Host):
-              </label>
-              <span id="detectedHostBadge" style="font-size:0.7rem; color:var(--neon-amber); font-family:var(--font-mono);">
-                IP Wi-Fi detectada
-              </span>
-            </div>
-            <select id="selectHostTarget" style="width:100%; padding:8px 10px; background:rgba(0,0,0,0.5); border:1px solid rgba(255,255,255,0.2); border-radius:6px; color:#fff; font-size:0.82rem; font-family:var(--font-mono); outline:none;">
-              <!-- Populated dynamically -->
-            </select>
-          </div>
-
-          <!-- Generated Link & Copy Field -->
-          <div>
-            <label style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:700; letter-spacing:0.05em; display:block; margin-bottom:6px;">
-              Enlace Directo para el Smartphone:
-            </label>
-            <div style="display:flex; gap:8px;">
-              <input type="text" id="inviteGeneratedLink" readonly style="flex:1; padding:10px 12px; background:rgba(0,240,255,0.06); border:1px solid var(--neon-cyan); border-radius:6px; color:var(--neon-cyan); font-family:var(--font-mono); font-size:0.82rem;" />
-              <button class="btn btn-primary" id="btnCopyInviteLink" style="padding:10px 16px; white-space:nowrap;">
-                <span id="copyLinkBtnText">📋 Copiar</span>
-              </button>
-            </div>
-          </div>
-
-          <!-- Fast Share Actions (WhatsApp, SMS, Email, Open Tab) -->
-          <div>
-            <label style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:700; letter-spacing:0.05em; display:block; margin-bottom:8px;">
-              Enviar al técnico con 1 Clic:
-            </label>
-            <div style="display:grid; grid-template-columns:repeat(2, 1fr); gap:8px;">
-              <!-- WhatsApp -->
-              <button class="btn btn-secondary" id="btnShareWhatsapp" style="display:flex; align-items:center; justify-content:center; gap:8px; background:rgba(37, 211, 102, 0.15); border-color:rgba(37, 211, 102, 0.5); color:#25d366; font-size:0.82rem;">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.816 9.816 0 0 0 12.04 2m.01 1.67c2.2 0 4.26.86 5.82 2.42a8.225 8.225 0 0 1 2.41 5.83c0 4.54-3.7 8.24-8.24 8.24-1.48 0-2.93-.4-4.2-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.196 8.196 0 0 1-1.26-4.38c0-4.54 3.7-8.24 8.24-8.24m4.52 11.66c-.25-.13-1.47-.72-1.7-.81-.23-.08-.39-.13-.56.13-.17.25-.64.81-.79.97-.14.17-.29.19-.54.06-.25-.13-1.06-.39-2.03-1.25-.75-.67-1.26-1.5-1.41-1.75-.14-.25-.02-.39.11-.51.11-.11.25-.29.37-.44.13-.14.17-.25.25-.42.08-.17.04-.31-.02-.44-.06-.13-.56-1.34-.76-1.84-.2-.49-.4-.42-.56-.43h-.47c-.17 0-.44.06-.67.31-.23.25-.88.86-.88 2.1 0 1.24.9 2.44 1.03 2.61.13.17 1.77 2.7 4.29 3.78.6.26 1.07.41 1.43.53.6.19 1.15.16 1.58.1.48-.07 1.47-.6 1.68-1.18.21-.58.21-1.07.14-1.18-.06-.12-.22-.19-.47-.31Z"/></svg>
-                <span>WhatsApp</span>
-              </button>
-
-              <!-- SMS -->
-              <button class="btn btn-secondary" id="btnShareSMS" style="display:flex; align-items:center; justify-content:center; gap:8px; font-size:0.82rem;">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                <span>Mensaje SMS</span>
-              </button>
-
-              <!-- Email -->
-              <button class="btn btn-secondary" id="btnShareEmail" style="display:flex; align-items:center; justify-content:center; gap:8px; font-size:0.82rem;">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-                <span>Email</span>
-              </button>
-
-              <!-- Test in Tab -->
-              <button class="btn btn-secondary" id="btnTestInTab" style="display:flex; align-items:center; justify-content:center; gap:8px; font-size:0.82rem;">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-                <span>Probar PWA</span>
-              </button>
-            </div>
-          </div>
-
-        </div>
-
-        <!-- Right Side: High-Contrast QR Code Card & Live Status -->
-        <div style="background:rgba(255,255,255,0.03); border:1px solid var(--border-glass); border-radius:var(--radius-md); padding:20px; display:flex; flex-direction:column; align-items:center; text-align:center;">
-          
-          <div style="font-size:0.82rem; font-weight:700; color:#fff; margin-bottom:12px;">
-            Escanear con Cámara Móvil
-          </div>
-
-          <div id="inviteQrContainer" style="background:#fff; padding:14px; border-radius:12px; width:200px; height:200px; display:flex; align-items:center; justify-content:center; margin-bottom:14px; box-shadow:0 0 25px rgba(0,240,255,0.25);">
-            <!-- Rendered by QRCode -->
-          </div>
-
-          <div style="font-size:0.75rem; color:var(--text-muted); line-height:1.4; margin-bottom:14px;">
-            Apunta la cámara de tu iPhone o Android a este código para abrir la app PWA instantáneamente.
-          </div>
-
-          <div id="inviteLiveStatus" style="width:100%; padding:8px 10px; border-radius:6px; background:rgba(255,214,0,0.1); border:1px solid rgba(255,214,0,0.3); color:var(--neon-amber); font-size:0.78rem; font-weight:600;">
-            ⏳ Esperando conexión del técnico...
-          </div>
-
-        </div>
-
+      <div style="text-align:right; margin-top:20px;">
+        <button class="btn btn-primary" id="btnDone">Listo</button>
       </div>
-
-      <!-- Footer Info Tip -->
-      <div style="margin-top:20px; padding-top:14px; border-top:1px solid var(--border-subtle); display:flex; justify-content:space-between; align-items:center; font-size:0.78rem; color:var(--text-muted);">
-        <span>🔒 Conexión cifrada punto a punto WebRTC (P2P DataChannel y MediaStream).</span>
-        <button class="btn btn-secondary" id="btnDoneInvite" style="padding:6px 16px;">Listo</button>
-      </div>
-
     </div>
   </div>
 
   <script src="js/vendor/qrcode.min.js"></script>
-
   <script type="module">
     import { ARCanvas } from './js/ar-canvas.js';
     import { WebRTCManager } from './js/webrtc-manager.js';
-    import { SchematicsManager, BUILTIN_SCHEMATICS } from './js/schematics-manager.js';
-    import { ReportGenerator } from './js/report-generator.js';
-    import { EquipmentSimulator } from './js/equipment-simulator.js';
 
-    // Room ID from URL: ?room=SALA-1
-    const urlParams = new URLSearchParams(window.location.search);
-    const roomId = urlParams.get('room') || 'SALA-1';
-    document.getElementById('expertRoomBadge').textContent = `SALA: ${roomId}`;
-    document.getElementById('sidebarRoomCode').textContent = roomId;
+    const $ = (id) => document.getElementById(id);
+    const params = new URLSearchParams(location.search);
 
-    const expertVideo = document.getElementById('expertVideo');
-    const simCanvas = document.getElementById('expertSimCanvas');
-    const arCanvasEl = document.getElementById('expertArCanvas');
-    const freezeIndicator = document.getElementById('freezeIndicator');
-    const freezeBtnText = document.getElementById('freezeBtnText');
+    function newCode() { return 'FL-' + Math.random().toString(16).slice(2, 6).toUpperCase(); }
+    let roomCode = (params.get('room') || newCode()).toUpperCase();
 
-    let arCanvas = null;
-    let webrtc = null;
-    let schematicsMgr = null;
-    let reportGen = null;
-    let equipmentSim = null;
-    let isFrozen = false;
-    let isScreenSharing = false;
+    const feed = $('feed');
+    const statusEl = $('status');
+    let connected = false;
+    let frozen = false;
+    let screenOn = false;
+    let micOn = true;
+    let lanHost = null; // IP de la Wi-Fi cuando la consola se abre en localhost
 
-    // Initialize AR Canvas
-    arCanvas = new ARCanvas(arCanvasEl, {
-      isInteractive: true,
-      onEmitAction: (action) => {
-        if (webrtc) webrtc.sendMessage(action);
-      }
+    // ---- AR overlay ----
+    const ar = new ARCanvas($('ar'), {
+      interactive: true,
+      getAspect: () => (feed.videoWidth ? feed.videoWidth / feed.videoHeight : null),
+      onEmit: (msg) => webrtc.send(msg),
     });
 
-    // Initialize Schematics & Report
-    schematicsMgr = new SchematicsManager({
-      onPushToField: (schematic) => {
-        if (webrtc) {
-          webrtc.sendMessage({
-            type: 'schematic_push',
-            schematic
-          });
-        }
-      }
+    $('toolbar').querySelectorAll('.tool[data-tool]').forEach((b) => {
+      b.addEventListener('click', () => {
+        $('toolbar').querySelectorAll('.tool[data-tool]').forEach((x) => x.classList.remove('active'));
+        b.classList.add('active');
+        ar.tool = b.dataset.tool;
+      });
     });
-    reportGen = new ReportGenerator();
+    $('toolbar').querySelectorAll('.swatch').forEach((s) => {
+      s.addEventListener('click', () => {
+        $('toolbar').querySelectorAll('.swatch').forEach((x) => x.classList.remove('active'));
+        s.classList.add('active');
+        ar.color = s.dataset.color;
+      });
+    });
+    $('btnUndo').addEventListener('click', () => ar.undo());
+    $('btnClear').addEventListener('click', () => ar.clear());
 
-    // Initialize WebRTC
-    webrtc = new WebRTCManager({
+    // ---- WebRTC ----
+    const webrtc = new WebRTCManager({
       role: 'expert',
-      roomId: roomId,
+      roomCode,
       onRemoteStream: (stream) => {
-        console.log('[Expert] Video stream recibido del técnico!');
-        expertVideo.srcObject = stream;
-        expertVideo.style.display = 'block';
-        simCanvas.style.display = 'none';
-        if (equipmentSim) equipmentSim.stop();
+        feed.srcObject = stream;
+        feed.play().catch(() => {});
+        $('placeholder').hidden = true;
+        $('toolbar').hidden = false;
+        $('actions').hidden = false;
       },
-      onDataMessage: (action) => {
-        if (action.type === 'tech_ping') {
-          // Field tech tapped screen
-          arCanvas.addLaserPing(action.normX, action.normY, '#ffd600');
-        }
+      onData: (msg) => {
+        if (msg.type === 'hello') return;
+        ar.handleRemote(msg);
       },
-      onConnectionStatus: (info) => {
-        console.log('[Expert Status]', info);
-      }
-    });
-
-    webrtc.initPeer();
-
-    // Fallback: If no real video received after 1.5s, launch realistic industrial simulator loop
-    setTimeout(() => {
-      if (!expertVideo.srcObject) {
-        simCanvas.style.display = 'block';
-        expertVideo.style.display = 'none';
-        equipmentSim = new EquipmentSimulator(simCanvas);
-        equipmentSim.start();
-      }
-    }, 1500);
-
-    // Toolbar Tool Selection
-    const toolButtons = {
-      laser: document.getElementById('toolLaser'),
-      pen: document.getElementById('toolPen'),
-      arrow: document.getElementById('toolArrow'),
-      circle: document.getElementById('toolCircle'),
-      step_pin: document.getElementById('toolStepPin')
-    };
-
-    function setActiveTool(toolKey) {
-      Object.values(toolButtons).forEach(btn => btn.classList.remove('active'));
-      toolButtons[toolKey].classList.add('active');
-      arCanvas.currentTool = toolKey;
-    }
-
-    Object.entries(toolButtons).forEach(([toolKey, btn]) => {
-      btn.addEventListener('click', () => setActiveTool(toolKey));
-    });
-
-    // Color Swatches
-    document.querySelectorAll('.color-swatch').forEach(swatch => {
-      swatch.addEventListener('click', () => {
-        document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
-        swatch.classList.add('active');
-        arCanvas.currentColor = swatch.dataset.color;
-      });
-    });
-
-    // Undo & Clear
-    document.getElementById('btnUndo').addEventListener('click', () => arCanvas.undo(true));
-    document.getElementById('btnClear').addEventListener('click', () => arCanvas.clear(true));
-
-    // Freeze Frame Toggle
-    document.getElementById('btnToggleFreeze').addEventListener('click', () => {
-      isFrozen = !isFrozen;
-      if (isFrozen) {
-        const sourceEl = expertVideo.style.display !== 'none' ? expertVideo : simCanvas;
-        const frameData = arCanvas.captureFrame(sourceEl);
-        arCanvas.setFrozenFrame(frameData);
-        freezeIndicator.style.display = 'flex';
-        freezeBtnText.textContent = 'Reanudar Video';
-        webrtc.sendMessage({
-          type: 'freeze',
-          dataUrl: frameData
-        });
-      } else {
-        arCanvas.unfreezeFrame();
-        freezeIndicator.style.display = 'none';
-        freezeBtnText.textContent = 'Congelar Imagen';
-        webrtc.sendMessage({
-          type: 'freeze',
-          dataUrl: null
-        });
-      }
-    });
-
-    // Capture Evidence Snapshot
-    document.getElementById('btnCaptureEvidence').addEventListener('click', () => {
-      const sourceEl = expertVideo.style.display !== 'none' ? expertVideo : simCanvas;
-      const dataUrl = arCanvas.captureFrame(sourceEl);
-      const ev = reportGen.addEvidence(dataUrl, `Marcas de diagnóstico - ${new Date().toLocaleTimeString()}`);
-      
-      // Update UI
-      document.getElementById('evidenceCount').textContent = reportGen.getEvidences().length;
-      const thumbList = document.getElementById('evidenceThumbList');
-      const thumb = document.createElement('div');
-      thumb.className = 'evidence-thumb-item';
-      thumb.innerHTML = `
-        <img src="${dataUrl}" alt="Evidencia" />
-        <span class="time-tag">${ev.timestamp}</span>
-      `;
-      thumbList.appendChild(thumb);
-
-      // Brief flash animation
-      const flash = document.createElement('div');
-      flash.style.position = 'absolute';
-      flash.style.inset = '0';
-      flash.style.background = '#fff';
-      flash.style.opacity = '0.7';
-      flash.style.transition = 'opacity 0.4s';
-      flash.style.pointerEvents = 'none';
-      flash.style.zIndex = '100';
-      document.getElementById('monitorStage').appendChild(flash);
-      setTimeout(() => flash.style.opacity = '0', 50);
-      setTimeout(() => flash.remove(), 450);
-    });
-
-    // Share Screen
-    document.getElementById('btnShareScreen').addEventListener('click', async () => {
-      if (!isScreenSharing) {
-        const stream = await webrtc.startScreenShare();
-        if (stream) {
-          isScreenSharing = true;
-          document.getElementById('shareScreenText').textContent = 'Dejar de Compartir';
-          document.getElementById('btnShareScreen').classList.add('btn-active');
-        }
-      } else {
-        webrtc.stopScreenShare();
-        isScreenSharing = false;
-        document.getElementById('shareScreenText').textContent = 'Compartir Pantalla';
-        document.getElementById('btnShareScreen').classList.remove('btn-active');
-      }
-    });
-
-    // Schematics Modal Setup
-    const schematicsModal = document.getElementById('schematicsModal');
-    const schematicsGrid = document.getElementById('schematicsGrid');
-
-    function renderSchematicsGrid() {
-      schematicsGrid.innerHTML = '';
-      schematicsMgr.getAll().forEach(s => {
-        const card = document.createElement('div');
-        card.className = `schematic-card-item ${schematicsMgr.activeSchematic?.id === s.id ? 'selected' : ''}`;
-        card.innerHTML = `
-          <div class="schematic-preview-box">${s.svg || `<img src="${s.imageUrl}" style="width:100%; height:100%; object-fit:contain;"/>`}</div>
-          <div style="font-weight:700; font-size:0.92rem; color:#fff; margin-bottom:4px;">${s.title}</div>
-          <div style="font-size:0.75rem; color:var(--neon-cyan); margin-bottom:6px;">${s.category}</div>
-          <div style="font-size:0.78rem; color:var(--text-muted); line-height:1.4;">${s.description}</div>
-        `;
-        card.addEventListener('click', () => {
-          document.querySelectorAll('.schematic-card-item').forEach(c => c.classList.remove('selected'));
-          card.classList.add('selected');
-          schematicsMgr.setActive(s.id);
-        });
-        schematicsGrid.appendChild(card);
-      });
-    }
-
-    document.getElementById('btnOpenSchematics').addEventListener('click', () => {
-      renderSchematicsGrid();
-      schematicsModal.style.display = 'flex';
-    });
-
-    document.getElementById('btnCloseSchematicsModal').addEventListener('click', () => {
-      schematicsModal.style.display = 'none';
-    });
-    document.getElementById('btnCancelPush').addEventListener('click', () => {
-      schematicsModal.style.display = 'none';
-    });
-
-    document.getElementById('btnPushActiveSchematic').addEventListener('click', () => {
-      if (!schematicsMgr.activeSchematic) {
-        schematicsMgr.setActive(BUILTIN_SCHEMATICS[0].id);
-      }
-      schematicsMgr.pushActiveToField();
-      schematicsModal.style.display = 'none';
-      alert('¡Esquema técnico enviado con éxito a la pantalla del técnico en campo!');
-    });
-
-    // Custom Blueprint Upload
-    document.getElementById('uploadSchematicInput').addEventListener('change', (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = (evt) => {
-        const custom = {
-          id: 'custom_' + Date.now(),
-          title: file.name.replace(/\.[^/.]+$/, ""),
-          category: 'Plano Personalizado',
-          description: 'Plano subido por el especialista durante la sesión.',
-          imageUrl: evt.target.result,
-          svg: `<img src="${evt.target.result}" style="width:100%; height:100%; object-fit:contain;" />`
-        };
-        schematicsMgr.addCustomSchematic(custom);
-        schematicsMgr.setActive(custom.id);
-        renderSchematicsGrid();
-      };
-      reader.readAsDataURL(file);
-    });
-
-    // Report Modal
-    const reportModal = document.getElementById('reportModal');
-    document.getElementById('btnOpenReport').addEventListener('click', () => {
-      document.getElementById('reportContainer').innerHTML = reportGen.generateHTML();
-      reportModal.style.display = 'flex';
-    });
-
-    document.getElementById('btnCloseReportModal').addEventListener('click', () => {
-      reportModal.style.display = 'none';
-    });
-
-    document.getElementById('btnPrintReport').addEventListener('click', () => {
-      window.print();
-    });
-
-    // ==========================================
-    // MOBILE INVITE & QR CODE GENERATOR LOGIC
-    // ==========================================
-    const inviteModal = document.getElementById('inviteModal');
-    const btnInviteMobile = document.getElementById('btnInviteMobile');
-    const btnSidebarInvite = document.getElementById('btnSidebarInvite');
-    const btnCloseInviteModal = document.getElementById('btnCloseInviteModal');
-    const btnDoneInvite = document.getElementById('btnDoneInvite');
-    const inviteRoomInput = document.getElementById('inviteRoomInput');
-    const btnRegenerateRoom = document.getElementById('btnRegenerateRoom');
-    const selectHostTarget = document.getElementById('selectHostTarget');
-    const inviteGeneratedLink = document.getElementById('inviteGeneratedLink');
-    const btnCopyInviteLink = document.getElementById('btnCopyInviteLink');
-    const copyLinkBtnText = document.getElementById('copyLinkBtnText');
-    const inviteQrContainer = document.getElementById('inviteQrContainer');
-    const inviteLiveStatus = document.getElementById('inviteLiveStatus');
-    const detectedHostBadge = document.getElementById('detectedHostBadge');
-
-    let currentInviteRoom = roomId;
-    let localLanIp = null;
-    let qrInstance = null;
-
-    // Detect server local LAN IP
-    async function fetchServerInfo() {
-      try {
-        const res = await fetch('/api/info');
-        if (res.ok) {
-          const data = await res.json();
-          if (data.local_ip && data.local_ip !== '127.0.0.1') {
-            localLanIp = `${data.local_ip}:${data.port || 8000}`;
+      onScreenShareStopped: () => screenDone(),
+      onStatus: (s) => {
+        if (s.state === 'connected') {
+          connected = true;
+          statusEl.className = 'status connected';
+          statusEl.textContent = 'Conectado';
+          $('inviteStatus').textContent = 'Técnico conectado ✓';
+        } else if (s.state === 'waiting') {
+          statusEl.className = 'status waiting';
+          statusEl.textContent = 'Sala ' + roomCode + ' · esperando';
+        } else if (s.state === 'disconnected') {
+          connected = false;
+          statusEl.className = 'status waiting';
+          statusEl.textContent = 'Técnico desconectado';
+        } else if (s.state === 'error') {
+          if (s.message && s.message.includes('ya está en uso')) {
+            roomCode = newCode();
+            webrtc.roomCode = roomCode;
+            webrtc.destroy();
+            setTimeout(start, 300);
+            return;
           }
+          statusEl.className = 'status error';
+          statusEl.textContent = s.message || 'Error';
         }
-      } catch (e) {
-        console.warn('API /api/info no disponible, usando host por defecto');
-      }
+      },
+    });
+
+    async function start() {
+      await detectLanHost();
+      try { await webrtc.startMic(); } catch (_) { /* sin micrófono está bien */ }
+      await webrtc.initPeer();
+      refreshInvite();
     }
+    start();
 
-    function populateHostOptions() {
-      selectHostTarget.innerHTML = '';
-      const currentHost = window.location.host;
-
-      if (localLanIp) {
-        const optLan = document.createElement('option');
-        optLan.value = localLanIp;
-        optLan.textContent = `📶 Wi-Fi Red Local (http://${localLanIp}) [Recomendado para Móvil]`;
-        optLan.selected = true;
-        selectHostTarget.appendChild(optLan);
-        detectedHostBadge.textContent = `IP Wi-Fi: ${localLanIp}`;
-      }
-
-      if (!localLanIp || currentHost !== localLanIp) {
-        const optCurrent = document.createElement('option');
-        optCurrent.value = currentHost;
-        optCurrent.textContent = `🌐 Host Actual (${currentHost})`;
-        if (!localLanIp) optCurrent.selected = true;
-        selectHostTarget.appendChild(optCurrent);
-      }
-
-      const optCustom = document.createElement('option');
-      optCustom.value = 'CUSTOM';
-      optCustom.textContent = `⚙️ Personalizado (Túnel ngrok / Cloudflare / Dominio externo)...`;
-      selectHostTarget.appendChild(optCustom);
-    }
-
-    function computeMobileUrl() {
-      const selectedHost = selectHostTarget.value;
-      const room = inviteRoomInput.value.trim().toUpperCase() || currentInviteRoom;
-      const protocol = window.location.protocol;
-      return `${protocol}//${selectedHost}/field-tech.html?room=${room}&auto=1`;
-    }
-
-    function updateInviteUI() {
-      const url = computeMobileUrl();
-      inviteGeneratedLink.value = url;
-
-      // Render QR Code
-      inviteQrContainer.innerHTML = '';
-      if (typeof QRCode !== 'undefined') {
-        qrInstance = new QRCode(inviteQrContainer, {
-          text: url,
-          width: 190,
-          height: 190,
-          colorDark: '#060911',
-          colorLight: '#ffffff',
-          correctLevel: QRCode.CorrectLevel.M
-        });
+    // ---- Barra inferior ----
+    $('btnFreeze').addEventListener('click', () => {
+      if (!frozen && !feed.videoWidth) return;
+      frozen = !frozen;
+      if (frozen) {
+        const shot = ar.composite(feed).toDataURL('image/jpeg', 0.85);
+        ar.setFrozen(shot);
+        webrtc.send({ type: 'freeze', dataUrl: shot });
+        $('freezeTag').style.display = 'block';
+        $('btnFreeze').classList.add('on');
+        $('btnFreeze').textContent = 'Reanudar';
       } else {
-        inviteQrContainer.innerHTML = `<a href="${url}" target="_blank" style="color:var(--neon-cyan); font-weight:bold; font-size:0.8rem; word-break:break-all;">${url}</a>`;
+        ar.clearFrozen();
+        webrtc.send({ type: 'freeze', dataUrl: null });
+        $('freezeTag').style.display = 'none';
+        $('btnFreeze').classList.remove('on');
+        $('btnFreeze').textContent = 'Congelar';
       }
-    }
-
-    async function openInviteModal() {
-      await fetchServerInfo();
-      populateHostOptions();
-      inviteRoomInput.value = currentInviteRoom;
-      updateInviteUI();
-      inviteModal.style.display = 'flex';
-    }
-
-    btnInviteMobile.addEventListener('click', openInviteModal);
-    btnSidebarInvite.addEventListener('click', openInviteModal);
-    btnCloseInviteModal.addEventListener('click', () => { inviteModal.style.display = 'none'; });
-    btnDoneInvite.addEventListener('click', () => { inviteModal.style.display = 'none'; });
-
-    // Regenerate room ID
-    btnRegenerateRoom.addEventListener('click', () => {
-      const randomCode = 'OP-' + Math.floor(1000 + Math.random() * 9000);
-      inviteRoomInput.value = randomCode;
-      currentInviteRoom = randomCode;
-      updateInviteUI();
     });
 
-    inviteRoomInput.addEventListener('input', () => {
-      currentInviteRoom = inviteRoomInput.value.trim().toUpperCase();
-      updateInviteUI();
+    $('btnPhoto').addEventListener('click', () => {
+      if (!feed.videoWidth) return;
+      const canvas = ar.composite(feed);
+      canvas.toBlob((blob) => {
+        const url = URL.createObjectURL(blob);
+        const name = `foto-${roomCode}-${stamp()}.jpg`;
+        downloadUrl(url, name);
+        const img = document.createElement('img');
+        img.src = url;
+        img.title = name;
+        img.addEventListener('click', () => window.open(url, '_blank'));
+        $('shots').prepend(img);
+      }, 'image/jpeg', 0.9);
+      flash();
     });
 
-    selectHostTarget.addEventListener('change', () => {
-      if (selectHostTarget.value === 'CUSTOM') {
-        const customHost = prompt('Ingresa tu dominio o dirección de túnel (ejemplo: abc123.ngrok.app o 192.168.1.50:8000):');
-        if (customHost && customHost.trim()) {
-          const opt = document.createElement('option');
-          opt.value = customHost.trim();
-          opt.textContent = `🌐 Personalizado (${customHost.trim()})`;
-          selectHostTarget.insertBefore(opt, selectHostTarget.firstChild);
-          selectHostTarget.value = customHost.trim();
-        } else {
-          selectHostTarget.selectedIndex = 0;
+    // ---- Grabación ----
+    let rec = null, recRaf = 0, recAudioCtx = null, recChunks = [];
+    $('btnRecord').addEventListener('click', () => rec ? stopRec() : startRec());
+
+    function startRec() {
+      if (!feed.videoWidth) return;
+      const c = document.createElement('canvas');
+      c.width = feed.videoWidth;
+      c.height = feed.videoHeight;
+      const g = c.getContext('2d');
+      const draw = () => {
+        g.drawImage(feed, 0, 0, c.width, c.height);
+        const cr = ar.contentRect();
+        if (cr.w > 0 && cr.h > 0) {
+          g.save();
+          g.scale(c.width / cr.w, c.height / cr.h);
+          g.translate(-cr.x, -cr.y);
+          g.drawImage(ar.canvas, 0, 0, ar.dw, ar.dh);
+          g.restore();
         }
-      }
-      updateInviteUI();
-    });
+        recRaf = requestAnimationFrame(draw);
+      };
+      draw();
 
-    // Copy to clipboard
-    btnCopyInviteLink.addEventListener('click', async () => {
-      const url = inviteGeneratedLink.value;
+      const vStream = c.captureStream(30);
+      recAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const dest = recAudioCtx.createMediaStreamDestination();
+      const addAudio = (s) => {
+        if (s && s.getAudioTracks().length) {
+          try { recAudioCtx.createMediaStreamSource(s).connect(dest); } catch (_) {}
+        }
+      };
+      addAudio(feed.srcObject);
+      addAudio(webrtc.localStream);
+
+      const mixed = new MediaStream([...vStream.getVideoTracks(), ...dest.stream.getAudioTracks()]);
+      recChunks = [];
+      rec = new MediaRecorder(mixed, pickMime());
+      rec.ondataavailable = (e) => e.data.size && recChunks.push(e.data);
+      rec.onstop = () => {
+        cancelAnimationFrame(recRaf);
+        recAudioCtx && recAudioCtx.close();
+        const blob = new Blob(recChunks, { type: recChunks[0]?.type || 'video/webm' });
+        downloadUrl(URL.createObjectURL(blob), `grabacion-${roomCode}-${stamp()}.webm`);
+        rec = null;
+      };
+      rec.start();
+      $('btnRecord').classList.add('rec-on');
+      $('btnRecord').textContent = 'Detener';
+      $('recTag').style.display = 'flex';
+    }
+
+    function stopRec() {
+      rec && rec.state !== 'inactive' && rec.stop();
+      $('btnRecord').classList.remove('rec-on');
+      $('btnRecord').textContent = 'Grabar';
+      $('recTag').style.display = 'none';
+    }
+
+    function pickMime() {
+      const opts = ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm'];
+      for (const m of opts) if (MediaRecorder.isTypeSupported(m)) return { mimeType: m };
+      return {};
+    }
+
+    // ---- Pantalla / mic ----
+    $('btnScreen').addEventListener('click', async () => {
+      if (screenOn) { webrtc.stopScreenShare(); screenDone(); return; }
       try {
-        await navigator.clipboard.writeText(url);
-        copyLinkBtnText.textContent = '✓ ¡Copiado!';
-        btnCopyInviteLink.style.background = 'var(--neon-emerald)';
-        setTimeout(() => {
-          copyLinkBtnText.textContent = '📋 Copiar';
-          btnCopyInviteLink.style.background = '';
-        }, 2200);
-      } catch (err) {
-        inviteGeneratedLink.select();
-        document.execCommand('copy');
-        alert('Enlace copiado al portapapeles');
-      }
+        await webrtc.startScreenShare();
+        screenOn = true;
+        $('btnScreen').classList.add('on');
+        $('btnScreen').textContent = 'Dejar de compartir';
+      } catch (_) {}
+    });
+    function screenDone() {
+      screenOn = false;
+      $('btnScreen').classList.remove('on');
+      $('btnScreen').textContent = 'Compartir pantalla';
+    }
+
+    $('btnMic').addEventListener('click', () => {
+      micOn = !micOn;
+      webrtc.setMicEnabled(micOn);
+      $('btnMic').classList.toggle('on', !micOn);
+      $('btnMic').textContent = micOn ? 'Silenciar mic' : 'Activar mic';
     });
 
-    // Share via WhatsApp
-    document.getElementById('btnShareWhatsapp').addEventListener('click', () => {
-      const url = inviteGeneratedLink.value;
-      const room = inviteRoomInput.value.trim().toUpperCase();
-      const message = encodeURIComponent(
-        `🚨 *FieldLens AR - Asistencia Técnica en Vivo*\n\nHola, el especialista remoto te invita a una sesión técnica con Realidad Aumentada.\n\n👉 *Pulsa el enlace en tu smartphone (Android o iPhone) para transmitir tu cámara:*\n${url}\n\nCódigo de Sala: *${room}*`
-      );
-      window.open(`https://api.whatsapp.com/send?text=${message}`, '_blank');
+    // ---- Invitar / QR ----
+    const inviteModal = $('inviteModal');
+
+    async function detectLanHost() {
+      if (!/^(localhost|127\.|0\.0\.0\.0)/.test(location.hostname)) return;
+      try {
+        const r = await fetch('/__ips');
+        const { ips } = await r.json();
+        if (ips && ips[0] && ips[0] !== '127.0.0.1') lanHost = `${ips[0]}:${location.port || (location.protocol === 'https:' ? 443 : 80)}`;
+      } catch (_) {}
+    }
+
+    function linkFor() {
+      // Relativo al directorio actual (funciona también en subrutas tipo GitHub Pages)
+      const url = new URL('field-tech.html', location.href);
+      url.search = '?room=' + encodeURIComponent(roomCode);
+      if (lanHost) url.host = lanHost; // solo cuando la consola se abrió en localhost
+      return url.toString();
+    }
+    function refreshInvite() {
+      const url = linkFor();
+      $('roomField').value = roomCode;
+      $('linkField').value = url;
+      $('qr').innerHTML = '';
+      if (window.QRCode) new QRCode($('qr'), { text: url, width: 156, height: 156, correctLevel: QRCode.CorrectLevel.M });
+      if (connected) $('inviteStatus').textContent = 'Técnico conectado ✓';
+    }
+    const openInvite = () => { refreshInvite(); inviteModal.classList.add('open'); };
+    $('btnInvite').addEventListener('click', openInvite);
+    $('btnInvite2').addEventListener('click', openInvite);
+    $('btnDone').addEventListener('click', () => inviteModal.classList.remove('open'));
+    $('btnCopy').addEventListener('click', async () => {
+      try { await navigator.clipboard.writeText(linkFor()); $('btnCopy').textContent = 'Copiado'; setTimeout(() => $('btnCopy').textContent = 'Copiar', 1500); } catch (_) {}
     });
-
-    // Share via SMS
-    document.getElementById('btnShareSMS').addEventListener('click', () => {
-      const url = inviteGeneratedLink.value;
-      const message = encodeURIComponent(`FieldLens AR: Pulsa para activar asistencia en vivo: ${url}`);
-      window.open(`sms:?body=${message}`, '_blank');
+    $('btnWhats').addEventListener('click', () => {
+      const t = encodeURIComponent(`Soporte por video FieldLens. Abre este enlace en tu teléfono y permite la cámara:\n${linkFor()}`);
+      window.open(`https://wa.me/?text=${t}`, '_blank');
     });
+    $('btnOpen').addEventListener('click', () => window.open(linkFor(), '_blank'));
 
-    // Share via Email
-    document.getElementById('btnShareEmail').addEventListener('click', () => {
-      const url = inviteGeneratedLink.value;
-      const room = inviteRoomInput.value.trim().toUpperCase();
-      const subject = encodeURIComponent(`Sesión de Asistencia Técnica FieldLens AR - Sala ${room}`);
-      const body = encodeURIComponent(
-        `Hola,\n\nSe ha iniciado una sesión de teleasistencia técnica con Realidad Aumentada.\n\nPor favor pulsa en el siguiente enlace desde tu teléfono móvil (Android o iPhone) para activar la cámara:\n${url}\n\nCódigo de Sala: ${room}\n\nEl sistema se conectará directamente con la consola del especialista remoto.`
-      );
-      window.location.href = `mailto:?subject=${subject}&body=${body}`;
-    });
-
-    // Test in Tab
-    document.getElementById('btnTestInTab').addEventListener('click', () => {
-      window.open(inviteGeneratedLink.value, '_blank');
-    });
-
-    // Listen to incoming remote technician connection
-    const origOnConnectionStatus = webrtc.onConnectionStatus;
-    webrtc.onConnectionStatus = (info) => {
-      if (origOnConnectionStatus) origOnConnectionStatus(info);
-      if (info && (info.status === 'p2p_active' || info.status === 'connected_peer')) {
-        document.getElementById('expertLiveBadge').textContent = 'CONECTADO';
-        document.getElementById('expertLiveBadge').style.background = 'rgba(0, 230, 118, 0.2)';
-        inviteLiveStatus.innerHTML = `🟢 <strong>¡Técnico Conectado!</strong> Enlace P2P WebRTC activo.`;
-        inviteLiveStatus.style.background = 'rgba(0, 230, 118, 0.15)';
-        inviteLiveStatus.style.borderColor = 'rgba(0, 230, 118, 0.4)';
-        inviteLiveStatus.style.color = 'var(--neon-emerald)';
-      }
-    };
-
+    // ---- utils ----
+    function stamp() { return new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-'); }
+    function downloadUrl(url, name) {
+      const a = document.createElement('a');
+      a.href = url; a.download = name;
+      document.body.appendChild(a); a.click(); a.remove();
+    }
+    function flash() {
+      const f = document.createElement('div');
+      f.style.cssText = 'position:absolute;inset:0;background:#fff;opacity:.6;transition:opacity .35s;pointer-events:none;z-index:60';
+      $('stage').appendChild(f);
+      requestAnimationFrame(() => { f.style.opacity = '0'; });
+      setTimeout(() => f.remove(), 400);
+    }
+    window.addEventListener('beforeunload', () => webrtc.destroy());
   </script>
 </body>
 </html>

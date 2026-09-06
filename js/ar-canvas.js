@@ -1,570 +1,319 @@
 /**
- * FieldLens AR - AR Canvas Engine
- * Coordinates normalization, synchronized drawing, laser pointer, and step pins.
+ * FieldLens - Capa de anotación sincronizada.
+ *
+ * Las coordenadas viajan normalizadas [0,1] relativas al RECTÁNGULO REAL del
+ * video (no al elemento), asumiendo object-fit: contain en ambos lados. Así un
+ * punto cae sobre la misma pieza en la pantalla del experto y del técnico.
+ *
+ * Herramientas: pointer (cursor en vivo), pen, arrow, ellipse. Deshacer / limpiar.
  */
 
 export class ARCanvas {
-  constructor(canvasElement, options = {}) {
-    this.canvas = canvasElement;
-    this.ctx = canvasElement.getContext('2d');
-    this.isInteractive = options.isInteractive || false;
-    this.onEmitAction = options.onEmitAction || (() => {});
-    
-    // State
-    this.currentTool = 'laser'; // 'laser', 'pen', 'arrow', 'circle', 'step_pin'
-    this.currentColor = '#00f0ff'; // #00f0ff, #ffd600, #ff0055, #00e676
-    this.brushSize = 4;
-    this.stepCounter = 1;
-    
-    // Active laser pointer
-    this.laser = {
-      active: false,
-      normX: 0.5,
-      normY: 0.5,
-      lastUpdate: 0,
-      opacity: 0,
-      pings: [] // radar shockwaves
-    };
+  constructor(canvas, options = {}) {
+    this.canvas = canvas;
+    this.ctx = canvas.getContext('2d');
+    this.interactive = options.interactive || false;
+    this.onEmit = options.onEmit || (() => {});
+    // Devuelve el aspect ratio (ancho/alto) de la fuente de video, o null.
+    this.getAspect = options.getAspect || (() => null);
 
-    // Stored persistent annotations
-    this.strokes = []; // array of { type: 'pen'|'arrow'|'circle', points, color, width }
-    this.pins = [];    // array of { id, number, normX, normY, label, color, createdAt }
-    this.isDrawing = false;
-    this.currentStroke = null;
+    this.tool = 'pointer';
+    this.color = '#ff3b30';
+    this.width = 4;
 
-    // Freeze frame state
-    this.frozenImage = null;
+    this.strokes = [];            // trazos confirmados
+    this.live = new Map();        // id -> trazo en progreso (local o remoto)
+    this.remoteCursor = null;     // { x, y, color, ts }
+    this.pings = [];              // { x, y, color, start }
+    this.frozen = null;           // Image congelada
 
-    this.resizeObserver = null;
-    this.init();
+    this._drawingId = null;
+    this._dpr = window.devicePixelRatio || 1;
+
+    this._loop = this._loop.bind(this);
+    this._resize = this._resize.bind(this);
+    window.addEventListener('resize', this._resize);
+    new ResizeObserver(this._resize).observe(canvas);
+    this._resize();
+    if (this.interactive) this._bind();
+    requestAnimationFrame(this._loop);
   }
 
-  init() {
-    this.handleResize = this.handleResize.bind(this);
-    this.renderLoop = this.renderLoop.bind(this);
+  _resize() {
+    const r = this.canvas.getBoundingClientRect();
+    this.dw = r.width;
+    this.dh = r.height;
+    this.canvas.width = r.width * this._dpr;
+    this.canvas.height = r.height * this._dpr;
+    this.ctx.setTransform(this._dpr, 0, 0, this._dpr, 0, 0);
+  }
 
-    window.addEventListener('resize', this.handleResize);
-    this.resizeObserver = new ResizeObserver(() => this.handleResize());
-    this.resizeObserver.observe(this.canvas.parentElement || this.canvas);
-
-    this.handleResize();
-
-    if (this.isInteractive) {
-      this.attachEventListeners();
+  // Rectángulo del contenido de video dentro del canvas (letterbox de contain).
+  contentRect() {
+    const aspect = this.getAspect();
+    if (!aspect || !isFinite(aspect)) return { x: 0, y: 0, w: this.dw, h: this.dh };
+    const elAspect = this.dw / this.dh;
+    if (elAspect > aspect) {
+      const w = this.dh * aspect;
+      return { x: (this.dw - w) / 2, y: 0, w, h: this.dh };
     }
-
-    requestAnimationFrame(this.renderLoop);
+    const h = this.dw / aspect;
+    return { x: 0, y: (this.dh - h) / 2, w: this.dw, h };
   }
 
-  handleResize() {
-    const rect = this.canvas.getBoundingClientRect();
-    const dpr = window.devicePixelRatio || 1;
-    this.canvas.width = rect.width * dpr;
-    this.canvas.height = rect.height * dpr;
-    this.ctx.scale(dpr, dpr);
-    this.displayWidth = rect.width;
-    this.displayHeight = rect.height;
+  _toNorm(clientX, clientY) {
+    const r = this.canvas.getBoundingClientRect();
+    const cr = this.contentRect();
+    const x = (clientX - r.left - cr.x) / cr.w;
+    const y = (clientY - r.top - cr.y) / cr.h;
+    return { x: Math.max(0, Math.min(1, x)), y: Math.max(0, Math.min(1, y)) };
   }
 
-  attachEventListeners() {
+  _fromNorm(nx, ny) {
+    const cr = this.contentRect();
+    return { x: cr.x + nx * cr.w, y: cr.y + ny * cr.h };
+  }
+
+  // ---- Entrada -----------------------------------------------------------
+
+  _bind() {
     const el = this.canvas;
-
-    // Mouse & Touch Unified Handling
-    const getNormCoords = (e) => {
-      const rect = el.getBoundingClientRect();
-      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-      const normX = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
-      const normY = Math.max(0, Math.min(1, (clientY - rect.top) / rect.height));
-      return { normX, normY };
+    const pos = (e) => {
+      const t = e.touches ? e.touches[0] : e;
+      return this._toNorm(t.clientX, t.clientY);
     };
 
-    const handlePointerDown = (e) => {
+    const down = (e) => {
       e.preventDefault();
-      const { normX, normY } = getNormCoords(e);
-      this.isDrawing = true;
+      const { x, y } = pos(e);
+      if (this.tool === 'pointer') {
+        this._drawingId = 'ptr';
+        this._emitCursor(x, y);
+        this.addPing(x, y, this.color);
+        this.onEmit({ type: 'ping', x, y, color: this.color });
+        return;
+      }
+      this._drawingId = 'l' + Date.now() + Math.random().toString(36).slice(2, 6);
+      const stroke = this.tool === 'pen'
+        ? { id: this._drawingId, kind: 'pen', points: [{ x, y }], color: this.color, width: this.width }
+        : { id: this._drawingId, kind: this.tool, x1: x, y1: y, x2: x, y2: y, color: this.color, width: this.width };
+      this.live.set(this._drawingId, stroke);
+      this.onEmit({ type: 'live', stroke });
+    };
 
-      if (this.currentTool === 'laser') {
-        this.setLaser(normX, normY, true);
-        this.addLaserPing(normX, normY, this.currentColor);
-        this.onEmitAction({
-          type: 'laser',
-          normX,
-          normY,
-          active: true,
-          ping: true,
-          color: this.currentColor
-        });
-      } else if (this.currentTool === 'step_pin') {
-        const pin = {
-          id: 'pin_' + Date.now(),
-          number: this.stepCounter++,
-          normX,
-          normY,
-          label: `Paso ${this.stepCounter - 1}`,
-          color: this.currentColor,
-          createdAt: Date.now()
-        };
-        this.pins.push(pin);
-        this.onEmitAction({ type: 'add_pin', pin });
-        this.addLaserPing(normX, normY, this.currentColor);
-      } else if (this.currentTool === 'pen') {
-        this.currentStroke = {
-          type: 'pen',
-          points: [{ normX, normY }],
-          color: this.currentColor,
-          width: this.brushSize
-        };
-        this.onEmitAction({
-          type: 'stroke_start',
-          stroke: this.currentStroke
-        });
-      } else if (this.currentTool === 'arrow' || this.currentTool === 'circle') {
-        this.currentStroke = {
-          type: this.currentTool,
-          start: { normX, normY },
-          end: { normX, normY },
-          color: this.currentColor,
-          width: this.brushSize
-        };
+    const hoverMove = (e) => {
+      if (this.tool !== 'pointer') return;
+      const { x, y } = this._toNorm(e.clientX, e.clientY);
+      this._emitCursor(x, y);
+    };
+
+    const move = (e) => {
+      const { x, y } = pos(e);
+      if (this.tool === 'pointer') {
+        if (e.type === 'touchmove' && this._drawingId === 'ptr') this._emitCursor(x, y);
+        return;
+      }
+      if (!this._drawingId) return;
+      const s = this.live.get(this._drawingId);
+      if (!s) return;
+      if (s.kind === 'pen') s.points.push({ x, y });
+      else { s.x2 = x; s.y2 = y; }
+      this.onEmit({ type: 'live', stroke: s });
+    };
+
+    const up = (e) => {
+      if (!this._drawingId) return;
+      if (this._drawingId === 'ptr') {
+        this._drawingId = null;
+        if (e && e.type === 'touchend') this.onEmit({ type: 'cursor', hidden: true });
+        return;
+      }
+      const s = this.live.get(this._drawingId);
+      this.live.delete(this._drawingId);
+      this._drawingId = null;
+      if (s) {
+        this.strokes.push(s);
+        this.onEmit({ type: 'commit', stroke: s });
       }
     };
 
-    const handlePointerMove = (e) => {
-      const { normX, normY } = getNormCoords(e);
-
-      if (this.currentTool === 'laser') {
-        this.setLaser(normX, normY, true);
-        this.onEmitAction({
-          type: 'laser',
-          normX,
-          normY,
-          active: true,
-          color: this.currentColor
-        });
-      } else if (this.isDrawing && this.currentStroke) {
-        if (this.currentTool === 'pen') {
-          this.currentStroke.points.push({ normX, normY });
-          this.onEmitAction({
-            type: 'stroke_move',
-            point: { normX, normY }
-          });
-        } else if (this.currentTool === 'arrow' || this.currentTool === 'circle') {
-          this.currentStroke.end = { normX, normY };
-          this.onEmitAction({
-            type: 'shape_move',
-            stroke: this.currentStroke
-          });
-        }
+    const leave = () => {
+      if (this.tool === 'pointer') {
+        this.onEmit({ type: 'cursor', hidden: true });
       }
     };
 
-    const handlePointerUp = () => {
-      if (!this.isDrawing && this.currentTool !== 'laser') return;
-      this.isDrawing = false;
-
-      if (this.currentTool === 'laser') {
-        this.laser.active = false;
-        this.onEmitAction({
-          type: 'laser',
-          active: false
-        });
-      } else if (this.currentStroke) {
-        this.strokes.push(this.currentStroke);
-        this.onEmitAction({
-          type: 'stroke_end',
-          stroke: this.currentStroke
-        });
-        this.currentStroke = null;
-      }
-    };
-
-    el.addEventListener('mousedown', handlePointerDown);
-    window.addEventListener('mousemove', handlePointerMove);
-    window.addEventListener('mouseup', handlePointerUp);
-
-    el.addEventListener('touchstart', handlePointerDown, { passive: false });
-    window.addEventListener('touchmove', handlePointerMove, { passive: false });
-    window.addEventListener('touchend', handlePointerUp);
+    el.addEventListener('mousedown', down);
+    el.addEventListener('mousemove', hoverMove);
+    window.addEventListener('mousemove', move);
+    window.addEventListener('mouseup', up);
+    el.addEventListener('mouseleave', leave);
+    el.addEventListener('touchstart', down, { passive: false });
+    window.addEventListener('touchmove', move, { passive: false });
+    window.addEventListener('touchend', up);
   }
 
-  // Receive remote actions
-  handleRemoteAction(action) {
-    if (!action) return;
+  _emitCursor(x, y) {
+    this._cursorThrottle = this._cursorThrottle || 0;
+    const now = performance.now();
+    if (now - this._cursorThrottle < 16) return;
+    this._cursorThrottle = now;
+    this.onEmit({ type: 'cursor', x, y, color: this.color });
+  }
 
-    switch (action.type) {
-      case 'laser':
-        if (action.active) {
-          this.setLaser(action.normX, action.normY, true, action.color);
-          if (action.ping) {
-            this.addLaserPing(action.normX, action.normY, action.color || '#00f0ff');
-          }
-        } else {
-          this.laser.active = false;
-        }
+  // ---- Acciones remotas -----------------------------------------------
+
+  handleRemote(msg) {
+    if (!msg || !msg.type) return;
+    switch (msg.type) {
+      case 'cursor':
+        this.remoteCursor = msg.hidden ? null : { x: msg.x, y: msg.y, color: msg.color, ts: Date.now() };
         break;
-
-      case 'add_pin':
-        this.pins.push(action.pin);
-        this.addLaserPing(action.pin.normX, action.pin.normY, action.pin.color);
+      case 'ping':
+        this.addPing(msg.x, msg.y, msg.color);
         break;
-
-      case 'stroke_start':
-        this.remoteCurrentStroke = action.stroke;
+      case 'live':
+        this.live.set(msg.stroke.id, msg.stroke);
         break;
-
-      case 'stroke_move':
-        if (this.remoteCurrentStroke && this.remoteCurrentStroke.points) {
-          this.remoteCurrentStroke.points.push(action.point);
-        }
+      case 'commit':
+        this.live.delete(msg.stroke.id);
+        this.strokes.push(msg.stroke);
         break;
-
-      case 'shape_move':
-        this.remoteCurrentStroke = action.stroke;
-        break;
-
-      case 'stroke_end':
-        if (action.stroke) {
-          this.strokes.push(action.stroke);
-        }
-        this.remoteCurrentStroke = null;
-        break;
-
-      case 'clear':
-        this.clear(false);
-        break;
-
       case 'undo':
-        this.undo(false);
+        this.strokes.pop();
         break;
-        
+      case 'clear':
+        this.strokes = [];
+        this.live.clear();
+        break;
       case 'freeze':
-        if (action.dataUrl) {
-          this.setFrozenFrame(action.dataUrl);
-        } else {
-          this.unfreezeFrame();
-        }
+        if (msg.dataUrl) this.setFrozen(msg.dataUrl);
+        else this.clearFrozen();
         break;
     }
   }
 
-  setLaser(normX, normY, active = true, color = null) {
-    this.laser.normX = normX;
-    this.laser.normY = normY;
-    this.laser.active = active;
-    this.laser.lastUpdate = Date.now();
-    this.laser.opacity = 1;
-    if (color) this.laser.color = color;
-  }
+  undo() { this.strokes.pop(); this.onEmit({ type: 'undo' }); }
+  clear() { this.strokes = []; this.live.clear(); this.onEmit({ type: 'clear' }); }
 
-  addLaserPing(normX, normY, color = '#00f0ff') {
-    this.laser.pings.push({
-      normX,
-      normY,
-      radius: 8,
-      maxRadius: 65,
-      alpha: 1,
-      color: color || '#00f0ff',
-      startTime: Date.now()
-    });
-  }
+  addPing(x, y, color) { this.pings.push({ x, y, color: color || '#ff3b30', start: performance.now() }); }
 
-  setFrozenFrame(dataUrl) {
+  setFrozen(dataUrl) {
     const img = new Image();
-    img.onload = () => {
-      this.frozenImage = img;
-    };
+    img.onload = () => { this.frozen = img; };
     img.src = dataUrl;
   }
+  clearFrozen() { this.frozen = null; }
 
-  unfreezeFrame() {
-    this.frozenImage = null;
-  }
+  // ---- Render ---------------------------------------------------------
 
-  clear(emit = true) {
-    this.strokes = [];
-    this.pins = [];
-    this.currentStroke = null;
-    this.remoteCurrentStroke = null;
-    this.stepCounter = 1;
-    if (emit) {
-      this.onEmitAction({ type: 'clear' });
-    }
-  }
-
-  undo(emit = true) {
-    if (this.pins.length > 0 && (this.strokes.length === 0 || this.pins[this.pins.length - 1].createdAt > (this.strokes[this.strokes.length - 1].createdAt || 0))) {
-      this.pins.pop();
-      this.stepCounter = Math.max(1, this.pins.length + 1);
-    } else if (this.strokes.length > 0) {
-      this.strokes.pop();
-    }
-    if (emit) {
-      this.onEmitAction({ type: 'undo' });
-    }
-  }
-
-  // 60 FPS Render Loop
-  renderLoop() {
-    const width = this.displayWidth || this.canvas.width;
-    const height = this.displayHeight || this.canvas.height;
+  _loop() {
     const ctx = this.ctx;
+    ctx.clearRect(0, 0, this.dw, this.dh);
 
-    ctx.clearRect(0, 0, width, height);
-
-    // 1. Draw Frozen frame if active
-    if (this.frozenImage) {
-      ctx.drawImage(this.frozenImage, 0, 0, width, height);
-      // Subtle freeze banner vignette
-      ctx.fillStyle = 'rgba(0, 240, 255, 0.06)';
-      ctx.fillRect(0, 0, width, height);
+    if (this.frozen) {
+      const cr = this.contentRect();
+      ctx.drawImage(this.frozen, cr.x, cr.y, cr.w, cr.h);
     }
 
-    // 2. Draw Committed Strokes
-    this.strokes.forEach(stroke => this.drawStroke(ctx, stroke, width, height));
+    this.strokes.forEach((s) => this._drawStroke(s));
+    this.live.forEach((s) => this._drawStroke(s));
 
-    // 3. Draw in-progress strokes
-    if (this.currentStroke) {
-      this.drawStroke(ctx, this.currentStroke, width, height);
-    }
-    if (this.remoteCurrentStroke) {
-      this.drawStroke(ctx, this.remoteCurrentStroke, width, height);
-    }
-
-    // 4. Draw Step Pins
-    this.pins.forEach(pin => this.drawPin(ctx, pin, width, height));
-
-    // 5. Draw Radar Shockwave Pings
-    const now = Date.now();
-    for (let i = this.laser.pings.length - 1; i >= 0; i--) {
-      const ping = this.laser.pings[i];
-      const progress = (now - ping.startTime) / 800; // 800ms duration
-
-      if (progress >= 1) {
-        this.laser.pings.splice(i, 1);
-        continue;
-      }
-
-      const currentRadius = ping.radius + (ping.maxRadius - ping.radius) * progress;
-      const alpha = Math.max(0, 1 - progress);
-      const px = ping.normX * width;
-      const py = ping.normY * height;
-
-      ctx.save();
+    // Pings (anillo que se expande, ~700ms)
+    const now = performance.now();
+    this.pings = this.pings.filter((p) => now - p.start < 700);
+    this.pings.forEach((p) => {
+      const t = (now - p.start) / 700;
+      const { x, y } = this._fromNorm(p.x, p.y);
       ctx.beginPath();
-      ctx.arc(px, py, currentRadius, 0, Math.PI * 2);
-      ctx.strokeStyle = ping.color;
-      ctx.lineWidth = 2.5 * (1 - progress * 0.5);
-      ctx.globalAlpha = alpha * 0.9;
-      ctx.shadowColor = ping.color;
-      ctx.shadowBlur = 14;
+      ctx.arc(x, y, 6 + t * 34, 0, Math.PI * 2);
+      ctx.strokeStyle = p.color;
+      ctx.globalAlpha = 1 - t;
+      ctx.lineWidth = 3;
       ctx.stroke();
+      ctx.globalAlpha = 1;
+    });
 
-      // Inner sonar ripple
+    // Cursor remoto
+    if (this.remoteCursor && now - (this._rcAnim || 0) >= 0) {
+      const { x, y } = this._fromNorm(this.remoteCursor.x, this.remoteCursor.y);
       ctx.beginPath();
-      ctx.arc(px, py, currentRadius * 0.6, 0, Math.PI * 2);
-      ctx.lineWidth = 1.5;
-      ctx.globalAlpha = alpha * 0.5;
+      ctx.arc(x, y, 9, 0, Math.PI * 2);
+      ctx.fillStyle = this.remoteCursor.color;
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(x, y, 13, 0, Math.PI * 2);
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 2;
       ctx.stroke();
-      ctx.restore();
     }
 
-    // 6. Draw Animated Laser Pointer
-    if (this.laser.active || this.laser.opacity > 0.05) {
-      if (!this.laser.active) {
-        this.laser.opacity -= 0.04;
-      }
-      this.drawLaser(ctx, this.laser, width, height);
-    }
-
-    requestAnimationFrame(this.renderLoop);
+    requestAnimationFrame(this._loop);
   }
 
-  drawStroke(ctx, stroke, width, height) {
-    if (!stroke) return;
-    ctx.save();
-    ctx.strokeStyle = stroke.color || '#00f0ff';
-    ctx.lineWidth = stroke.width || 4;
+  _drawStroke(s) {
+    const ctx = this.ctx;
+    ctx.strokeStyle = s.color;
+    ctx.fillStyle = s.color;
+    ctx.lineWidth = s.width || 4;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
-    ctx.shadowColor = stroke.color || '#00f0ff';
-    ctx.shadowBlur = 10;
 
-    if (stroke.type === 'pen' && stroke.points && stroke.points.length > 0) {
+    if (s.kind === 'pen') {
+      if (!s.points.length) return;
       ctx.beginPath();
-      const first = stroke.points[0];
-      ctx.moveTo(first.normX * width, first.normY * height);
-
-      for (let i = 1; i < stroke.points.length; i++) {
-        const pt = stroke.points[i];
-        ctx.lineTo(pt.normX * width, pt.normY * height);
-      }
+      s.points.forEach((pt, i) => {
+        const { x, y } = this._fromNorm(pt.x, pt.y);
+        i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+      });
       ctx.stroke();
-    } else if (stroke.type === 'arrow' && stroke.start && stroke.end) {
-      const x1 = stroke.start.normX * width;
-      const y1 = stroke.start.normY * height;
-      const x2 = stroke.end.normX * width;
-      const y2 = stroke.end.normY * height;
+      return;
+    }
 
-      // Line
+    const a = this._fromNorm(s.x1, s.y1);
+    const b = this._fromNorm(s.x2, s.y2);
+
+    if (s.kind === 'arrow') {
       ctx.beginPath();
-      ctx.moveTo(x1, y1);
-      ctx.lineTo(x2, y2);
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
       ctx.stroke();
-
-      // Arrowhead
-      const angle = Math.atan2(y2 - y1, x2 - x1);
-      const headLen = 18;
+      const ang = Math.atan2(b.y - a.y, b.x - a.x);
+      const h = 16;
       ctx.beginPath();
-      ctx.moveTo(x2, y2);
-      ctx.lineTo(x2 - headLen * Math.cos(angle - Math.PI / 6), y2 - headLen * Math.sin(angle - Math.PI / 6));
-      ctx.lineTo(x2 - headLen * Math.cos(angle + Math.PI / 6), y2 - headLen * Math.sin(angle + Math.PI / 6));
+      ctx.moveTo(b.x, b.y);
+      ctx.lineTo(b.x - h * Math.cos(ang - Math.PI / 6), b.y - h * Math.sin(ang - Math.PI / 6));
+      ctx.lineTo(b.x - h * Math.cos(ang + Math.PI / 6), b.y - h * Math.sin(ang + Math.PI / 6));
       ctx.closePath();
-      ctx.fillStyle = stroke.color;
       ctx.fill();
-    } else if (stroke.type === 'circle' && stroke.start && stroke.end) {
-      const x1 = stroke.start.normX * width;
-      const y1 = stroke.start.normY * height;
-      const x2 = stroke.end.normX * width;
-      const y2 = stroke.end.normY * height;
-      const radius = Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
-
+    } else if (s.kind === 'ellipse') {
       ctx.beginPath();
-      ctx.arc(x1, y1, radius, 0, Math.PI * 2);
+      ctx.ellipse((a.x + b.x) / 2, (a.y + b.y) / 2, Math.abs(b.x - a.x) / 2, Math.abs(b.y - a.y) / 2, 0, 0, Math.PI * 2);
       ctx.stroke();
     }
-    ctx.restore();
   }
 
-  drawPin(ctx, pin, width, height) {
-    const x = pin.normX * width;
-    const y = pin.normY * height;
-    const color = pin.color || '#ffd600';
+  /**
+   * Compone la fuente de video + las anotaciones en un canvas nuevo y lo
+   * devuelve. `source` es un <video> o <canvas>. Usado para fotos y grabación.
+   */
+  composite(source, targetW, targetH) {
+    const c = document.createElement('canvas');
+    c.width = targetW || (source.videoWidth || source.width || this.dw);
+    c.height = targetH || (source.videoHeight || source.height || this.dh);
+    const g = c.getContext('2d');
+    if (this.frozen) g.drawImage(this.frozen, 0, 0, c.width, c.height);
+    else if (source) g.drawImage(source, 0, 0, c.width, c.height);
 
-    ctx.save();
-    // Glowing Pin Head
-    ctx.shadowColor = color;
-    ctx.shadowBlur = 16;
-    ctx.fillStyle = color;
-    ctx.beginPath();
-    ctx.arc(x, y, 16, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Dark Inner Border
-    ctx.strokeStyle = '#060911';
-    ctx.lineWidth = 2.5;
-    ctx.stroke();
-
-    // Step Number Text
-    ctx.shadowBlur = 0;
-    ctx.fillStyle = '#060911';
-    ctx.font = 'bold 13px "JetBrains Mono", monospace';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(pin.number, x, y);
-
-    // Pointer tail pointing downwards
-    ctx.fillStyle = color;
-    ctx.beginPath();
-    ctx.moveTo(x - 5, y + 15);
-    ctx.lineTo(x + 5, y + 15);
-    ctx.lineTo(x, y + 24);
-    ctx.closePath();
-    ctx.fill();
-
-    // Optional Label Pill
-    if (pin.label) {
-      ctx.font = '600 11px "Plus Jakarta Sans", sans-serif';
-      const textWidth = ctx.measureText(pin.label).width;
-      const pillWidth = textWidth + 16;
-      const pillHeight = 20;
-      const pillX = x - pillWidth / 2;
-      const pillY = y + 28;
-
-      ctx.fillStyle = 'rgba(11, 17, 30, 0.9)';
-      ctx.strokeStyle = color;
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.roundRect(pillX, pillY, pillWidth, pillHeight, 6);
-      ctx.fill();
-      ctx.stroke();
-
-      ctx.fillStyle = '#ffffff';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(pin.label, x, pillY + pillHeight / 2);
-    }
-    ctx.restore();
-  }
-
-  drawLaser(ctx, laser, width, height) {
-    const x = laser.normX * width;
-    const y = laser.normY * height;
-    const color = laser.color || '#ff1744';
-
-    ctx.save();
-    ctx.globalAlpha = laser.opacity;
-
-    // Glowing Laser Halo
-    const gradient = ctx.createRadialGradient(x, y, 2, x, y, 28);
-    gradient.addColorStop(0, color);
-    gradient.addColorStop(0.3, color);
-    gradient.addColorStop(0.8, 'rgba(255, 23, 68, 0.2)');
-    gradient.addColorStop(1, 'rgba(255, 23, 68, 0)');
-
-    ctx.fillStyle = gradient;
-    ctx.beginPath();
-    ctx.arc(x, y, 28, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Bright Core Center
-    ctx.shadowColor = '#fff';
-    ctx.shadowBlur = 12;
-    ctx.fillStyle = '#ffffff';
-    ctx.beginPath();
-    ctx.arc(x, y, 5, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Crosshair ticks
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 1.5;
-    ctx.shadowColor = color;
-    ctx.shadowBlur = 8;
-    const tickLen = 7;
-    const tickGap = 8;
-
-    // Top
-    ctx.beginPath(); ctx.moveTo(x, y - tickGap); ctx.lineTo(x, y - tickGap - tickLen); ctx.stroke();
-    // Bottom
-    ctx.beginPath(); ctx.moveTo(x, y + tickGap); ctx.lineTo(x, y + tickGap + tickLen); ctx.stroke();
-    // Left
-    ctx.beginPath(); ctx.moveTo(x - tickGap, y); ctx.lineTo(x - tickGap - tickLen, y); ctx.stroke();
-    // Right
-    ctx.beginPath(); ctx.moveTo(x + tickGap, y); ctx.lineTo(x + tickGap + tickLen, y); ctx.stroke();
-
-    ctx.restore();
-  }
-
-  // Export current annotated frame as DataURL
-  captureFrame(videoElement) {
-    const offscreen = document.createElement('canvas');
-    offscreen.width = this.canvas.width;
-    offscreen.height = this.canvas.height;
-    const offCtx = offscreen.getContext('2d');
-
-    // Draw video or canvas background
-    if (videoElement && (videoElement.videoWidth || (videoElement.width && videoElement.tagName === 'CANVAS') || videoElement.width)) {
-      offCtx.drawImage(videoElement, 0, 0, offscreen.width, offscreen.height);
-    } else if (this.frozenImage) {
-      offCtx.drawImage(this.frozenImage, 0, 0, offscreen.width, offscreen.height);
-    } else {
-      offCtx.fillStyle = '#0b111e';
-      offCtx.fillRect(0, 0, offscreen.width, offscreen.height);
-    }
-
-    // Draw AR canvas overlay
-    offCtx.drawImage(this.canvas, 0, 0);
-
-    return offscreen.toDataURL('image/jpeg', 0.92);
+    // Reescalar las anotaciones (que están en coords de pantalla) al tamaño destino.
+    const cr = this.contentRect();
+    const sx = c.width / cr.w;
+    const sy = c.height / cr.h;
+    g.save();
+    g.scale(sx, sy);
+    g.translate(-cr.x, -cr.y);
+    g.drawImage(this.canvas, 0, 0, this.dw, this.dh);
+    g.restore();
+    return c;
   }
 }

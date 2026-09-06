@@ -1,89 +1,158 @@
 #!/usr/bin/env python3
 """
-FieldLens AR - Tactical Web & Realtime Server
-Serves static files with proper MIME types and prints local LAN connection info.
+FieldLens - servidor estático para desarrollo.
+
+  python3 server.py            -> HTTP  en :8000  (localhost)
+  python3 server.py --https    -> HTTPS en :8443  (para probar con un teléfono
+                                  en la misma Wi-Fi; genera un certificado
+                                  autofirmado con openssl la primera vez)
 """
 
 import http.server
 import socketserver
 import socket
-import os
-import sys
 import json
+import os
+import ssl
+import subprocess
+import sys
 
-PORT = 8000
+HTTP_PORT = 8000
+HTTPS_PORT = 8443
 DIRECTORY = os.path.dirname(os.path.abspath(__file__))
+CERT_DIR = os.path.join(DIRECTORY, ".cert")
+CERT_FILE = os.path.join(CERT_DIR, "cert.pem")
+KEY_FILE = os.path.join(CERT_DIR, "key.pem")
 
-def get_local_ip():
+
+def _is_private(ip):
+    return (
+        ip.startswith("192.168.")
+        or ip.startswith("10.")
+        or any(ip.startswith(f"172.{n}.") for n in range(16, 32))
+    )
+
+
+def local_ips():
+    """All private IPv4 addresses of this machine, best guess first."""
+    found = []
+
+    def add(ip):
+        if ip and _is_private(ip) and ip not in found:
+            found.append(ip)
+
+    # macOS: Wi-Fi / Ethernet interfaces
+    for iface in ("en0", "en1", "en2"):
+        try:
+            out = subprocess.run(
+                ["ipconfig", "getifaddr", iface], capture_output=True, text=True, timeout=2
+            )
+            add(out.stdout.strip())
+        except Exception:
+            pass
+
+    # Fallback: routable source address
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.connect(("8.8.8.8", 80))
-        ip = s.getsockname()[0]
+        add(s.getsockname()[0])
         s.close()
-        return ip
     except Exception:
-        return "127.0.0.1"
+        pass
 
-class FieldLensHandler(http.server.SimpleHTTPRequestHandler):
+    # Prefer 192.168.* (typical home Wi-Fi) for the phone hint
+    found.sort(key=lambda ip: 0 if ip.startswith("192.168.") else 1)
+    return found or ["127.0.0.1"]
+
+
+class Handler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=DIRECTORY, **kwargs)
 
     def do_GET(self):
-        if self.path == '/api/info':
+        if self.path == "/__ips":
+            body = json.dumps({"ips": local_ips()}).encode()
             self.send_response(200)
-            self.send_header('Content-Type', 'application/json')
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
             self.end_headers()
-            payload = json.dumps({
-                "local_ip": get_local_ip(),
-                "port": PORT,
-                "status": "online"
-            })
-            self.wfile.write(payload.encode('utf-8'))
+            self.wfile.write(body)
             return
         super().do_GET()
 
     def end_headers(self):
-        # Enable CORS and Cache-Control for rapid development
-        self.send_header('Access-Control-Allow-Origin', '*')
-        self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
         super().end_headers()
 
     def guess_type(self, path):
-        mime = super().guess_type(path)
-        if path.endswith('.js'):
-            return 'application/javascript'
-        if path.endswith('.css'):
-            return 'text/css'
-        if path.endswith('.svg'):
-            return 'image/svg+xml'
-        return mime
+        if path.endswith(".js"):
+            return "application/javascript"
+        if path.endswith(".css"):
+            return "text/css"
+        return super().guess_type(path)
+
+    def log_message(self, *args):
+        pass
+
+
+def ensure_cert(ips):
+    if os.path.exists(CERT_FILE) and os.path.exists(KEY_FILE):
+        return
+    os.makedirs(CERT_DIR, exist_ok=True)
+    print(" Generando certificado autofirmado (.cert/)...")
+    san = "subjectAltName=DNS:localhost,IP:127.0.0.1," + ",".join(f"IP:{ip}" for ip in ips)
+    subprocess.run(
+        [
+            "openssl", "req", "-x509", "-newkey", "rsa:2048", "-nodes",
+            "-keyout", KEY_FILE, "-out", CERT_FILE, "-days", "825",
+            "-subj", "/CN=FieldLens", "-addext", san,
+        ],
+        check=True,
+    )
+
 
 def run():
     os.chdir(DIRECTORY)
-    local_ip = get_local_ip()
+    use_https = "--https" in sys.argv
+    ips = local_ips()
+    port = HTTPS_PORT if use_https else HTTP_PORT
+    scheme = "https" if use_https else "http"
 
-    print("\n" + "=" * 64)
-    print(" 🚀 FIELDLENS AR - ASISTENCIA TÉCNICA REMOTA CON REALIDAD AUMENTADA")
-    print("=" * 64)
-    print(f"\n [✓] Servidor activo en puerto {PORT}")
-    print(f" [✓] Directorio raíz: {DIRECTORY}\n")
-    print(f" 🌐 ACCESO LOCAL (Este ordenador):")
-    print(f"     👉 Banco de Pruebas Dual: http://localhost:{PORT}/simulator.html")
-    print(f"     👉 Panel Principal:       http://localhost:{PORT}/")
-    print(f"     👉 Cockpit de Experto:    http://localhost:{PORT}/remote-expert.html?room=SALA-1\n")
-    print(f" 📱 ACCESO EN RED LOCAL (Smartphone en la misma Wi-Fi):")
-    print(f"     👉 Técnico en Campo:      http://{local_ip}:{PORT}/field-tech.html?room=SALA-1\n")
-    print("=" * 64)
-    print(" Presiona Ctrl+C para detener el servidor.\n")
-
-    # Reuse address to avoid port already in use errors on restart
     socketserver.TCPServer.allow_reuse_address = True
-    with socketserver.TCPServer(("", PORT), FieldLensHandler) as httpd:
-        try:
-            httpd.serve_forever()
-        except KeyboardInterrupt:
-            print("\nDeteniendo servidor FieldLens AR...")
-            httpd.shutdown()
+    httpd = socketserver.TCPServer(("", port), Handler)
 
-if __name__ == '__main__':
+    if use_https:
+        try:
+            ensure_cert(ips)
+        except (FileNotFoundError, subprocess.CalledProcessError) as e:
+            print(f" No se pudo generar el certificado: {e}")
+            sys.exit(1)
+        ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        ctx.load_cert_chain(CERT_FILE, KEY_FILE)
+        httpd.socket = ctx.wrap_socket(httpd.socket, server_side=True)
+
+    print("\n" + "=" * 60)
+    print(" FieldLens - Soporte remoto por video")
+    print("=" * 60)
+    print(f"\n Servidor {scheme.upper()} en :{port}\n")
+    print(f"   Esta compu:   {scheme}://localhost:{port}/remote-expert.html")
+    if use_https:
+        for ip in ips:
+            print(f"   Teléfono:     {scheme}://{ip}:{port}/   (usa la IP de tu Wi-Fi)")
+        print("\n En el teléfono el navegador mostrará un aviso de seguridad")
+        print(" (certificado autofirmado): entra en 'Avanzado' y continúa.")
+    else:
+        print("\n Para probar con un teléfono:  python3 server.py --https")
+    print("\n" + "=" * 60)
+    print(" Ctrl+C para detener.\n")
+
+    try:
+        httpd.serve_forever()
+    except KeyboardInterrupt:
+        print("\nDeteniendo...")
+        httpd.shutdown()
+
+
+if __name__ == "__main__":
     run()

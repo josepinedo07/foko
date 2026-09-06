@@ -1,24 +1,29 @@
-# FieldLens AR - Workspace Context & Development Guidelines
+# FieldLens - Contexto para agentes
 
-FieldLens AR es una plataforma web progresiva de asistencia visual remota con Realidad Aumentada (AR) diseñada para técnicos de campo y expertos remotos.
+App web de **soporte remoto por video**. Sin build, sin framework: HTML + JS módulos
++ un servidor estático de Python para desarrollo.
 
-## Arquitectura del Proyecto
+## Objetivo
 
-1. **Módulo Técnico en Campo (`field-tech.html`)**:
-   - Orientado a dispositivos móviles / PWA.
-   - Acceso a `navigator.mediaDevices.getUserMedia` (cámara trasera preferida) y flash/linterna.
-   - Superposición de Canvas AR sincronizado vía WebRTC DataChannel.
+Práctico y directo. El técnico remoto genera un enlace/QR, el de campo lo abre y se
+conectan en una videollamada con puntero, dibujo, congelado, foto, grabación y
+compartir pantalla. Evitar relleno: nada de datos falsos, simuladores, estética
+"tactical HUD", telemetría inventada ni funciones que no se pidieron.
 
-2. **Módulo Cockpit de Experto (`remote-expert.html`)**:
-   - Panel de control avanzado para el especialista.
-   - Herramientas: Puntero Láser (radar pulse), Pines Secuenciales (1, 2, 3...), Dibujo AR, Congelamiento de fotograma (Freeze-Frame).
-   - Visor y sincronizador de diagramas técnicos esquemáticos (`schematics-manager.js`).
-   - Generador de informes de servicio con capturas anotadas (`report-generator.js`).
+## Piezas
 
-3. **Banco de Pruebas Dual (`simulator.html`)**:
-   - Vista lado a lado para validar la sincronización WebRTC localmente sin requerir múltiples dispositivos.
-   - Utiliza `equipment-simulator.js` para simular maquinaria industrial interactiva.
+- `remote-expert.html` - consola del técnico remoto (rol `expert`).
+- `field-tech.html` - vista móvil del técnico en campo (rol `field`).
+- `js/webrtc-manager.js` - `WebRTCManager`. PeerJS; el Peer ID del experto **es** el
+  código de sala. El campo envía cámara+mic, el experto responde con mic y puede
+  llamar de vuelta con la pantalla (`metadata.kind`: `camera` | `screen`).
+- `js/ar-canvas.js` - `ARCanvas`. Coordenadas normalizadas `[0,1]` relativas al
+  **rectángulo real del video** (object-fit: contain en ambos lados) para que las
+  anotaciones caigan en el mismo punto. `composite()` fusiona video + anotaciones.
+- `js/rtc-config.js` - `ICE_SERVERS` (STUN + hueco para TURN).
 
-4. **Reglas de Calibración AR (`ar-canvas.js`)**:
-   - Todas las coordenadas táctiles y de dibujo deben normalizarse en el rango `[0, 1]` relativo al área real visible del video (`normX`, `normY`).
-   - Siempre considerar el modo `object-fit: contain` o `cover` para compensar diferencias de aspecto entre el monitor del experto y el teléfono móvil.
+## Reglas
+
+- Mantener ambos lados con `object-fit: contain` en el `<video>`; si se cambia,
+  las anotaciones se desalinean.
+- No añadir dependencias más allá de PeerJS y el qrcode local en `js/vendor/`.
