@@ -1,6 +1,7 @@
 # FieldLens
 
-**En vivo:** <https://josepinedo07.github.io/fieldlens/>
+**En vivo:** <https://fieldlens-nu.vercel.app>
+(GitHub Pages <https://josepinedo07.github.io/fieldlens/> también sirve, pero sin el reporte IA.)
 
 Soporte remoto por video entre un **técnico remoto** y un **técnico en campo**.
 
