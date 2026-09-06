@@ -111,7 +111,9 @@ export class WebRTCManager {
     this.remotePeerId = conn.peer;
     conn.on('open', () => {
       this.onStatus({ state: 'connected' });
-      this.send({ type: 'hello', role: this.role });
+      // helloExtra: datos opcionales (p.ej. marca de empresa) que la página
+      // asigna antes de conectar; se adjuntan al primer mensaje del canal.
+      this.send({ type: 'hello', role: this.role, ...(this.helloExtra || {}) });
     });
     conn.on('data', (data) => this.onData(data));
     conn.on('close', () => this.onStatus({ state: 'disconnected' }));

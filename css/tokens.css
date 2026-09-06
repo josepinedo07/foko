@@ -5,7 +5,7 @@
    lo que se está señalando". Nunca se usa como decoración.
    ============================================================================ */
 
-@import url('https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Archivo:wght,wdth@600,125;700,125&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Caveat:wght@500;600;700&family=Instrument+Sans:wght@400;500;600&family=Archivo:wght@700&family=JetBrains+Mono:wght@400;500&display=swap');
 
 :root {
   /* -- Acento: único color señal ------------------------------------------- */
@@ -16,10 +16,10 @@
 
   /* -- Superficie (oscuro, primario) -------------------------------------- */
   --bg:            #0F1009;
-  --surface:       #17180E;
-  --surface-2:     #1F2015;
+  --surface:       #16170D;
+  --surface-2:     #1E1F13;
   --border:        #2E2F23;      /* línea fina 1px — separa */
-  --border-strong: #434435;
+  --border-strong: #45463A;
   --text:          #ECEBDE;
   --text-dim:      #9A9C88;
   --text-mute:     #6A6C5A;
@@ -37,10 +37,13 @@
 
   /* -- Acento legible como texto (el lima no lo es sobre claro) ---------- */
   --accent-text: var(--accent);
+  /* -- Tinta del logo: lima en oscuro, negro en claro (nunca otro color) - */
+  --brand-ink: var(--accent);
 
   /* -- Tipografía ------------------------------------------------------- */
-  --font-ui:      'Archivo', system-ui, -apple-system, 'Segoe UI', sans-serif;
-  --font-display: 'Archivo', system-ui, sans-serif;   /* + font-stretch:125% en .display */
+  --font-ui:      'Instrument Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-display: 'Archivo', system-ui, sans-serif;   /* momentos display alternos, no el logo */
+  --font-script:  'Caveat', 'Segoe Script', 'Bradley Hand', cursive;   /* wordmark "foko" */
   --font-mono:    'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
 
   --fs-11: 11px;  --fs-12: 12px;  --fs-14: 14px;  --fs-16: 16px;
@@ -79,6 +82,7 @@
     --text-dim:      #5B5D4C;
     --text-mute:     #8A8C78;
     --accent-text:   #4B7A00;     /* lima ilegible como texto sobre claro */
+    --brand-ink:     var(--on-accent);   /* logo en negro sobre claro, nunca lima */
     --shadow-float:  0 16px 40px -8px rgba(0, 0, 0, 0.18), 0 0 0 1px var(--border);
     color-scheme: light;
   }
@@ -90,14 +94,16 @@
   --border: #D9D7C7; --border-strong: #C4C2AE;
   --text: #191A10; --text-dim: #5B5D4C; --text-mute: #8A8C78;
   --accent-text: #4B7A00;
+  --brand-ink: var(--on-accent);
   --shadow-float: 0 16px 40px -8px rgba(0, 0, 0, 0.18), 0 0 0 1px var(--border);
   color-scheme: light;
 }
 :root[data-theme='dark'] {
-  --bg: #0F1009; --surface: #17180E; --surface-2: #1F2015;
-  --border: #2E2F23; --border-strong: #434435;
+  --bg: #0F1009; --surface: #16170D; --surface-2: #1E1F13;
+  --border: #2E2F23; --border-strong: #45463A;
   --text: #ECEBDE; --text-dim: #9A9C88; --text-mute: #6A6C5A;
   --accent-text: var(--accent);
+  --brand-ink: var(--accent);
   --shadow-float: 0 16px 40px -8px rgba(0, 0, 0, 0.55), 0 0 0 1px var(--border);
   color-scheme: dark;
 }

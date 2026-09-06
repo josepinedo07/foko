@@ -19,9 +19,12 @@ gradientes/glassmorphism genéricos de SaaS ni íconos emoji en la UI final
 
 ## Piezas
 
+- `login.html` - iniciar sesión / crear empresa / unirme con código de invitación.
 - `remote-expert.html` - consola del técnico de oficina (rol `expert`).
+  **Requiere sesión** (`requireSession()` redirige a `login.html` si no hay).
 - `field-tech.html` - vista móvil del técnico de campo (rol `field`), con
-  chequeo de sistemas (cámara/mic/red) antes de conectar.
+  chequeo de sistemas (cámara/mic/red) antes de conectar. Sin login — solo
+  abre el enlace/QR.
 - `js/webrtc-manager.js` - `WebRTCManager`. PeerJS; el Peer ID del técnico de
   oficina **es** el código de sesión (`FK-XXXX`). El de campo envía cámara+mic,
   el de oficina responde con mic y puede llamar de vuelta con la pantalla
@@ -38,20 +41,33 @@ gradientes/glassmorphism genéricos de SaaS ni íconos emoji en la UI final
 - `js/notes-assistant.js` - transcripción por voz (Web Speech API, solo mic
   local) + `generateReport()` contra `/api/report`.
 - `js/rtc-config.js` - `ICE_SERVERS` (STUN + TURN públicos de prueba).
-- `api/report.js` - función serverless (Vercel/Netlify Functions). Genera el
-  reporte con Claude (`claude-haiku-4-5` por defecto); protegida por
-  `APP_PASSWORD`; `ANTHROPIC_API_KEY` solo vive en el servidor.
+- `js/supabase-client.js` - cliente de Supabase (URL + anon key, públicas por
+  diseño). `getSessionAndProfile()` / `requireSession()`.
+- `js/logo.js` - `mountLogo(el, {height, showDot})`: wordmark "foko" (Caveat),
+  color vía `--brand-ink` (no hay dos SVGs por tema, uno con `currentColor`).
+- `api/report.js` - función serverless (Vercel/Netlify Functions). Valida el
+  `access_token` de Supabase (service role key, servidor), resuelve la empresa
+  del usuario y genera el reporte con Claude (`claude-haiku-4-5` por defecto).
+  `ANTHROPIC_API_KEY` / `SUPABASE_SERVICE_ROLE_KEY` solo viven en el servidor.
+- `supabase/schema.sql` - `companies`, `profiles` (1 usuario → 1 empresa, rol
+  `owner`/`member`), RLS vía `my_company_id()`/`my_role()` (security definer,
+  evita recursión), RPCs `create_company_and_join` / `join_company_by_code`,
+  bucket de Storage `logos`. Re-ejecutable completo.
 - `css/tokens.css` - única fuente de verdad de color/tipografía/espacio/radio/
   movimiento (oscuro + claro). Ningún hex fuera de este archivo (excepto
-  literales funcionales documentados: negro tras el video, blanco del QR).
+  literales funcionales documentados: negro tras el video, blanco del QR) y
+  los assets estáticos de `/brand`.
 - `css/design-system.css` - primitivas de componentes que consumen los tokens.
 
 ## Reglas
 
 - Mantener ambos lados con `object-fit: contain` en el `<video>`; si se cambia,
   las anotaciones se desalinean.
-- No añadir dependencias más allá de PeerJS y el qrcode local en `js/vendor/`
-  (más `@anthropic-ai/sdk` en `api/`, que solo corre en el servidor).
+- No añadir dependencias más allá de PeerJS, el qrcode local en `js/vendor/` y
+  `@supabase/supabase-js` (CDN en el cliente, npm en `api/`); `@anthropic-ai/sdk`
+  solo corre en el servidor.
+- La *service role key* de Supabase NUNCA va al frontend — solo como env var
+  de Vercel. La *anon key* en `js/supabase-client.js` sí es pública por diseño.
 - Un solo color de acento en toda la UI. Antes de usar un color nuevo, revisar
   si ya existe un token de estado (`--ok/--warn/--critical/--info`) para eso.
 - Nada de emoji en botones/UI de producto; usar los SVG inline existentes como

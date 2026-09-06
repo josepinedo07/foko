@@ -76,12 +76,12 @@ export class NotesAssistant {
     this.onUpdate('');
   }
 
-  async generateReport({ endpoint, accessCode, notes, meta }) {
+  async generateReport({ endpoint, accessToken, notes, meta }) {
     const res = await fetch(endpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${accessCode}`,
+        Authorization: `Bearer ${accessToken}`,
       },
       body: JSON.stringify({ transcript: this.finalText, notes, meta }),
     });

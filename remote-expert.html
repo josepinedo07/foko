@@ -4,6 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>FOKO · Consola de oficina</title>
+  <link rel="icon" href="brand/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="brand/favicon-32.png" sizes="32x32" type="image/png">
+  <link rel="apple-touch-icon" href="brand/apple-touch-icon.png">
+  <link rel="manifest" href="site.webmanifest">
+  <meta name="theme-color" content="#0F1009">
   <link rel="stylesheet" href="css/design-system.css">
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <style>
@@ -16,7 +21,6 @@
       padding: var(--s-2) var(--s-3);
       background: var(--surface); border-bottom: 1px solid var(--border);
     }
-    .topbar__mark { font-family: var(--font-display); font-weight: 700; font-stretch: 125%; letter-spacing: var(--tracking-display); }
     .topbar .spacer { flex: 1; }
 
     /* Fila 2: HUD de conexión (todo mono) */
@@ -75,12 +79,29 @@
     #qr { background: var(--qr-bg); padding: var(--s-2); border-radius: var(--r-cell); width: 172px; height: 172px; }
     .invite-grid { display: grid; grid-template-columns: 1fr auto; gap: var(--s-5); align-items: start; }
     @media (max-width: 560px) { .invite-grid { grid-template-columns: 1fr; } }
+
+    /* Marca de la empresa: en el topbar, y como membrete en modales */
+    .company-badge { color: var(--text-dim); font-size: var(--fs-12); white-space: nowrap; }
+    .brandbar {
+      display: flex; align-items: center; gap: var(--s-2);
+      margin-bottom: var(--s-4); padding-bottom: var(--s-4); border-bottom: 1px solid var(--border);
+    }
+    .brandbar img { width: 28px; height: 28px; object-fit: contain; border-radius: var(--r-cell); background: var(--qr-bg); }
+    .brandbar span { font-weight: 600; }
+    .logo-upload {
+      width: 48px; height: 48px; flex: none;
+      display: flex; align-items: center; justify-content: center;
+      border: 1px solid var(--border-strong); border-radius: var(--r-cell); background: var(--bg);
+      overflow: hidden; color: var(--text-mute);
+    }
+    .logo-upload img { width: 100%; height: 100%; object-fit: contain; }
   </style>
 </head>
 <body>
   <div class="app">
     <div class="topbar">
-      <span class="topbar__mark">FOKO</span>
+      <span id="logo" aria-label="Foko"></span>
+      <span id="companyBadge" class="company-badge" hidden></span>
       <span id="status" class="conn">iniciando</span>
       <span class="spacer"></span>
       <button class="btn btn--ghost" id="btnNotes" hidden>Notas</button>
@@ -160,6 +181,7 @@
   <!-- Invitar -->
   <div class="modal" id="inviteModal">
     <div class="modal__card">
+      <div class="brandbar" id="inviteBrand" hidden><img id="inviteBrandLogo" hidden><span id="inviteBrandName"></span></div>
       <div class="modal__head"><h2 class="modal__title">Invitar al técnico de campo</h2></div>
       <p class="text-dim" style="font-size:var(--fs-14); margin-bottom:var(--s-5);">Que abra el enlace en su teléfono y permita la cámara. No instala nada.</p>
       <div class="invite-grid">
@@ -215,18 +237,33 @@
   <div class="modal" id="settingsModal">
     <div class="modal__card" style="max-width:460px;">
       <div class="modal__head"><h2 class="modal__title">Ajustes</h2></div>
+
+      <div class="settings-row">
+        <span class="label">Marca de tu empresa</span>
+        <div class="field-row" style="align-items:center; margin-top:var(--s-2);">
+          <label class="logo-upload" title="Subir logo" style="cursor:pointer;">
+            <img id="logoPreviewImg" hidden>
+            <svg class="icon icon--sm" id="logoPreviewPlaceholder" viewBox="0 0 24 24"><path d="M4 16l4-6 4 4 3-4 5 6"/><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+            <input type="file" id="logoFile" accept="image/png,image/jpeg,image/svg+xml,image/webp" hidden>
+          </label>
+          <input class="field" id="companyNameInput" placeholder="Nombre de la empresa" style="flex:1;">
+        </div>
+        <p class="text-mute" id="companyHint" style="font-size:var(--fs-11); margin-top:var(--s-1);">Toca el recuadro para subir tu logo. Aparece en la consola, la invitación y el reporte.</p>
+      </div>
+
+      <div class="settings-row">
+        <label class="label" for="inviteCodeField">Invitar a un compañero de oficina</label>
+        <div class="field-row">
+          <input class="field" id="inviteCodeField" readonly>
+          <button class="btn" id="btnCopyInviteCode">Copiar código</button>
+        </div>
+        <p class="text-mute" style="font-size:var(--fs-11); margin-top:var(--s-1);">Con este código se une en login.html → "Unirme".</p>
+      </div>
+
       <label class="check settings-row">
         <input type="checkbox" id="setNotesEnabled">
         <span><strong>Asistente de notas IA</strong><span class="text-dim" style="display:block; font-size:var(--fs-12);">Transcribe la llamada y redacta un reporte de servicio.</span></span>
       </label>
-      <div class="settings-row">
-        <label class="label" for="setAccessCode">Código de acceso</label>
-        <input class="field" id="setAccessCode" type="password" autocomplete="off" placeholder="El configurado en el servidor">
-      </div>
-      <div class="settings-row">
-        <label class="label" for="setEndpoint">Endpoint del reporte</label>
-        <input class="field" id="setEndpoint" placeholder="/api/report">
-      </div>
       <div class="settings-row">
         <label class="label" for="setLang">Idioma de transcripción</label>
         <select class="field" id="setLang">
@@ -238,13 +275,18 @@
         </select>
       </div>
       <p class="text-mute mono" style="font-size:var(--fs-11);" id="settingsNote"></p>
-      <div style="text-align:right; margin-top:var(--s-4);"><button class="btn btn--primary" id="btnSettingsSave">Guardar</button></div>
+
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:var(--s-4);">
+        <button class="btn btn--ghost" id="btnLogout">Cerrar sesión</button>
+        <button class="btn btn--primary" id="btnSettingsSave">Guardar</button>
+      </div>
     </div>
   </div>
 
   <!-- Reporte -->
   <div class="modal" id="reportModal">
     <div class="modal__card" style="max-width:640px;">
+      <div class="brandbar" id="reportBrand" hidden><img id="reportBrandLogo" hidden><span id="reportBrandName"></span></div>
       <div class="modal__head">
         <h2 class="modal__title">Reporte de servicio</h2>
         <button class="btn btn--ghost btn-icon" id="btnReportClose" aria-label="Cerrar">
@@ -266,9 +308,26 @@
     import { WebRTCManager } from './js/webrtc-manager.js';
     import { NotesAssistant, TRANSCRIPTION_SUPPORTED } from './js/notes-assistant.js';
     import { Hud, toast } from './js/ui.js';
+    import { mountLogo } from './js/logo.js';
+    import { supabase, requireSession } from './js/supabase-client.js';
 
     const $ = (id) => document.getElementById(id);
     const params = new URLSearchParams(location.search);
+    mountLogo($('logo'), { height: 26 });
+
+    // Guard de sesión: sin cuenta no hay consola. `requireSession` ya hace el
+    // redirect a login.html; el throw solo detiene el resto de este módulo
+    // mientras la navegación ocurre (no hay nada que revertir).
+    const authState = await requireSession('login.html');
+    if (!authState) throw new Error('Redirigiendo a login…');
+    const { session } = authState;
+    let company = authState.company;   // { id, name, logo_url, invite_code } | null
+    const myRole = authState.profile ? authState.profile.role : null;
+
+    if (company) {
+      $('companyBadge').textContent = `· ${company.name}`;
+      $('companyBadge').hidden = false;
+    }
 
     function newCode() { return 'FK-' + Math.random().toString(16).slice(2, 6).toUpperCase(); }
     let roomCode = (params.get('room') || newCode()).toUpperCase();
@@ -360,6 +419,10 @@
         }
       },
     });
+
+    if (company) {
+      webrtc.helloExtra = { company: { name: company.name, logoUrl: company.logo_url || null } };
+    }
 
     async function start() {
       await detectLanHost();
@@ -509,7 +572,14 @@
       if (window.QRCode) new QRCode($('qr'), { text: url, width: 156, height: 156, correctLevel: QRCode.CorrectLevel.M });
       if (connected) $('inviteStatus').textContent = 'Técnico conectado';
     }
-    const openInvite = () => { refreshInvite(); inviteModal.classList.add('open'); };
+    function renderBrandBar(prefix) {
+      const bar = $(`${prefix}Brand`), img = $(`${prefix}BrandLogo`), name = $(`${prefix}BrandName`);
+      if (!company) { bar.hidden = true; return; }
+      bar.hidden = false;
+      name.textContent = company.name;
+      if (company.logo_url) { img.src = company.logo_url; img.hidden = false; } else { img.hidden = true; }
+    }
+    const openInvite = () => { refreshInvite(); renderBrandBar('invite'); inviteModal.classList.add('open'); };
     $('btnInvite').addEventListener('click', openInvite);
     $('btnInvite2').addEventListener('click', openInvite);
     $('btnDone').addEventListener('click', () => inviteModal.classList.remove('open'));
@@ -538,12 +608,65 @@
       setTimeout(() => f.remove(), 350);
     }
 
+    // ---- Marca de la empresa (Ajustes) ----
+    function paintCompanyInSettings() {
+      $('companyNameInput').value = company ? company.name : '';
+      $('companyNameInput').disabled = !company || myRole !== 'owner';
+      $('companyHint').textContent = !company
+        ? 'No tienes empresa asociada.'
+        : myRole === 'owner'
+          ? 'Toca el recuadro para subir tu logo. Aparece en la consola, la invitación y el reporte.'
+          : 'Solo el dueño de la empresa puede cambiar el nombre. Cualquiera puede subir el logo.';
+      $('inviteCodeField').value = company ? company.invite_code : '';
+      const img = $('logoPreviewImg'), ph = $('logoPreviewPlaceholder');
+      if (company && company.logo_url) { img.src = company.logo_url; img.hidden = false; ph.hidden = true; }
+      else { img.hidden = true; ph.hidden = false; }
+    }
+
+    $('logoFile').addEventListener('change', async () => {
+      const file = $('logoFile').files[0];
+      if (!file || !company) return;
+      const ext = (file.name.split('.').pop() || 'png').toLowerCase();
+      const path = `${company.id}/logo-${Date.now()}.${ext}`;
+      try {
+        const { error: upErr } = await supabase.storage.from('logos').upload(path, file, { upsert: true, contentType: file.type });
+        if (upErr) throw upErr;
+        const { data: pub } = supabase.storage.from('logos').getPublicUrl(path);
+        const { error: updErr } = await supabase.from('companies').update({ logo_url: pub.publicUrl }).eq('id', company.id);
+        if (updErr) throw updErr;
+        company.logo_url = pub.publicUrl;
+        paintCompanyInSettings();
+        toast('Logo actualizado', 'ok');
+      } catch (err) {
+        toast('No se pudo subir el logo: ' + err.message, 'critical', 5000);
+      }
+    });
+
+    $('companyNameInput').addEventListener('change', async () => {
+      if (!company || myRole !== 'owner') return;
+      const name = $('companyNameInput').value.trim();
+      if (!name || name === company.name) return;
+      const { error } = await supabase.from('companies').update({ name }).eq('id', company.id);
+      if (error) { toast('No se pudo guardar: ' + error.message, 'critical'); return; }
+      company.name = name;
+      $('companyBadge').textContent = `· ${company.name}`;
+      toast('Nombre guardado', 'ok', 1600);
+    });
+
+    $('btnCopyInviteCode').addEventListener('click', async () => {
+      if (!company) return;
+      try { await navigator.clipboard.writeText(company.invite_code); toast('Código copiado', 'ok', 1600); } catch (_) {}
+    });
+
+    $('btnLogout').addEventListener('click', async () => {
+      await supabase.auth.signOut();
+      location.href = 'login.html';
+    });
+
     // ---- Asistente de notas ----
     const CFG_KEY = 'foko.notes.cfg';
-    const cfg = Object.assign(
-      { enabled: false, accessCode: '', endpoint: '/api/report', lang: 'es-MX' },
-      JSON.parse(localStorage.getItem(CFG_KEY) || '{}')
-    );
+    const cfg = Object.assign({ enabled: false, lang: 'es-MX' }, JSON.parse(localStorage.getItem(CFG_KEY) || '{}'));
+    const REPORT_ENDPOINT = '/api/report';
 
     const notes = new NotesAssistant({
       lang: cfg.lang,
@@ -562,9 +685,8 @@
     }
 
     $('btnSettings').addEventListener('click', () => {
+      paintCompanyInSettings();
       $('setNotesEnabled').checked = cfg.enabled;
-      $('setAccessCode').value = cfg.accessCode;
-      $('setEndpoint').value = cfg.endpoint;
       $('setLang').value = cfg.lang;
       $('settingsNote').textContent = TRANSCRIPTION_SUPPORTED
         ? ''
@@ -573,8 +695,6 @@
     });
     $('btnSettingsSave').addEventListener('click', () => {
       cfg.enabled = $('setNotesEnabled').checked;
-      cfg.accessCode = $('setAccessCode').value.trim();
-      cfg.endpoint = $('setEndpoint').value.trim() || '/api/report';
       cfg.lang = $('setLang').value;
       localStorage.setItem(CFG_KEY, JSON.stringify(cfg));
       notes.lang = cfg.lang;
@@ -614,17 +734,19 @@
     }
 
     $('btnGenReport').addEventListener('click', async () => {
-      if (!cfg.accessCode) { toast('Configura el código de acceso en Ajustes', 'warn'); return; }
       const btn = $('btnGenReport');
       btn.disabled = true; btn.textContent = 'Generando…';
       try {
+        const { data: { session: fresh } } = await supabase.auth.getSession();
+        if (!fresh) { location.href = 'login.html'; return; }
         lastReport = await notes.generateReport({
-          endpoint: cfg.endpoint,
-          accessCode: cfg.accessCode,
+          endpoint: REPORT_ENDPOINT,
+          accessToken: fresh.access_token,
           notes: $('notesBox').value,
           meta: { date: new Date().toLocaleString('es-MX'), room: roomCode, duration: sessionDuration(), photos: photoCount },
         });
         $('reportOut').innerHTML = renderMd(lastReport);
+        renderBrandBar('report');
         $('reportModal').classList.add('open');
       } catch (e) {
         toast('No se pudo generar el reporte: ' + e.message, 'critical', 5000);

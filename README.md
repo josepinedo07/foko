@@ -23,14 +23,19 @@ el de oficina puede:
 
 El de campo puede voltear la cámara, encender la linterna, silenciar el micrófono y
 tocar la pantalla para señalar de vuelta. Antes de conectar pasa por un chequeo de
-sistemas (cámara / micrófono / red).
+sistemas (cámara / micrófono / red). No necesita cuenta — solo abre el enlace.
 
-## Diseño
+La consola de oficina sí requiere cuenta: cada **empresa** tiene su propio login,
+su logo/nombre (aparece en la consola, la invitación y el reporte) y puede tener
+varios técnicos de oficina (dueño + compañeros con un código de invitación).
 
-Ver [`DESIGN.md`](DESIGN.md) — sistema de tokens, componentes y reglas de
-movimiento. Instrumento de precisión, no app de consumo: oscuro por defecto, un
-solo color de acento (que siempre significa "mira aquí"), tipografía mono para
-telemetría.
+## Identidad y diseño
+
+Ver [`BRAND.md`](BRAND.md) (wordmark, favicon, tipografía de marca) y
+[`DESIGN.md`](DESIGN.md) (sistema de tokens, componentes y reglas de
+movimiento) — instrumento de precisión, no app de consumo: oscuro por
+defecto, un solo color de acento (que siempre significa "mira aquí"),
+tipografía mono para telemetría.
 
 ## Cómo funciona
 
@@ -40,6 +45,8 @@ telemetría.
   VPN) hay TURN públicos de prueba en [`js/rtc-config.js`](js/rtc-config.js).
 - **HUD de conexión:** latencia, resolución y FPS reales, leídos de
   `RTCPeerConnection.getStats()` — nada simulado.
+- **Cuentas / empresas / logo:** Supabase (Postgres + Auth + Storage). Ver
+  "Cuentas y base de datos" más abajo.
 
 ## Uso local (dos ventanas en la misma compu)
 
@@ -75,13 +82,16 @@ función serverless `api/report.js`, que solo corre en un host con funciones
 1. Importa el repo en <https://vercel.com/new>. Framework: **Other**. Sin build.
 2. En *Settings → Environment Variables* añade:
    - `ANTHROPIC_API_KEY` — tu clave de la API de Anthropic (queda solo en el servidor).
-   - `APP_PASSWORD` — un código de acceso que compartirás con quienes usen el reporte.
+   - `SUPABASE_URL` — la URL del proyecto de Supabase (ver abajo).
+   - `SUPABASE_SERVICE_ROLE_KEY` — la *service role key* del mismo proyecto
+     (Settings → API en el dashboard de Supabase). **Nunca** va en el frontend.
    - `REPORT_MODEL` (opcional) — por defecto `claude-haiku-4-5`.
 3. Deploy. Redespliega solo en cada `git push` si conectas el repo de Git
    (ahora mismo el deploy en producción se hace a mano con `vercel deploy --prod`).
 
-En la consola: **⚙ Ajustes → activar "Asistente de notas IA"**, pegar el mismo
-`APP_PASSWORD` y dejar el endpoint en `/api/report`.
+En la consola: **⚙ Ajustes → activar "Asistente de notas IA"**. Ya no hace
+falta ningún código de acceso manual — el reporte usa la sesión real de la
+cuenta (ver siguiente sección).
 
 > **Nota sobre dominios en Vercel:** el proyecto vive bajo el slug antiguo
 > `fieldlens` (renombrarlo requiere entrar a la cuenta). El alias público que
@@ -91,10 +101,13 @@ En la consola: **⚙ Ajustes → activar "Asistente de notas IA"**, pegar el mis
 > hay que desactivarla también para ese alias en
 > *Project Settings → Deployment Protection*, o pedir un dominio propio.
 
-### Solo la videollamada (sin IA)
+### Sin el reporte con IA
 
-Cualquier host estático sirve: Netlify Drop, GitHub Pages, Cloudflare Pages.
-`server.py` no se usa en producción.
+El login, las empresas y el logo **sí** funcionan en cualquier host estático
+(Netlify Drop, GitHub Pages, Cloudflare Pages) — hablan directo con Supabase
+desde el navegador, no necesitan `api/`. Lo único que exige un host con
+funciones serverless (Vercel/Netlify Functions) es `/api/report`, porque ahí
+vive la API key de Anthropic. `server.py` no se usa en producción en ningún caso.
 
 ### Conexión con VPN / datos móviles
 
@@ -102,12 +115,40 @@ La P2P directa suele fallar detrás de VPN o CGNAT. El proyecto trae unos **TURN
 públicos de prueba** en [`js/rtc-config.js`](js/rtc-config.js); si van lentos,
 saca una clave gratis en <https://dashboard.metered.ca/> y reemplázalos.
 
+## Cuentas y base de datos (Supabase)
+
+Cada empresa es una fila en `companies`; cada usuario (técnico de oficina) es
+una fila en `profiles` que apunta a **una** empresa, con rol `owner` (la creó)
+o `member` (se unió con el código de invitación). Todo con Row Level Security:
+un usuario solo puede leer/escribir su propia empresa. El logo vive en un
+bucket de Storage público de solo lectura (`logos`).
+
+- **Esquema completo, con comentarios:** [`supabase/schema.sql`](supabase/schema.sql)
+  — se puede volver a correr entero, todo usa `if not exists` / `or replace`.
+- **Crear el proyecto desde cero:**
+  1. Cuenta en <https://supabase.com> → *New Project*.
+  2. En el *SQL Editor*, pega y corre `supabase/schema.sql`.
+  3. *Settings → API*: copia la **Project URL** y la **anon key** públicas a
+     [`js/supabase-client.js`](js/supabase-client.js) (ya están puestas las de
+     este proyecto; para uno nuevo, reemplázalas ahí — son públicas por
+     diseño, RLS es lo que protege los datos).
+  4. La **service role key** (la secreta) va solo en Vercel, como
+     `SUPABASE_SERVICE_ROLE_KEY` (ver arriba).
+  5. En *Authentication → Settings*, si quieres alta instantánea sin
+     verificar correo (lo que usa este proyecto para no fricción en el
+     onboarding), activa *"Confirm email" = Off* — o déjalo activado y ajusta
+     `login.html` para el paso de "revisa tu correo".
+- **Unir un compañero de oficina:** el dueño comparte el código de invitación
+  (Ajustes → Marca de tu empresa) y el compañero entra por `login.html` →
+  "Unirme con código".
+
 ## Estructura
 
 ```
-index.html            Selector de rol
-remote-expert.html    Consola del técnico de oficina
-field-tech.html       Vista móvil del técnico de campo (viewer + systems check)
+index.html             Selector de rol
+login.html             Iniciar sesión / crear empresa / unirme con código
+remote-expert.html     Consola del técnico de oficina (requiere sesión)
+field-tech.html        Vista móvil del técnico de campo (viewer + systems check)
 css/tokens.css         Tokens de diseño — única fuente de verdad de color/tipo/espacio
 css/design-system.css  Componentes (viewer, HUD, toolkit, tray, systems check, toast…)
 js/webrtc-manager.js   Conexión WebRTC (PeerJS): cámara, mic, pantalla
@@ -115,13 +156,19 @@ js/ar-canvas.js        Capa de anotación sincronizada
 js/ui.js               Toast, HUD con estadísticas reales, systems check
 js/notes-assistant.js  Transcripción por voz + llamada al reporte
 js/rtc-config.js       Servidores ICE (STUN / TURN)
-api/report.js          Función serverless: genera el reporte con Claude
+js/supabase-client.js  Cliente de Supabase (auth + empresa)
+js/logo.js             Wordmark reutilizable (<Logo>)
+api/report.js          Función serverless: valida sesión, genera el reporte con Claude
+supabase/schema.sql    Esquema de base de datos (tablas, RLS, RPCs, storage)
+brand/                 Assets de marca (favicons, wordmark) — ver BRAND.md
 server.py              Servidor estático para desarrollo local
-DESIGN.md              Sistema de diseño
+DESIGN.md              Sistema de diseño de producto
+BRAND.md               Identidad de marca
 ```
 
 ## Para cobrar por esto (siguiente paso)
 
-El código de acceso único (`APP_PASSWORD`) sirve para validar y demostrar. Para
-un producto de verdad falta: cuentas de usuario, medición de uso por cuenta y
-facturación (Stripe). No está incluido.
+Ya hay cuentas reales por empresa (Supabase Auth + RLS) — eso ya no es el
+parche que era. Lo que falta para cobrar de verdad: medir uso por empresa
+(cuántos reportes/minutos), un plan/límite, y Stripe para el checkout y la
+suscripción. No está incluido.

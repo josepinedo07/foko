@@ -8,7 +8,12 @@ demás es instrumentación alrededor de él.
 Fuente de verdad: [`css/tokens.css`](css/tokens.css) (valores) +
 [`css/design-system.css`](css/design-system.css) (componentes). Ningún color vive
 fuera de esos dos archivos, salvo dos literales funcionales documentados ahí mismo
-(negro detrás de un `<video>`, blanco detrás de un QR — no son decisiones de marca).
+(negro detrás de un `<video>`, blanco detrás de un QR — no son decisiones de marca)
+y los assets estáticos en `/brand` (imágenes, no hojas de estilo).
+
+Para el wordmark, el favicon y las reglas de marca ver [`BRAND.md`](BRAND.md) —
+este archivo es el sistema de **componentes de producto**; BRAND.md es
+**identidad**.
 
 ## La regla: un solo color señal
 
@@ -33,7 +38,8 @@ deriva por `prefers-color-scheme` (y por `[data-theme]` si algún día hay un to
 | Superficie (oscuro) | `--bg` `#0F1009`, `--surface` `#17180E`, `--surface-2` `#1F2015`, `--border` `#2E2F23`, `--border-strong` `#434435` |
 | Texto (oscuro) | `--text` `#ECEBDE`, `--text-dim` `#9A9C88`, `--text-mute` `#6A6C5A` |
 | Estado | `--ok`, `--warn`, `--critical` (también "grabando"), `--info`, `--on-critical` |
-| Tipografía | `--font-ui` (Archivo), `--font-display` (Archivo + `font-stretch:125%`), `--font-mono` (JetBrains Mono) |
+| Tipografía | `--font-ui` (Instrument Sans), `--font-display` (Archivo, momentos alternos), `--font-script` (Caveat, el wordmark), `--font-mono` (JetBrains Mono) |
+| Marca | `--brand-ink` (color del wordmark: lima en oscuro, negro en claro — ver BRAND.md) |
 | Escala tipo | `--fs-11` … `--fs-40` (nunca menos de 11px) |
 | Espaciado | `--s-1` (4px) … `--s-16` (64px) — rejilla de 4px |
 | Radio | `--r` (4px, default), `--r-cell` (2px, celdas de datos), `--r-full` (solo dots de estado) |
@@ -41,9 +47,11 @@ deriva por `prefers-color-scheme` (y por `[data-theme]` si algún día hay un to
 
 ## Tipografía
 
-- **UI:** Archivo 400/500/600.
-- **Display** (momentos de marca — wordmark, títulos grandes): Archivo a 700 con
-  `font-stretch: 125%` y `letter-spacing: -0.02em` (clase `.display`).
+- **UI:** Instrument Sans 400/500/600.
+- **Display** (títulos grandes que no son el logo): Archivo a 700,
+  `letter-spacing: -0.02em` (clase `.display`).
+- **Wordmark/logo:** Caveat 600 — ver `js/logo.js` y [`BRAND.md`](BRAND.md).
+  No se usa para nada más que el logo.
 - **Telemetría / labels / IDs / timestamps / coordenadas:** JetBrains Mono
   400/500. Los labels van en MAYÚSCULAS con `letter-spacing: 0.08em`
   (clase `.label`).
@@ -101,7 +109,24 @@ Clases documentadas en `design-system.css`, en el mismo orden que el encargo:
 - **`remote-expert.html`** (escritorio/tablet): más denso — paleta de
   herramientas persistente, HUD de telemetría completo, tray de controles,
   panel de notas/reporte, atajos de teclado (`p/d/a/o/t` para herramientas,
-  `Cmd/Ctrl+Z` deshacer, `f` congelar).
+  `Cmd/Ctrl+Z` deshacer, `f` congelar). Requiere sesión (empresa); sin ella
+  redirige a `login.html`.
+
+## Cuenta y marca de empresa
+
+- **`login.html`** — mismo lenguaje visual, sin HUD (no hay sesión de video
+  todavía): tarjeta con pestañas *Iniciar sesión / Crear empresa / Unirme con
+  código*. Usa `.tab[aria-pressed]`, el mismo patrón que la toolkit de
+  anotación.
+- **Ajustes → "Marca de tu empresa"** (en `remote-expert.html`): nombre de la
+  empresa (editable solo por el `owner`, según la política RLS de
+  `companies`), logo (sube a Storage, bucket `logos`), y el código de
+  invitación para sumar compañeros de oficina. El logo/nombre se repiten como
+  **membrete** (`.brandbar`) arriba del modal de invitar y del reporte —
+  la única vez que un color de marca ajeno (el logo del cliente) convive con
+  el sistema; se enmarca en una caja neutra, nunca reemplaza al acento.
+- Ver [`README.md`](README.md) para el modelo de datos (Supabase) detrás de
+  esto.
 
 ## Accesibilidad
 

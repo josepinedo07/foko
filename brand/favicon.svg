@@ -1,0 +1,7 @@
+<svg viewBox="0 0 96 96" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Foko">
+  <rect width="96" height="96" rx="20" fill="#C6FF00"/>
+  <g fill="none" stroke="#141600" stroke-width="12" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M64 30 Q64 16 50 16 Q36 16 35 30 L29 80"/>
+    <path d="M23 47 L55 45"/>
+  </g>
+</svg>

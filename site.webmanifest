@@ -1,0 +1,11 @@
+{
+  "name": "Foko",
+  "short_name": "Foko",
+  "theme_color": "#0F1009",
+  "background_color": "#0F1009",
+  "display": "standalone",
+  "icons": [
+    { "src": "/brand/favicon.svg", "sizes": "any", "type": "image/svg+xml" },
+    { "src": "/brand/icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

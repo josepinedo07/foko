@@ -4,6 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>FOKO · Soporte visual remoto</title>
+  <link rel="icon" href="brand/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="brand/favicon-32.png" sizes="32x32" type="image/png">
+  <link rel="apple-touch-icon" href="brand/apple-touch-icon.png">
+  <link rel="manifest" href="site.webmanifest">
+  <meta name="theme-color" content="#0F1009">
   <link rel="stylesheet" href="css/design-system.css">
   <style>
     .wrap {
@@ -12,8 +17,7 @@
       padding: var(--s-8) var(--s-4); gap: var(--s-8);
     }
     .mark { text-align: center; }
-    .mark h1 { font-size: var(--fs-40); }
-    .mark p { color: var(--text-dim); font-size: var(--fs-14); margin-top: var(--s-2); max-width: 34ch; }
+    .mark p { color: var(--text-dim); font-size: var(--fs-14); margin-top: var(--s-4); max-width: 34ch; }
     .paths { display: grid; gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: var(--r); overflow: hidden; width: 100%; max-width: 420px; }
     .path { background: var(--surface); padding: var(--s-5); display: flex; flex-direction: column; gap: var(--s-3); }
     .path h2 { font-size: var(--fs-16); font-weight: 600; }
@@ -25,7 +29,7 @@
 <body>
   <div class="wrap">
     <div class="mark">
-      <h1 class="display">FOKO</h1>
+      <span id="logo" aria-label="Foko"></span>
       <p>El teléfono del técnico de campo se convierte en los ojos del técnico de oficina.</p>
     </div>
 
@@ -34,7 +38,7 @@
         <span class="label">Técnico de oficina</span>
         <h2>Abrir consola</h2>
         <p>Genera un enlace o QR, ve el feed y guía al de campo.</p>
-        <a class="btn btn--primary btn--block" href="remote-expert.html">Abrir consola</a>
+        <a class="btn btn--primary btn--block" href="login.html">Abrir consola</a>
       </div>
 
       <div class="path">
@@ -49,7 +53,10 @@
     </div>
   </div>
 
-  <script>
+  <script type="module">
+    import { mountLogo } from './js/logo.js';
+    mountLogo(document.getElementById('logo'), { height: 64 });
+
     const go = () => {
       const c = document.getElementById('code').value.trim().toUpperCase();
       if (c) location.href = `field-tech.html?room=${encodeURIComponent(c)}`;

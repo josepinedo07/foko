@@ -31,10 +31,19 @@ svg { display: block; }
 .display {
   font-family: var(--font-display);
   font-weight: 700;
-  font-stretch: 125%;
   letter-spacing: var(--tracking-display);
   line-height: 1.1;
 }
+
+/* -- Logo / wordmark ------------------------------------------------------
+   Lima en oscuro, negro en claro — nunca otro color (--brand-ink). El SVG
+   usa fill="currentColor", así que el color lo pone esta clase. */
+.logo {
+  display: inline-flex; align-items: center;
+  color: var(--brand-ink);
+  line-height: 0;
+}
+.logo-mark { height: var(--logo-h, 40px); width: auto; display: block; }
 .mono { font-family: var(--font-mono); font-weight: 400; }
 .label {
   font-family: var(--font-mono);

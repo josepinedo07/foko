@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FOKO · Acceso</title>
+  <link rel="icon" href="brand/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="brand/favicon-32.png" sizes="32x32" type="image/png">
+  <link rel="apple-touch-icon" href="brand/apple-touch-icon.png">
+  <link rel="manifest" href="site.webmanifest">
+  <meta name="theme-color" content="#0F1009">
+  <link rel="stylesheet" href="css/design-system.css">
+  <style>
+    .wrap {
+      min-height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: var(--s-8) var(--s-4); gap: var(--s-6);
+    }
+    .mark { text-align: center; }
+    .mark p { color: var(--text-dim); font-size: var(--fs-14); margin-top: var(--s-2); }
+    .card { width: 100%; max-width: 380px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: var(--s-5); }
+    .tabs { display: flex; gap: var(--s-1); padding: var(--s-1); background: var(--bg); border: 1px solid var(--border); border-radius: var(--r); margin-bottom: var(--s-5); }
+    .tab {
+      flex: 1; text-align: center; padding: var(--s-2); border-radius: var(--r-cell);
+      background: transparent; border: 0; color: var(--text-dim); font-size: var(--fs-12); font-weight: 500; cursor: pointer;
+    }
+    .tab[aria-pressed='true'] { background: var(--surface-2); color: var(--text); }
+    .tabpanel { display: flex; flex-direction: column; gap: var(--s-3); }
+    .hint { color: var(--text-mute); font-size: var(--fs-12); }
+    .err { color: var(--critical); font-size: var(--fs-12); display: none; }
+    .ok { color: var(--ok); font-size: var(--fs-12); display: none; }
+    .foot { text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="mark">
+      <span id="logo" aria-label="Foko"></span>
+      <p>Soporte visual remoto para tu empresa.</p>
+    </div>
+
+    <div class="card">
+      <div class="tabs" role="tablist">
+        <button class="tab" data-tab="signin" role="tab" aria-pressed="true">Iniciar sesión</button>
+        <button class="tab" data-tab="create" role="tab" aria-pressed="false">Crear empresa</button>
+        <button class="tab" data-tab="join" role="tab" aria-pressed="false">Unirme</button>
+      </div>
+
+      <form class="tabpanel" id="formSignin">
+        <input class="field" type="email" id="siEmail" placeholder="Correo" autocomplete="email" required>
+        <input class="field" type="password" id="siPassword" placeholder="Contraseña" autocomplete="current-password" required>
+        <button class="btn btn--primary btn--block" type="submit">Entrar</button>
+      </form>
+
+      <form class="tabpanel" id="formCreate" hidden>
+        <input class="field" id="ccCompany" placeholder="Nombre de tu empresa" autocomplete="organization" required>
+        <input class="field" type="email" id="ccEmail" placeholder="Correo" autocomplete="email" required>
+        <input class="field" type="password" id="ccPassword" placeholder="Contraseña (mín. 6 caracteres)" autocomplete="new-password" minlength="6" required>
+        <button class="btn btn--primary btn--block" type="submit">Crear empresa</button>
+        <p class="hint">Quedas como dueño de la empresa. Podrás invitar a tus técnicos de oficina con un código.</p>
+      </form>
+
+      <form class="tabpanel" id="formJoin" hidden>
+        <input class="field" id="jcCode" placeholder="Código de invitación" style="text-transform:uppercase" autocomplete="off" required>
+        <input class="field" type="email" id="jcEmail" placeholder="Correo" autocomplete="email" required>
+        <input class="field" type="password" id="jcPassword" placeholder="Contraseña (mín. 6 caracteres)" autocomplete="new-password" minlength="6" required>
+        <button class="btn btn--primary btn--block" type="submit">Unirme al equipo</button>
+        <p class="hint">Pídele el código a quien creó la cuenta de tu empresa (está en Ajustes → Marca).</p>
+      </form>
+
+      <p class="err" id="err"></p>
+      <p class="ok" id="ok"></p>
+    </div>
+
+    <p class="foot hint">FOKO · soporte visual remoto</p>
+  </div>
+
+  <script type="module">
+    import { supabase, getSessionAndProfile } from './js/supabase-client.js';
+    import { mountLogo } from './js/logo.js';
+
+    const $ = (id) => document.getElementById(id);
+    mountLogo($('logo'), { height: 48 });
+
+    // Ya autenticado y con empresa: directo a la consola.
+    getSessionAndProfile().then((state) => {
+      if (state && state.company) location.href = 'remote-expert.html';
+    });
+
+    // ---- Pestañas ----
+    const tabs = document.querySelectorAll('.tab');
+    const panels = { signin: $('formSignin'), create: $('formCreate'), join: $('formJoin') };
+    tabs.forEach((t) => t.addEventListener('click', () => {
+      tabs.forEach((x) => x.setAttribute('aria-pressed', 'false'));
+      t.setAttribute('aria-pressed', 'true');
+      Object.entries(panels).forEach(([k, el]) => { el.hidden = k !== t.dataset.tab; });
+      clearMsg();
+    }));
+
+    function clearMsg() { $('err').style.display = 'none'; $('ok').style.display = 'none'; }
+    function showErr(msg) { $('err').textContent = translate(msg); $('err').style.display = 'block'; $('ok').style.display = 'none'; }
+    function showOk(msg) { $('ok').textContent = msg; $('ok').style.display = 'block'; $('err').style.display = 'none'; }
+
+    function translate(msg) {
+      const m = String(msg || '');
+      if (/already registered|already exists/i.test(m)) return 'Ese correo ya tiene cuenta. Usa "Iniciar sesión".';
+      if (/invalid login credentials/i.test(m)) return 'Correo o contraseña incorrectos.';
+      if (/password should be at least/i.test(m)) return 'La contraseña debe tener al menos 6 caracteres.';
+      if (/unable to validate email/i.test(m)) return 'Ese correo no es válido.';
+      return m || 'Algo salió mal. Intenta de nuevo.';
+    }
+
+    function setBusy(form, busy) {
+      form.querySelectorAll('input, button').forEach((el) => { el.disabled = busy; });
+    }
+
+    // ---- Iniciar sesión ----
+    $('formSignin').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      clearMsg();
+      setBusy(e.target, true);
+      try {
+        const { error } = await supabase.auth.signInWithPassword({
+          email: $('siEmail').value.trim(),
+          password: $('siPassword').value,
+        });
+        if (error) throw error;
+        const state = await getSessionAndProfile();
+        if (state && state.company) {
+          location.href = 'remote-expert.html';
+        } else {
+          showErr('Tu cuenta no tiene una empresa todavía. Usa "Crear empresa" o "Unirme".');
+        }
+      } catch (err) {
+        showErr(err.message);
+      } finally {
+        setBusy(e.target, false);
+      }
+    });
+
+    // ---- Crear empresa ----
+    $('formCreate').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      clearMsg();
+      setBusy(e.target, true);
+      try {
+        const email = $('ccEmail').value.trim();
+        const password = $('ccPassword').value;
+        const companyName = $('ccCompany').value.trim();
+
+        const { data, error } = await supabase.auth.signUp({ email, password });
+        if (error) throw error;
+        if (!data.session) throw new Error('No se pudo iniciar sesión automáticamente. Intenta iniciar sesión.');
+
+        const { error: rpcErr } = await supabase.rpc('create_company_and_join', { company_name: companyName });
+        if (rpcErr) throw rpcErr;
+
+        showOk('Empresa creada. Entrando…');
+        location.href = 'remote-expert.html';
+      } catch (err) {
+        showErr(err.message);
+      } finally {
+        setBusy(e.target, false);
+      }
+    });
+
+    // ---- Unirme con código ----
+    $('formJoin').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      clearMsg();
+      setBusy(e.target, true);
+      try {
+        const email = $('jcEmail').value.trim();
+        const password = $('jcPassword').value;
+        const code = $('jcCode').value.trim();
+
+        const { data, error } = await supabase.auth.signUp({ email, password });
+        if (error) throw error;
+        if (!data.session) throw new Error('No se pudo iniciar sesión automáticamente. Intenta iniciar sesión.');
+
+        const { error: rpcErr } = await supabase.rpc('join_company_by_code', { code });
+        if (rpcErr) throw rpcErr;
+
+        showOk('Listo, ya eres parte del equipo. Entrando…');
+        location.href = 'remote-expert.html';
+      } catch (err) {
+        showErr(err.message);
+      } finally {
+        setBusy(e.target, false);
+      }
+    });
+  </script>
+</body>
+</html>

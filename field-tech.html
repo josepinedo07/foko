@@ -4,6 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>FOKO · Campo</title>
+  <link rel="icon" href="brand/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="brand/favicon-32.png" sizes="32x32" type="image/png">
+  <link rel="apple-touch-icon" href="brand/apple-touch-icon.png">
+  <link rel="manifest" href="site.webmanifest">
+  <meta name="theme-color" content="#0F1009">
   <link rel="stylesheet" href="css/design-system.css">
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <style>
@@ -43,8 +48,7 @@
       padding-top: calc(var(--s-6) + env(safe-area-inset-top));
     }
     .gate__mark { text-align: center; }
-    .gate__mark h1 { font-size: var(--fs-28); }
-    .gate__mark p { color: var(--text-dim); font-size: var(--fs-12); margin-top: var(--s-2); max-width: 30ch; }
+    .gate__mark p { color: var(--text-dim); font-size: var(--fs-12); margin-top: var(--s-3); max-width: 30ch; }
     .gate .field { text-transform: uppercase; text-align: center; max-width: 220px; }
     #gateErr { color: var(--critical); font-family: var(--font-mono); font-size: var(--fs-12); display: none; }
   </style>
@@ -63,6 +67,7 @@
       <span class="pill" id="livePill"><span class="dot" id="liveDot"></span><span id="liveText">OFFLINE</span></span>
       <span class="bars" data-hud="bars" data-level="0"><i></i><i></i><i></i><i></i></span>
       <span data-hud="lat">— MS</span>
+      <span id="companyName" class="mono text-dim" style="font-size:var(--fs-11);" hidden></span>
       <span class="spacer"></span>
       <span data-hud="res">—</span>
     </div>
@@ -97,7 +102,7 @@
 
     <div class="gate" id="gate">
       <div class="gate__mark">
-        <h1 class="display">FOKO</h1>
+        <span id="logo" aria-label="Foko"></span>
         <p>Vas a compartir la cámara de tu teléfono con el técnico de oficina.</p>
       </div>
 
@@ -126,9 +131,11 @@
     import { ARCanvas } from './js/ar-canvas.js';
     import { WebRTCManager } from './js/webrtc-manager.js';
     import { Hud, toast, runSystemsCheck } from './js/ui.js';
+    import { mountLogo } from './js/logo.js';
 
     const $ = (id) => document.getElementById(id);
     const params = new URLSearchParams(location.search);
+    mountLogo($('logo'), { height: 34 });
     const feed = $('feed');
     let webrtc = null;
     let micOn = true;
@@ -211,7 +218,13 @@
         onScreenStream: (stream) => { $('screenVideo').srcObject = stream; $('screenshare').classList.add('on'); },
         onScreenStreamEnded: () => $('screenshare').classList.remove('on'),
         onData: (msg) => {
-          if (msg.type === 'hello') return;
+          if (msg.type === 'hello') {
+            if (msg.company && msg.company.name) {
+              $('companyName').textContent = `· ${msg.company.name}`;
+              $('companyName').hidden = false;
+            }
+            return;
+          }
           if (msg.type === 'screen') { if (!msg.active) $('screenshare').classList.remove('on'); return; }
           if (msg.type === 'freeze') { $('freezeTag').classList.toggle('on', !!msg.dataUrl); }
           const pointing = $('viewer').classList;

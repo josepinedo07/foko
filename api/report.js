@@ -1,15 +1,17 @@
 /**
- * FOKO — POST /api/report  — genera un reporte de servicio a partir de la
+ * FOKO — POST /api/report — genera un reporte de servicio a partir de la
  * transcripción + notas de la llamada, usando Claude.
  *
- * Protegido por un código de acceso simple (env APP_PASSWORD). La API key
- * de Anthropic vive solo en el servidor (env ANTHROPIC_API_KEY).
+ * Protegido por cuenta real: el header Authorization trae el access_token de
+ * la sesión de Supabase del técnico de oficina (no una contraseña compartida).
+ * Se valida con la service role key (nunca sale del servidor) y se resuelve
+ * la empresa del usuario para incluirla en el contexto del reporte.
  *
- * Para producción/cobro real: reemplazar el código de acceso por cuentas
- * de usuario + medición de uso + facturación.
+ * Env vars requeridas: ANTHROPIC_API_KEY, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY.
  */
 
 import Anthropic from '@anthropic-ai/sdk';
+import { createClient } from '@supabase/supabase-js';
 
 // Modelo para redactar el reporte. Haiku es de sobra para esto y el más barato
 // (~1 centavo por reporte). Sube a 'claude-sonnet-5' si quieres más calidad.
@@ -23,6 +25,7 @@ nombres. Si algo no se mencionó, escribe "No especificado".
 Devuelve SOLO el reporte en Markdown, con estas secciones:
 
 # Reporte de servicio
+- **Empresa:** (usa la que te den)
 - **Fecha:** (usa la que te den)
 - **Código de sesión:** (usa el que te den)
 - **Duración:** (usa la que te den)
@@ -43,19 +46,37 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(204).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Método no permitido' });
 
-  const expected = process.env.APP_PASSWORD;
-  const given = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
-  if (!expected || given !== expected) {
-    return res.status(401).json({ error: 'Código de acceso inválido' });
-  }
-
   if (!process.env.ANTHROPIC_API_KEY) {
     return res.status(500).json({ error: 'Falta ANTHROPIC_API_KEY en el servidor' });
   }
+  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    return res.status(500).json({ error: 'Falta configurar Supabase en el servidor' });
+  }
+
+  const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+  if (!token) return res.status(401).json({ error: 'Falta iniciar sesión' });
+
+  const supabaseAdmin = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+
+  const { data: { user }, error: authErr } = await supabaseAdmin.auth.getUser(token);
+  if (authErr || !user) {
+    return res.status(401).json({ error: 'Sesión inválida o vencida. Vuelve a iniciar sesión.' });
+  }
+
+  let companyName = null;
+  try {
+    const { data: profile } = await supabaseAdmin
+      .from('profiles')
+      .select('companies ( name )')
+      .eq('user_id', user.id)
+      .single();
+    companyName = profile?.companies?.name || null;
+  } catch (_) { /* sin empresa asociada; seguimos sin membrete en el texto */ }
 
   let body = req.body;
-  if (typeof body === 'string') { try { body = JSON.parse(body); } catch { body = {}; }
-  }
+  if (typeof body === 'string') { try { body = JSON.parse(body); } catch { body = {}; } }
   const { transcript = '', notes = '', meta = {} } = body || {};
 
   if (!transcript.trim() && !notes.trim()) {
@@ -64,12 +85,13 @@ export default async function handler(req, res) {
 
   const userMsg = [
     `Datos de la sesión:`,
+    `- Empresa: ${companyName || 'No especificado'}`,
     `- Fecha: ${meta.date || 'No especificado'}`,
     `- Código de sesión: ${meta.room || 'No especificado'}`,
     `- Duración: ${meta.duration || 'No especificado'}`,
     `- Fotos tomadas: ${meta.photos ?? 'No especificado'}`,
     ``,
-    `Transcripción de la llamada (voz del técnico remoto):`,
+    `Transcripción de la llamada (voz del técnico de oficina):`,
     transcript.trim() || '(sin transcripción)',
     ``,
     `Notas escritas por el técnico durante la llamada:`,
