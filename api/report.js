@@ -11,6 +11,10 @@
 
 import Anthropic from '@anthropic-ai/sdk';
 
+// Modelo para redactar el reporte. Haiku es de sobra para esto y el más barato
+// (~1 centavo por reporte). Sube a 'claude-sonnet-5' si quieres más calidad.
+const MODEL = process.env.REPORT_MODEL || 'claude-haiku-4-5';
+
 const SYSTEM = `Eres un asistente que redacta reportes de servicio técnico en español,
 a partir de la transcripción de una videollamada de soporte remoto y las notas que
 tomó el técnico. Sé fiel a lo que se dijo: no inventes datos, equipos, mediciones ni
@@ -75,9 +79,8 @@ export default async function handler(req, res) {
   try {
     const anthropic = new Anthropic();
     const msg = await anthropic.messages.create({
-      model: 'claude-opus-5',
+      model: MODEL,
       max_tokens: 4000,
-      output_config: { effort: 'low' },
       system: SYSTEM,
       messages: [{ role: 'user', content: userMsg }],
     });
