@@ -5,10 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>FOKO · Soporte visual remoto</title>
   <meta name="description" content="El soporte técnico remoto que ve lo que tú ves. Videollamada en vivo entre el celular de campo y la consola de oficina: puntero, dibujo, congelado, fotos, grabación y reporte con IA.">
-  <link rel="icon" href="brand/favicon.svg" type="image/svg+xml">
-  <link rel="icon" href="brand/favicon-32.png" sizes="32x32" type="image/png">
-  <link rel="apple-touch-icon" href="brand/apple-touch-icon.png">
-  <link rel="manifest" href="site.webmanifest">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" href="/brand/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="/brand/favicon-32.png" sizes="32x32" type="image/png">
+  <link rel="apple-touch-icon" href="/brand/apple-touch-icon.png">
+  <link rel="manifest" href="/site.webmanifest">
   <meta name="theme-color" content="#0F1009">
   <link rel="stylesheet" href="css/design-system.css">
   <style>
@@ -45,6 +46,7 @@
         radial-gradient(120% 90% at 22% 12%, var(--accent-wash), transparent 55%),
         repeating-linear-gradient(118deg, var(--surface-2) 0 2px, var(--bg) 2px 34px);
     }
+    .mock-photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center 38%; }
 
     .mock-hud {
       position: absolute; top: 0; left: 0; right: 0;
@@ -181,6 +183,7 @@
 
       <div class="mockshell">
         <div class="mockstage">
+          <img class="mock-photo" src="brand/hero-panel.jpg" alt="" aria-hidden="true">
           <div class="mock-hud">
             <span class="pill pill--live"><span class="dot dot--live"></span>LIVE</span>
             <span><b>lat</b>42 MS</span>
@@ -303,8 +306,13 @@
 
   <script type="module">
     import { mountLogo } from './js/logo.js';
-    mountLogo(document.getElementById('navLogo'), { height: 28 });
-    mountLogo(document.getElementById('footLogo'), { height: 22, showDot: false });
+    mountLogo(document.getElementById('navLogo'), { height: 44 });
+    mountLogo(document.getElementById('footLogo'), { height: 30, showDot: false });
+
+    // El mockup del hero muestra una foto real de tablero; si aún no está el
+    // archivo (brand/hero-panel.jpg), cae al fondo esquemático.
+    const heroPhoto = document.querySelector('.mock-photo');
+    if (heroPhoto) heroPhoto.addEventListener('error', () => heroPhoto.remove());
 
     const go = () => {
       const c = document.getElementById('code').value.trim().toUpperCase();
