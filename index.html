@@ -44,7 +44,7 @@
       position: relative; aspect-ratio: 16 / 10;
       background: var(--video-void);
     }
-    .mock-photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center 40%; }
+    .mock-photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 44%; }
     /* Estado sin foto: retícula tenue, como un visor a la espera */
     .mock-empty {
       position: absolute; inset: 0;
@@ -78,16 +78,34 @@
 
     /* El único momento "mira aquí": el componente que el experto marcó */
     .mock-mark {
-      position: absolute; top: 30%; left: 34%; width: 24%; height: 20%;
+      position: absolute; top: 26%; left: 22%; width: 26%; height: 34%;
       border: 2px solid var(--accent); border-radius: var(--r-cell);
       box-shadow: 0 0 0 3px var(--accent-wash);
     }
     .mock-mark__tag {
-      position: absolute; top: calc(30% + 20% + 5px); left: 34%;
+      position: absolute; top: calc(26% + 34% + 5px); left: 22%;
       font-family: var(--font-mono); font-size: var(--fs-11); letter-spacing: 0.04em;
       color: var(--on-accent); background: var(--accent);
       padding: 2px 6px; border-radius: var(--r-cell); white-space: nowrap;
     }
+
+    /* Tarjeta "Compartiendo": el diagrama que el experto le manda al técnico */
+    .mock-share {
+      position: absolute; right: var(--s-3); bottom: var(--s-3); width: 172px;
+      background: var(--surface); border: 1px solid var(--border-strong);
+      border-radius: var(--r-cell); overflow: hidden; box-shadow: var(--shadow-float);
+    }
+    .mock-share__head {
+      display: flex; align-items: center; gap: var(--s-1);
+      padding: var(--s-1) var(--s-2); border-bottom: 1px solid var(--border);
+      font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.06em;
+      text-transform: uppercase; color: var(--text-dim);
+    }
+    .mock-share__head::before {
+      content: ''; width: 5px; height: 5px; border-radius: var(--r-full); background: var(--accent);
+    }
+    .mock-share img { display: block; width: 100%; height: 92px; object-fit: cover; object-position: top left; background: var(--text); }
+    @media (max-width: 560px) { .mock-share { display: none; } }
 
     .mockcaption {
       display: flex; justify-content: space-between; align-items: center; gap: var(--s-3);
@@ -175,10 +193,15 @@
 
           <div class="mock-mark"></div>
           <span class="mock-mark__tag">-A7B1 · RELÉ SEGURIDAD</span>
+
+          <div class="mock-share">
+            <div class="mock-share__head">Compartiendo · diagrama</div>
+            <img src="brand/hero-diagram.jpg" alt="Diagrama eléctrico compartido en la sesión">
+          </div>
         </div>
         <div class="mockcaption">
           <span class="label">Vista previa de la consola</span>
-          <span class="label">Señalar · congelar · fotografiar</span>
+          <span class="label">Señalar · congelar · compartir</span>
         </div>
       </div>
     </section>
@@ -267,13 +290,16 @@
     mountLogo(document.getElementById('navLogo'), { height: 44 });
     mountLogo(document.getElementById('footLogo'), { height: 30, showDot: false });
 
-    // El mockup del hero muestra una foto real de tablero; si aún no está el
-    // archivo (brand/hero-panel.jpg), cae a un visor "en espera" sin la marca.
+    // Mockup del hero: foto real del tablero + diagrama compartido. Si algún
+    // archivo falta, ese elemento se quita y el visor queda "en espera".
     const heroPhoto = document.querySelector('.mock-photo');
     if (heroPhoto) heroPhoto.addEventListener('error', () => {
       heroPhoto.remove();
       document.querySelectorAll('.mock-mark, .mock-mark__tag').forEach((el) => el.remove());
     });
+    const heroShare = document.querySelector('.mock-share');
+    const heroDiagram = heroShare && heroShare.querySelector('img');
+    if (heroDiagram) heroDiagram.addEventListener('error', () => heroShare.remove());
 
     const go = () => {
       const c = document.getElementById('code').value.trim().toUpperCase();
