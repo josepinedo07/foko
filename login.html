@@ -81,9 +81,10 @@
     const $ = (id) => document.getElementById(id);
     mountLogo($('logo'), { height: 48 });
 
-    // Ya autenticado y con empresa: directo a la consola.
+    // Ya autenticado: directo a donde corresponda.
     getSessionAndProfile().then((state) => {
-      if (state && state.company) location.href = 'remote-expert.html';
+      if (state && state.isPlatformAdmin) location.href = 'admin.html';
+      else if (state && state.company) location.href = 'remote-expert.html';
     });
 
     // ---- Pestañas ----
@@ -132,7 +133,9 @@
         });
         if (error) throw error;
         const state = await getSessionAndProfile();
-        if (state && state.company) {
+        if (state && state.isPlatformAdmin) {
+          location.href = 'admin.html';
+        } else if (state && state.company) {
           location.href = 'remote-expert.html';
         } else {
           showErr('Tu cuenta no tiene una empresa todavía. Usa "Crear empresa" o "Unirme".');

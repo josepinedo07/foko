@@ -138,3 +138,170 @@ create policy "members update own company logo" on storage.objects
   for update using (
     bucket_id = 'logos' and (storage.foldername(name))[1] = public.my_company_id()::text
   );
+
+-- ===========================================================================
+-- SUPER-ADMIN DE PLATAFORMA (cross-tenant)
+-- ===========================================================================
+-- Un platform admin puede leer y gestionar TODAS las empresas y perfiles, sin
+-- pertenecer a ninguna empresa. Se guarda en una tabla aparte (no en `profiles`,
+-- que exige company_id). La consola vive en `admin.html`.
+--
+-- Todo este bloque es re-ejecutable (if not exists / or replace / drop policy).
+
+create table if not exists public.platform_admins (
+  user_id    uuid primary key references auth.users(id) on delete cascade,
+  created_at timestamptz not null default now()
+);
+
+alter table public.platform_admins enable row level security;
+
+-- El cliente solo necesita saber si la sesión actual es admin (para la UI);
+-- ver la fila propia basta. Alta/baja de admins = por SQL o vía admin_*() abajo.
+drop policy if exists "admin sees own admin row" on public.platform_admins;
+create policy "admin sees own admin row" on public.platform_admins
+  for select using (user_id = auth.uid());
+
+grant select on public.platform_admins to authenticated;
+
+create or replace function public.is_platform_admin()
+returns boolean
+language sql security definer set search_path = public stable
+as $$ select exists (select 1 from public.platform_admins where user_id = auth.uid()) $$;
+
+grant execute on function public.is_platform_admin() to authenticated;
+
+-- --- RLS: el admin ve/gestiona todo -----------------------------------------
+-- Las políticas se combinan con OR: un usuario normal sigue viendo solo lo suyo;
+-- estas solo amplían el acceso cuando is_platform_admin() es true.
+
+drop policy if exists "platform admin reads all companies" on public.companies;
+create policy "platform admin reads all companies" on public.companies
+  for select using (public.is_platform_admin());
+
+drop policy if exists "platform admin updates all companies" on public.companies;
+create policy "platform admin updates all companies" on public.companies
+  for update using (public.is_platform_admin());
+
+drop policy if exists "platform admin deletes companies" on public.companies;
+create policy "platform admin deletes companies" on public.companies
+  for delete using (public.is_platform_admin());
+
+drop policy if exists "platform admin reads all profiles" on public.profiles;
+create policy "platform admin reads all profiles" on public.profiles
+  for select using (public.is_platform_admin());
+
+drop policy if exists "platform admin updates all profiles" on public.profiles;
+create policy "platform admin updates all profiles" on public.profiles
+  for update using (public.is_platform_admin());
+
+drop policy if exists "platform admin deletes profiles" on public.profiles;
+create policy "platform admin deletes profiles" on public.profiles
+  for delete using (public.is_platform_admin());
+
+grant delete on public.companies to authenticated;
+grant update, delete on public.profiles to authenticated;
+
+-- --- Vista de conjunto para la consola -------------------------------------
+-- Un solo RPC: empresas, usuarios (con email, que vive en auth.users), altas
+-- incompletas y totales. Gated por is_platform_admin().
+
+create or replace function public.admin_overview()
+returns jsonb
+language plpgsql security definer set search_path = public
+as $$
+declare result jsonb;
+begin
+  if not public.is_platform_admin() then
+    raise exception 'No autorizado';
+  end if;
+
+  select jsonb_build_object(
+    'companies', coalesce((
+      select jsonb_agg(row_to_json(x) order by x.created_at desc) from (
+        select c.id, c.name, c.logo_url, c.invite_code, c.created_at,
+               (select count(*) from public.profiles p where p.company_id = c.id) as members
+        from public.companies c
+      ) x
+    ), '[]'::jsonb),
+    'users', coalesce((
+      select jsonb_agg(row_to_json(x) order by x.created_at desc) from (
+        select p.user_id, u.email, p.full_name, p.role,
+               p.company_id, c.name as company_name, p.created_at,
+               exists(select 1 from public.platform_admins pa where pa.user_id = p.user_id) as is_platform_admin
+        from public.profiles p
+        join auth.users u on u.id = p.user_id
+        left join public.companies c on c.id = p.company_id
+      ) x
+    ), '[]'::jsonb),
+    'orphans', coalesce((
+      select jsonb_agg(row_to_json(x) order by x.created_at desc) from (
+        select u.id as user_id, u.email, u.created_at
+        from auth.users u
+        where not exists (select 1 from public.profiles p where p.user_id = u.id)
+          and not exists (select 1 from public.platform_admins pa where pa.user_id = u.id)
+      ) x
+    ), '[]'::jsonb),
+    'totals', jsonb_build_object(
+      'companies', (select count(*) from public.companies),
+      'users',     (select count(*) from public.profiles),
+      'admins',    (select count(*) from public.platform_admins)
+    )
+  ) into result;
+
+  return result;
+end;
+$$;
+
+grant execute on function public.admin_overview() to authenticated;
+
+-- --- Acciones del admin ----------------------------------------------------
+
+create or replace function public.admin_rename_company(company_id uuid, new_name text)
+returns void
+language plpgsql security definer set search_path = public
+as $$
+begin
+  if not public.is_platform_admin() then raise exception 'No autorizado'; end if;
+  if coalesce(trim(new_name), '') = '' then raise exception 'Nombre vacío'; end if;
+  update public.companies set name = trim(new_name) where id = company_id;
+end;
+$$;
+
+create or replace function public.admin_delete_company(company_id uuid)
+returns void
+language plpgsql security definer set search_path = public
+as $$
+begin
+  if not public.is_platform_admin() then raise exception 'No autorizado'; end if;
+  -- profiles cae por ON DELETE CASCADE; los usuarios de auth.users quedan.
+  delete from public.companies where id = company_id;
+end;
+$$;
+
+create or replace function public.admin_set_admin(target_email text, make_admin boolean)
+returns void
+language plpgsql security definer set search_path = public
+as $$
+declare uid uuid;
+begin
+  if not public.is_platform_admin() then raise exception 'No autorizado'; end if;
+  select id into uid from auth.users where lower(email) = lower(trim(target_email));
+  if uid is null then raise exception 'No hay un usuario con ese correo'; end if;
+  if make_admin then
+    insert into public.platform_admins (user_id) values (uid) on conflict do nothing;
+  else
+    delete from public.platform_admins where user_id = uid;
+  end if;
+end;
+$$;
+
+grant execute on function public.admin_rename_company(uuid, text) to authenticated;
+grant execute on function public.admin_delete_company(uuid) to authenticated;
+grant execute on function public.admin_set_admin(text, boolean) to authenticated;
+
+-- --- Bootstrap del primer admin ------------------------------------------
+-- Corre esto DESPUÉS de crear el usuario en Supabase → Authentication → Add user
+-- (josepinedo@chambeoapp.com). Es idempotente y no-op si el usuario aún no existe.
+insert into public.platform_admins (user_id)
+select id from auth.users where lower(email) = 'josepinedo@chambeoapp.com'
+on conflict (user_id) do nothing;

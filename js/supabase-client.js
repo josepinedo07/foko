@@ -14,19 +14,24 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-/** Sesión actual + perfil (empresa, rol) en una sola llamada. Null si no hay sesión. */
+/** Sesión actual + perfil (empresa, rol) + flag de super-admin de plataforma.
+ *  Una sola llamada. Null si no hay sesión. */
 export async function getSessionAndProfile() {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) return null;
 
-  const { data: profile, error } = await supabase
-    .from('profiles')
-    .select('role, full_name, companies ( id, name, logo_url, invite_code )')
-    .eq('user_id', session.user.id)
-    .single();
+  const [{ data: profile, error }, { data: isAdmin }] = await Promise.all([
+    supabase
+      .from('profiles')
+      .select('role, full_name, companies ( id, name, logo_url, invite_code )')
+      .eq('user_id', session.user.id)
+      .single(),
+    supabase.rpc('is_platform_admin'),
+  ]);
 
-  if (error || !profile) return { session, profile: null, company: null };
-  return { session, profile, company: profile.companies };
+  const isPlatformAdmin = !!isAdmin;
+  if (error || !profile) return { session, profile: null, company: null, isPlatformAdmin };
+  return { session, profile, company: profile.companies, isPlatformAdmin };
 }
 
 /** Redirige a login.html si no hay sesión. Úsalo al cargar una página protegida. */

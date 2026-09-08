@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FOKO · Consola de plataforma</title>
+  <link rel="icon" href="brand/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="brand/favicon-32.png" sizes="32x32" type="image/png">
+  <link rel="apple-touch-icon" href="brand/apple-touch-icon.png">
+  <link rel="manifest" href="site.webmanifest">
+  <meta name="theme-color" content="#0F1009">
+  <link rel="stylesheet" href="css/design-system.css">
+  <style>
+    body { min-height: 100%; }
+    .page { max-width: 1120px; margin: 0 auto; padding: 0 var(--s-5) var(--s-16); }
+
+    .topbar {
+      display: flex; align-items: center; gap: var(--s-3);
+      padding: var(--s-4) 0; border-bottom: 1px solid var(--border); margin-bottom: var(--s-8);
+    }
+    .topbar .spacer { flex: 1; }
+
+    .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: var(--r); overflow: hidden; margin-bottom: var(--s-10); }
+    .tile { background: var(--surface); padding: var(--s-5); }
+    .tile b { display: block; font-family: var(--font-mono); font-size: var(--fs-28); font-weight: 500; }
+    @media (max-width: 560px) { .tiles { grid-template-columns: 1fr; } }
+
+    section { padding: 0; border: 0; margin-bottom: var(--s-12); }
+    .sec-head { display: flex; align-items: baseline; gap: var(--s-3); margin-bottom: var(--s-4); }
+    .sec-head h2 { font-size: var(--fs-20); font-weight: 600; }
+    .sec-head .label { color: var(--text-mute); }
+
+    .tablewrap { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--r); }
+    table { width: 100%; border-collapse: collapse; font-size: var(--fs-12); }
+    thead th {
+      text-align: left; padding: var(--s-3) var(--s-3);
+      font-family: var(--font-mono); font-size: var(--fs-11); font-weight: 500;
+      letter-spacing: var(--tracking-label); text-transform: uppercase; color: var(--text-dim);
+      border-bottom: 1px solid var(--border); white-space: nowrap;
+    }
+    tbody td { padding: var(--s-3) var(--s-3); border-bottom: 1px solid var(--border); vertical-align: middle; }
+    tbody tr:last-child td { border-bottom: 0; }
+    tbody tr:hover td { background: var(--surface); }
+    td.mono, th.mono { font-family: var(--font-mono); }
+    td .sub { color: var(--text-mute); }
+
+    .rolechip {
+      font-family: var(--font-mono); font-size: var(--fs-11); letter-spacing: 0.04em;
+      text-transform: uppercase; color: var(--text-dim);
+      border: 1px solid var(--border-strong); border-radius: var(--r-cell); padding: 1px 6px;
+    }
+    .rolechip.owner { color: var(--accent-text); border-color: var(--accent); }
+    .rolechip.admin { color: var(--on-accent); background: var(--accent); border-color: var(--accent); }
+
+    .rowbtn {
+      font-family: var(--font-mono); font-size: var(--fs-11); letter-spacing: 0.04em;
+      color: var(--text-dim); background: transparent; border: 1px solid var(--border-strong);
+      border-radius: var(--r-cell); padding: 3px 8px; cursor: pointer;
+    }
+    .rowbtn:hover { color: var(--text); border-color: var(--text-mute); }
+    .rowbtn.danger:hover { color: var(--on-critical); background: var(--critical); border-color: var(--critical); }
+
+    .addadmin { display: flex; gap: var(--s-2); margin-top: var(--s-3); max-width: 420px; }
+
+    .state { padding: var(--s-8) 0; text-align: center; color: var(--text-dim); font-family: var(--font-mono); font-size: var(--fs-12); }
+    .denied { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--s-4); min-height: 70vh; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="page" id="page" hidden>
+    <div class="topbar">
+      <span id="logo" aria-label="Foko"></span>
+      <span class="label">Consola de plataforma</span>
+      <span class="spacer"></span>
+      <span class="mono text-dim" id="who" style="font-size:var(--fs-11);"></span>
+      <button class="btn btn--ghost" id="btnRefresh">Actualizar</button>
+      <button class="btn btn--ghost" id="btnLogout">Cerrar sesión</button>
+    </div>
+
+    <div class="tiles">
+      <div class="tile"><span class="label">Empresas</span><b id="tCompanies">—</b></div>
+      <div class="tile"><span class="label">Usuarios</span><b id="tUsers">—</b></div>
+      <div class="tile"><span class="label">Admins</span><b id="tAdmins">—</b></div>
+    </div>
+
+    <section>
+      <div class="sec-head"><h2>Empresas</h2><span class="label" id="cCount"></span></div>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Empresa</th><th>Miembros</th><th class="mono">Código</th><th>Creada</th><th></th></tr></thead>
+          <tbody id="companiesBody"><tr><td colspan="5" class="state">Cargando…</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section>
+      <div class="sec-head"><h2>Usuarios</h2><span class="label" id="uCount"></span></div>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Correo</th><th>Nombre</th><th>Empresa</th><th>Rol</th><th>Creado</th></tr></thead>
+          <tbody id="usersBody"><tr><td colspan="5" class="state">Cargando…</td></tr></tbody>
+        </table>
+      </div>
+      <div class="addadmin">
+        <input class="field" id="adminEmail" type="email" placeholder="correo@empresa.com" autocomplete="off">
+        <button class="btn" id="btnMakeAdmin">Hacer admin</button>
+      </div>
+    </section>
+
+    <section id="orphansSection" hidden>
+      <div class="sec-head"><h2>Altas incompletas</h2><span class="label">Cuenta creada, sin empresa</span></div>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Correo</th><th>Creado</th></tr></thead>
+          <tbody id="orphansBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <div class="denied" id="denied" hidden>
+    <span id="deniedLogo" aria-label="Foko"></span>
+    <p class="state">Esta cuenta no tiene acceso a la consola de plataforma.</p>
+    <a class="btn" href="login.html">Ir a iniciar sesión</a>
+  </div>
+
+  <div class="state" id="boot">Verificando sesión…</div>
+
+  <script type="module">
+    import { supabase, getSessionAndProfile } from './js/supabase-client.js';
+    import { mountLogo } from './js/logo.js';
+    import { toast } from './js/ui.js';
+
+    const $ = (id) => document.getElementById(id);
+
+    const state = await getSessionAndProfile();
+    if (!state) { location.href = 'login.html'; throw new Error('sin sesión'); }
+
+    if (!state.isPlatformAdmin) {
+      $('boot').hidden = true;
+      mountLogo($('deniedLogo'), { height: 40 });
+      $('denied').hidden = false;
+      throw new Error('no admin');
+    }
+
+    $('boot').hidden = true;
+    $('page').hidden = false;
+    mountLogo($('logo'), { height: 26 });
+    $('who').textContent = state.session.user.email || '';
+
+    const fmtDate = (s) => s ? new Date(s).toLocaleDateString('es-MX', { year: '2-digit', month: 'short', day: 'numeric' }) : '—';
+    const esc = (t) => String(t ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+    async function load() {
+      const { data, error } = await supabase.rpc('admin_overview');
+      if (error) { toast('No se pudo cargar: ' + error.message, 'critical', 6000); return; }
+      render(data);
+    }
+
+    function render(d) {
+      const companies = d.companies || [], users = d.users || [], orphans = d.orphans || [], totals = d.totals || {};
+      $('tCompanies').textContent = totals.companies ?? companies.length;
+      $('tUsers').textContent = totals.users ?? users.length;
+      $('tAdmins').textContent = totals.admins ?? 0;
+      $('cCount').textContent = companies.length + (companies.length === 1 ? ' empresa' : ' empresas');
+      $('uCount').textContent = users.length + (users.length === 1 ? ' usuario' : ' usuarios');
+
+      $('companiesBody').innerHTML = companies.length ? companies.map((c) => `
+        <tr data-id="${esc(c.id)}">
+          <td><strong>${esc(c.name)}</strong></td>
+          <td class="mono">${c.members}</td>
+          <td class="mono">${esc(c.invite_code)}</td>
+          <td class="mono">${fmtDate(c.created_at)}</td>
+          <td style="text-align:right; white-space:nowrap;">
+            <button class="rowbtn" data-act="rename">Renombrar</button>
+            <button class="rowbtn danger" data-act="delete">Eliminar</button>
+          </td>
+        </tr>`).join('') : '<tr><td colspan="5" class="state">Todavía no hay empresas.</td></tr>';
+
+      $('usersBody').innerHTML = users.length ? users.map((u) => `
+        <tr>
+          <td class="mono">${esc(u.email)}</td>
+          <td>${esc(u.full_name) || '<span class="sub">—</span>'}</td>
+          <td>${esc(u.company_name) || '<span class="sub">—</span>'}</td>
+          <td>${u.is_platform_admin
+              ? '<span class="rolechip admin">admin</span>'
+              : `<span class="rolechip ${u.role === 'owner' ? 'owner' : ''}">${esc(u.role)}</span>`}</td>
+          <td class="mono">${fmtDate(u.created_at)}</td>
+        </tr>`).join('') : '<tr><td colspan="5" class="state">Sin usuarios.</td></tr>';
+
+      $('orphansSection').hidden = !orphans.length;
+      $('orphansBody').innerHTML = orphans.map((o) => `
+        <tr><td class="mono">${esc(o.email)}</td><td class="mono">${fmtDate(o.created_at)}</td></tr>`).join('');
+    }
+
+    $('companiesBody').addEventListener('click', async (e) => {
+      const btn = e.target.closest('.rowbtn'); if (!btn) return;
+      const tr = btn.closest('tr'); const id = tr.dataset.id;
+      const name = tr.querySelector('strong').textContent;
+      if (btn.dataset.act === 'rename') {
+        const next = (window.prompt(`Nuevo nombre para "${name}":`, name) || '').trim();
+        if (!next || next === name) return;
+        const { error } = await supabase.rpc('admin_rename_company', { company_id: id, new_name: next });
+        error ? toast(error.message, 'critical', 5000) : (toast('Empresa renombrada', 'ok'), load());
+      } else if (btn.dataset.act === 'delete') {
+        if (!window.confirm(`Eliminar "${name}" y todos sus perfiles. Los usuarios de auth quedan pero sin empresa. ¿Seguro?`)) return;
+        const { error } = await supabase.rpc('admin_delete_company', { company_id: id });
+        error ? toast(error.message, 'critical', 5000) : (toast('Empresa eliminada', 'ok'), load());
+      }
+    });
+
+    $('btnMakeAdmin').addEventListener('click', async () => {
+      const email = $('adminEmail').value.trim();
+      if (!email) return;
+      const { error } = await supabase.rpc('admin_set_admin', { target_email: email, make_admin: true });
+      if (error) { toast(error.message, 'critical', 5000); return; }
+      $('adminEmail').value = '';
+      toast(`${email} ahora es admin`, 'ok');
+      load();
+    });
+
+    $('btnRefresh').addEventListener('click', load);
+    $('btnLogout').addEventListener('click', async () => { await supabase.auth.signOut(); location.href = 'login.html'; });
+
+    load();
+  </script>
+</body>
+</html>
