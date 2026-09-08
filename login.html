@@ -18,6 +18,22 @@
     .mark { text-align: center; }
     .mark p { color: var(--text-dim); font-size: var(--fs-14); margin-top: var(--s-2); }
     .card { width: 100%; max-width: 380px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: var(--s-5); }
+
+    .gbtn {
+      display: flex; align-items: center; justify-content: center; gap: var(--s-2);
+      width: 100%; min-height: 40px; padding: var(--s-2) var(--s-4);
+      background: var(--bg); border: 1px solid var(--border-strong); border-radius: var(--r);
+      color: var(--text); font-size: var(--fs-14); font-weight: 500; cursor: pointer;
+      transition: border-color var(--snap);
+    }
+    .gbtn:hover { border-color: var(--text-mute); }
+    .gbtn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .gbtn svg { width: 18px; height: 18px; }
+
+    .divider { display: flex; align-items: center; gap: var(--s-3); margin: var(--s-4) 0; }
+    .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+    .divider span { font-family: var(--font-mono); font-size: var(--fs-11); letter-spacing: var(--tracking-label); text-transform: uppercase; color: var(--text-mute); }
+
     .tabs { display: flex; gap: var(--s-1); padding: var(--s-1); background: var(--bg); border: 1px solid var(--border); border-radius: var(--r); margin-bottom: var(--s-5); }
     .tab {
       flex: 1; text-align: center; padding: var(--s-2); border-radius: var(--r-cell);
@@ -38,8 +54,15 @@
       <p>Soporte visual remoto para tu empresa.</p>
     </div>
 
-    <div class="card">
-      <div class="tabs" role="tablist">
+    <div class="card" id="card">
+      <button class="gbtn" id="btnGoogle" type="button">
+        <svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.6 2.4 30.2 0 24 0 14.6 0 6.4 5.4 2.6 13.2l7.9 6.1C12.3 13.2 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.1 24.6c0-1.6-.1-3.1-.4-4.6H24v9.1h12.4c-.5 2.9-2.2 5.3-4.6 7l7.1 5.5C43.4 37.5 46.1 31.6 46.1 24.6z"/><path fill="#FBBC05" d="M10.5 28.3c-.5-1.4-.7-2.9-.7-4.3s.3-3 .7-4.3l-7.9-6.1C.9 16.9 0 20.3 0 24s.9 7.1 2.6 10.4l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.2 0 11.5-2 15.3-5.5l-7.1-5.5c-2 1.3-4.6 2.1-8.2 2.1-6.3 0-11.7-3.7-13.5-9l-7.9 6.1C6.4 42.6 14.6 48 24 48z"/></svg>
+        Continuar con Google
+      </button>
+
+      <div class="divider"><span>o con tu correo</span></div>
+
+      <div class="tabs" role="tablist" id="tabs">
         <button class="tab" data-tab="signin" role="tab" aria-pressed="true">Iniciar sesión</button>
         <button class="tab" data-tab="create" role="tab" aria-pressed="false">Crear empresa</button>
         <button class="tab" data-tab="join" role="tab" aria-pressed="false">Unirme</button>
@@ -71,6 +94,30 @@
       <p class="ok" id="ok"></p>
     </div>
 
+    <!-- Ya autenticado (p.ej. tras Google) pero sin empresa -->
+    <div class="card" id="finishCard" hidden>
+      <p style="font-weight:600; margin-bottom:var(--s-1);">Casi listo</p>
+      <p class="hint" id="finishWho" style="margin-bottom:var(--s-4);"></p>
+
+      <div class="tabs" role="tablist" id="finishTabs">
+        <button class="tab" data-ft="create" role="tab" aria-pressed="true">Crear empresa</button>
+        <button class="tab" data-ft="join" role="tab" aria-pressed="false">Unirme con código</button>
+      </div>
+
+      <form class="tabpanel" id="finishCreate">
+        <input class="field" id="fcCompany" placeholder="Nombre de tu empresa" autocomplete="organization" required>
+        <button class="btn btn--primary btn--block" type="submit">Crear empresa</button>
+        <p class="hint">Quedas como dueño.</p>
+      </form>
+      <form class="tabpanel" id="finishJoin" hidden>
+        <input class="field" id="fjCode" placeholder="Código de invitación" style="text-transform:uppercase" autocomplete="off" required>
+        <button class="btn btn--primary btn--block" type="submit">Unirme al equipo</button>
+      </form>
+
+      <p class="err" id="fErr"></p>
+      <button class="btn btn--ghost btn--block" id="finishLogout" style="margin-top:var(--s-3);">Cerrar sesión</button>
+    </div>
+
     <p class="foot hint">FOKO · soporte visual remoto</p>
   </div>
 
@@ -81,17 +128,34 @@
     const $ = (id) => document.getElementById(id);
     mountLogo($('logo'), { height: 48 });
 
-    // Ya autenticado: directo a donde corresponda.
-    getSessionAndProfile().then((state) => {
-      if (state && state.isPlatformAdmin) location.href = 'admin.html';
-      else if (state && state.company) location.href = 'historial.html';
+    function routeByState(state) {
+      if (!state) return false;
+      if (state.isPlatformAdmin) { location.href = 'admin.html'; return true; }
+      if (state.company) { location.href = 'historial.html'; return true; }
+      // Autenticado sin empresa: completar alta.
+      $('card').hidden = true;
+      $('finishCard').hidden = false;
+      $('finishWho').textContent = `Sesión iniciada como ${state.session.user.email || 'tu cuenta'}. Crea tu empresa o únete a una.`;
+      return true;
+    }
+    getSessionAndProfile().then(routeByState);
+
+    // ---- Google ----
+    $('btnGoogle').addEventListener('click', async () => {
+      $('btnGoogle').disabled = true;
+      clearMsg();
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: location.origin + location.pathname },
+      });
+      if (error) { $('btnGoogle').disabled = false; showErr(error.message); }
     });
 
-    // ---- Pestañas ----
-    const tabs = document.querySelectorAll('.tab');
+    // ---- Pestañas (correo) ----
+    const tabs = document.querySelectorAll('#tabs .tab');
     const panels = { signin: $('formSignin'), create: $('formCreate'), join: $('formJoin') };
     function selectTab(name) {
-      const t = document.querySelector(`.tab[data-tab="${name}"]`);
+      const t = document.querySelector(`#tabs .tab[data-tab="${name}"]`);
       if (!t) return;
       tabs.forEach((x) => x.setAttribute('aria-pressed', 'false'));
       t.setAttribute('aria-pressed', 'true');
@@ -99,8 +163,6 @@
       clearMsg();
     }
     tabs.forEach((t) => t.addEventListener('click', () => selectTab(t.dataset.tab)));
-
-    // Enlace directo a una pestaña, p. ej. login.html?tab=create desde la landing.
     const wantedTab = new URLSearchParams(location.search).get('tab');
     if (wantedTab && panels[wantedTab]) selectTab(wantedTab);
 
@@ -114,6 +176,7 @@
       if (/invalid login credentials/i.test(m)) return 'Correo o contraseña incorrectos.';
       if (/password should be at least/i.test(m)) return 'La contraseña debe tener al menos 6 caracteres.';
       if (/unable to validate email/i.test(m)) return 'Ese correo no es válido.';
+      if (/provider is not enabled|Unsupported provider/i.test(m)) return 'El acceso con Google no está habilitado todavía.';
       return m || 'Algo salió mal. Intenta de nuevo.';
     }
 
@@ -132,13 +195,8 @@
           password: $('siPassword').value,
         });
         if (error) throw error;
-        const state = await getSessionAndProfile();
-        if (state && state.isPlatformAdmin) {
-          location.href = 'admin.html';
-        } else if (state && state.company) {
-          location.href = 'historial.html';
-        } else {
-          showErr('Tu cuenta no tiene una empresa todavía. Usa "Crear empresa" o "Unirme".');
+        if (!routeByState(await getSessionAndProfile())) {
+          showErr('Tu cuenta no tiene una empresa todavía.');
         }
       } catch (err) {
         showErr(err.message);
@@ -147,23 +205,19 @@
       }
     });
 
-    // ---- Crear empresa ----
+    // ---- Crear empresa (correo) ----
     $('formCreate').addEventListener('submit', async (e) => {
       e.preventDefault();
       clearMsg();
       setBusy(e.target, true);
       try {
-        const email = $('ccEmail').value.trim();
-        const password = $('ccPassword').value;
-        const companyName = $('ccCompany').value.trim();
-
-        const { data, error } = await supabase.auth.signUp({ email, password });
+        const { data, error } = await supabase.auth.signUp({
+          email: $('ccEmail').value.trim(), password: $('ccPassword').value,
+        });
         if (error) throw error;
         if (!data.session) throw new Error('No se pudo iniciar sesión automáticamente. Intenta iniciar sesión.');
-
-        const { error: rpcErr } = await supabase.rpc('create_company_and_join', { company_name: companyName });
+        const { error: rpcErr } = await supabase.rpc('create_company_and_join', { company_name: $('ccCompany').value.trim() });
         if (rpcErr) throw rpcErr;
-
         showOk('Empresa creada. Entrando…');
         location.href = 'historial.html';
       } catch (err) {
@@ -173,23 +227,19 @@
       }
     });
 
-    // ---- Unirme con código ----
+    // ---- Unirme con código (correo) ----
     $('formJoin').addEventListener('submit', async (e) => {
       e.preventDefault();
       clearMsg();
       setBusy(e.target, true);
       try {
-        const email = $('jcEmail').value.trim();
-        const password = $('jcPassword').value;
-        const code = $('jcCode').value.trim();
-
-        const { data, error } = await supabase.auth.signUp({ email, password });
+        const { data, error } = await supabase.auth.signUp({
+          email: $('jcEmail').value.trim(), password: $('jcPassword').value,
+        });
         if (error) throw error;
         if (!data.session) throw new Error('No se pudo iniciar sesión automáticamente. Intenta iniciar sesión.');
-
-        const { error: rpcErr } = await supabase.rpc('join_company_by_code', { code });
+        const { error: rpcErr } = await supabase.rpc('join_company_by_code', { code: $('jcCode').value.trim() });
         if (rpcErr) throw rpcErr;
-
         showOk('Listo, ya eres parte del equipo. Entrando…');
         location.href = 'historial.html';
       } catch (err) {
@@ -197,6 +247,40 @@
       } finally {
         setBusy(e.target, false);
       }
+    });
+
+    // ---- Completar alta (tras Google / cuenta sin empresa) ----
+    const fTabs = document.querySelectorAll('#finishTabs .tab');
+    fTabs.forEach((t) => t.addEventListener('click', () => {
+      fTabs.forEach((x) => x.setAttribute('aria-pressed', 'false'));
+      t.setAttribute('aria-pressed', 'true');
+      $('finishCreate').hidden = t.dataset.ft !== 'create';
+      $('finishJoin').hidden = t.dataset.ft !== 'join';
+      $('fErr').style.display = 'none';
+    }));
+    function fErr(msg) { $('fErr').textContent = translate(msg); $('fErr').style.display = 'block'; }
+
+    $('finishCreate').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      setBusy(e.target, true);
+      try {
+        const { error } = await supabase.rpc('create_company_and_join', { company_name: $('fcCompany').value.trim() });
+        if (error) throw error;
+        location.href = 'historial.html';
+      } catch (err) { fErr(err.message); setBusy(e.target, false); }
+    });
+    $('finishJoin').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      setBusy(e.target, true);
+      try {
+        const { error } = await supabase.rpc('join_company_by_code', { code: $('fjCode').value.trim() });
+        if (error) throw error;
+        location.href = 'historial.html';
+      } catch (err) { fErr(err.message); setBusy(e.target, false); }
+    });
+    $('finishLogout').addEventListener('click', async () => {
+      await supabase.auth.signOut();
+      location.reload();
     });
   </script>
 </body>
