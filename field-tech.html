@@ -15,6 +15,12 @@
     body { overflow: hidden; touch-action: none; }
     .screen { position: fixed; inset: 0; }
 
+    /* El canvas de anotación (.viewer__layer, z-index:2) cubre toda la pantalla;
+       sin esto el dock queda por DEBAJO y en el teléfono no se puede tocar
+       ningún botón (mic, voltear, linterna, señalar). */
+    #dock { z-index: 10; }
+    #dock .fab { touch-action: manipulation; }
+
     /* HUD de campo: mínimo, siempre visible */
     .fieldhud {
       position: absolute; top: 0; left: 0; right: 0; z-index: 4;
