@@ -407,3 +407,65 @@ create policy "company deletes session files" on storage.objects
       or public.is_platform_admin()
     )
   );
+
+-- ===========================================================================
+-- REGISTRO DE AUDITORÍA
+-- ===========================================================================
+-- Quién hizo qué y cuándo dentro de una empresa. Se escribe solo vía la RPC
+-- write_audit (valida el actor); nunca insert directo desde el cliente.
+
+create table if not exists public.audit_log (
+  id          bigint generated always as identity primary key,
+  company_id  uuid references public.companies(id) on delete set null,
+  actor       uuid references auth.users(id) on delete set null,
+  action      text not null,
+  target_type text,
+  target_id   text,
+  meta        jsonb not null default '{}'::jsonb,
+  created_at  timestamptz not null default now()
+);
+create index if not exists audit_log_company_idx on public.audit_log(company_id, created_at desc);
+alter table public.audit_log enable row level security;
+
+drop policy if exists "read company audit" on public.audit_log;
+create policy "read company audit" on public.audit_log
+  for select using (company_id = public.my_company_id() or public.is_platform_admin());
+
+grant select on public.audit_log to authenticated;
+
+create or replace function public.write_audit(
+  p_action text, p_target_type text default null,
+  p_target_id text default null, p_meta jsonb default '{}'::jsonb)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  if auth.uid() is null then return; end if;
+  insert into public.audit_log (company_id, actor, action, target_type, target_id, meta)
+  values (public.my_company_id(), auth.uid(), left(p_action, 60),
+          left(p_target_type, 40), left(p_target_id, 100), coalesce(p_meta, '{}'::jsonb));
+end $$;
+
+grant execute on function public.write_audit(text, text, text, jsonb) to authenticated;
+
+-- Emails de los actores para mostrarlos en la consola (gated por empresa/admin).
+create or replace function public.audit_feed(p_limit int default 200)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare result jsonb;
+begin
+  if public.my_company_id() is null and not public.is_platform_admin() then
+    raise exception 'No autorizado';
+  end if;
+  select coalesce(jsonb_agg(row_to_json(x) order by x.created_at desc), '[]'::jsonb) into result
+  from (
+    select a.id, a.action, a.target_type, a.target_id, a.meta, a.created_at,
+           u.email as actor_email, c.name as company_name
+    from public.audit_log a
+    left join auth.users u on u.id = a.actor
+    left join public.companies c on c.id = a.company_id
+    where public.is_platform_admin() or a.company_id = public.my_company_id()
+    order by a.created_at desc
+    limit greatest(1, least(p_limit, 500))
+  ) x;
+  return result;
+end $$;
+
+grant execute on function public.audit_feed(int) to authenticated;

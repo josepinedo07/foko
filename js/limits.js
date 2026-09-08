@@ -17,5 +17,9 @@ export const MAX_PHOTOS_PER_SESSION = 40;
 // Tope de caracteres (transcripción + notas) que se mandan al reporte con IA.
 export const MAX_REPORT_CHARS = 20000;
 
+// Si nadie se conecta a una sala en este tiempo, el código se descarta y se
+// genera otro (evita códigos/enlaces vivos indefinidamente sin uso).
+export const ROOM_IDLE_MINUTES = 10;
+
 export const SESSION_MAX_MS = SESSION_MAX_MINUTES * 60 * 1000;
 export const SESSION_WARN_MS = SESSION_WARN_MINUTES * 60 * 1000;

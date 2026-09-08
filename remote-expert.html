@@ -336,7 +336,8 @@
     import { Hud, toast } from './js/ui.js';
     import { mountLogo } from './js/logo.js';
     import { supabase, requireSession } from './js/supabase-client.js';
-    import { SESSION_MAX_MS, SESSION_WARN_MS, SESSION_MAX_MINUTES, MAX_REPORT_CHARS, MAX_PHOTOS_PER_SESSION } from './js/limits.js';
+    import { SESSION_MAX_MS, SESSION_WARN_MS, SESSION_MAX_MINUTES, MAX_REPORT_CHARS, MAX_PHOTOS_PER_SESSION, ROOM_IDLE_MINUTES } from './js/limits.js';
+    import { logAudit } from './js/audit.js';
 
     const $ = (id) => document.getElementById(id);
     const params = new URLSearchParams(location.search);
@@ -453,6 +454,7 @@
       onStatus: (s) => {
         if (s.state === 'connected') {
           connected = true;
+          clearTimeout(roomIdleTimer);
           statusEl.className = CONN.ok; statusEl.textContent = 'Conectado';
           $('inviteStatus').className = CONN.ok; $('inviteStatus').textContent = 'Técnico conectado';
         } else if (s.state === 'waiting') {
@@ -475,11 +477,25 @@
       webrtc.helloExtra = { company: { name: company.name, logoUrl: company.logo_url || null } };
     }
 
+    // Si nadie se conecta en ROOM_IDLE_MINUTES, se descarta el código y se
+    // genera otro para no dejar enlaces vivos indefinidamente.
+    let roomIdleTimer = null;
+    function armRoomIdle() {
+      clearTimeout(roomIdleTimer);
+      roomIdleTimer = setTimeout(() => {
+        if (connected) return;
+        toast(`Nadie se conectó en ${ROOM_IDLE_MINUTES} min. Se generó un código nuevo.`, 'warn', 8000);
+        roomCode = newCode(); webrtc.roomCode = roomCode; webrtc.destroy();
+        setTimeout(start, 300);
+      }, ROOM_IDLE_MINUTES * 60 * 1000);
+    }
+
     async function start() {
       await detectLanHost();
       try { await webrtc.startMic(); } catch (_) {}
       await webrtc.initPeer();
       refreshInvite();
+      armRoomIdle();
     }
     start();
 
@@ -929,6 +945,11 @@
           if (mErr) throw mErr;
         }
 
+        logAudit('session.saved', 'session', sessionId, {
+          client: $('endClient').value.trim() || null,
+          photos: captured.photos.length, videos: captured.videos.length,
+          duration_s: durationSec,
+        });
         toast('Sesión guardada en el historial', 'ok');
         leaveToHistory();
       } catch (e) {

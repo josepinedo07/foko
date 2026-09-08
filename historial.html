@@ -140,6 +140,7 @@
     import { supabase, requireSession } from './js/supabase-client.js';
     import { mountLogo } from './js/logo.js';
     import { toast } from './js/ui.js';
+    import { logAudit } from './js/audit.js';
 
     const $ = (id) => document.getElementById(id);
 
@@ -268,6 +269,7 @@
       const { error } = await supabase.from('sessions').update({ client_name, description }).eq('id', current.id);
       if (error) { toast('No se pudo guardar: ' + error.message, 'critical', 5000); return; }
       current.client_name = client_name; current.description = description;
+      logAudit('session.updated', 'session', current.id, {});
       toast('Guardado', 'ok', 1500);
       render(); openDetail(current.id);
     });
@@ -276,8 +278,10 @@
       if (!window.confirm(`Eliminar la sesión de "${current.client_name || 'Sin cliente'}" y sus archivos. ¿Seguro?`)) return;
       const paths = (current.session_media || []).map((m) => m.storage_path).filter(Boolean);
       if (paths.length) { try { await supabase.storage.from('sessions').remove(paths); } catch (_) {} }
-      const { error } = await supabase.from('sessions').delete().eq('id', current.id);
+      const delId = current.id, delClient = current.client_name;
+      const { error } = await supabase.from('sessions').delete().eq('id', delId);
       if (error) { toast('No se pudo eliminar: ' + error.message, 'critical', 5000); return; }
+      logAudit('session.deleted', 'session', delId, { client: delClient || null });
       $('detailModal').classList.remove('open');
       toast('Sesión eliminada', 'ok', 1500);
       load();

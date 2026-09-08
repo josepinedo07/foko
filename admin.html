@@ -116,6 +116,16 @@
         </table>
       </div>
     </section>
+
+    <section id="auditSection">
+      <div class="sec-head"><h2>Actividad</h2><span class="label">Últimos eventos</span></div>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Cuándo</th><th>Quién</th><th>Empresa</th><th>Acción</th><th>Detalle</th></tr></thead>
+          <tbody id="auditBody"><tr><td colspan="5" class="state">Cargando…</td></tr></tbody>
+        </table>
+      </div>
+    </section>
   </div>
 
   <div class="denied" id="denied" hidden>
@@ -155,6 +165,33 @@
       const { data, error } = await supabase.rpc('admin_overview');
       if (error) { toast('No se pudo cargar: ' + error.message, 'critical', 6000); return; }
       render(data);
+      loadAudit();
+    }
+
+    const ACTION_LABEL = {
+      'session.saved': 'Guardó una sesión',
+      'session.updated': 'Editó una sesión',
+      'session.deleted': 'Eliminó una sesión',
+    };
+    async function loadAudit() {
+      const { data, error } = await supabase.rpc('audit_feed', { p_limit: 200 });
+      if (error) { $('auditBody').innerHTML = `<tr><td colspan="5" class="state">${esc(error.message)}</td></tr>`; return; }
+      const rows = data || [];
+      $('auditBody').innerHTML = rows.length ? rows.map((a) => {
+        const m = a.meta || {};
+        const detail = [
+          m.client ? `cliente: ${esc(m.client)}` : '',
+          (m.photos != null || m.videos != null) ? `${m.photos ?? 0} fotos · ${m.videos ?? 0} videos` : '',
+          m.duration_s != null ? `${Math.round(m.duration_s / 60)} min` : '',
+        ].filter(Boolean).join(' · ');
+        return `<tr>
+          <td class="mono">${fmtDate(a.created_at)}</td>
+          <td class="mono">${esc(a.actor_email) || '—'}</td>
+          <td>${esc(a.company_name) || '—'}</td>
+          <td>${esc(ACTION_LABEL[a.action] || a.action)}</td>
+          <td class="mono"><span class="sub">${detail}</span></td>
+        </tr>`;
+      }).join('') : '<tr><td colspan="5" class="state">Sin actividad todavía.</td></tr>';
     }
 
     function render(d) {
