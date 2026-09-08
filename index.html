@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>FOKO · Soporte visual remoto</title>
-  <meta name="description" content="El teléfono de tu técnico de campo, los ojos de tu técnico de oficina. Videollamada con puntero, dibujo, congelado, fotos, grabación y reporte con IA.">
+  <meta name="description" content="El soporte técnico remoto que ve lo que tú ves. Videollamada en vivo entre el celular de campo y la consola de oficina: puntero, dibujo, congelado, fotos, grabación y reporte con IA.">
   <link rel="icon" href="brand/favicon.svg" type="image/svg+xml">
   <link rel="icon" href="brand/favicon-32.png" sizes="32x32" type="image/png">
   <link rel="apple-touch-icon" href="brand/apple-touch-icon.png">
@@ -13,97 +13,151 @@
   <link rel="stylesheet" href="css/design-system.css">
   <style>
     body { overflow-x: hidden; }
-    .page { max-width: 1080px; margin: 0 auto; padding: 0 var(--s-5); }
+    .page { max-width: 1080px; margin: 0 auto; padding: 0 var(--s-6); }
 
     /* -- Nav -------------------------------------------------------- */
-    .nav {
-      display: flex; align-items: center; gap: var(--s-4);
-      padding: var(--s-4) 0;
-    }
+    .nav { display: flex; align-items: center; gap: var(--s-4); padding: var(--s-6) 0; }
     .nav .spacer { flex: 1; }
     .nav-links { display: flex; align-items: center; gap: var(--s-2); }
-    @media (max-width: 560px) { .nav-links .btn--ghost span { display: none; } }
+    @media (max-width: 480px) { .nav-links .btn--ghost { display: none; } }
 
-    /* -- Hero --------------------------------------------------------- */
-    .hero { padding: var(--s-10) 0 var(--s-8); text-align: center; }
-    .hero .label { display: inline-flex; align-items: center; gap: var(--s-2); }
-    .hero .label::before { content: ''; width: 6px; height: 6px; border-radius: var(--r-full); background: var(--accent); }
+    /* -- Hero ------------------------------------------------------- */
+    .hero { padding: var(--s-16) 0 var(--s-12); text-align: center; }
     .headline {
       font-family: var(--font-display); font-weight: 700; letter-spacing: var(--tracking-display);
-      font-size: clamp(28px, 5vw, var(--fs-40)); line-height: 1.15; margin: var(--s-4) auto var(--s-4);
-      max-width: 22ch;
+      font-size: clamp(32px, 5.5vw, 56px); line-height: 1.12; margin: 0 auto var(--s-5);
+      max-width: 19ch;
     }
     .headline em { font-style: normal; color: var(--accent-text); }
-    .sub { color: var(--text-dim); font-size: var(--fs-16); max-width: 52ch; margin: 0 auto var(--s-6); }
-    .hero__cta { display: flex; gap: var(--s-3); justify-content: center; flex-wrap: wrap; margin-bottom: var(--s-10); }
-    .hero__cta .btn { min-width: 180px; }
+    .sub { color: var(--text-dim); font-size: var(--fs-16); max-width: 50ch; margin: 0 auto var(--s-8); }
+    .hero__cta { display: flex; gap: var(--s-3); justify-content: center; flex-wrap: wrap; margin-bottom: var(--s-16); }
+    .hero__cta .btn { min-width: 180px; padding: var(--s-4) var(--s-6); }
 
-    /* -- Mockup ilustrativo (no es video en vivo) ---------------------- */
-    .mockshell { max-width: 720px; margin: 0 auto; border: 1px solid var(--border-strong); border-radius: var(--r); overflow: hidden; box-shadow: var(--shadow-float); }
-    .mockstage { position: relative; aspect-ratio: 16/10; background:
-      radial-gradient(120% 90% at 20% 15%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 60%),
-      repeating-linear-gradient(115deg, var(--surface-2) 0 2px, var(--bg) 2px 34px);
+    /* -- Mockup ilustrativo (no es un feed en vivo) --------------- */
+    .mockshell {
+      max-width: 760px; margin: 0 auto;
+      border: 1px solid var(--border-strong); border-radius: var(--r);
+      overflow: hidden; box-shadow: var(--shadow-float);
     }
-    .mockstage .viewer__brackets, .mockstage .viewer__reticle { position: absolute; }
-    .mockstage .viewer__brackets { inset: var(--s-3); }
-    .mockstage .viewer__reticle { top: 46%; left: 44%; opacity: 1; }
-    .mockstage .viewer__reticle::before, .mockstage .viewer__reticle::after { background: var(--accent); }
+    .mockstage {
+      position: relative; aspect-ratio: 16 / 10;
+      background:
+        radial-gradient(120% 90% at 22% 12%, var(--accent-wash), transparent 55%),
+        repeating-linear-gradient(118deg, var(--surface-2) 0 2px, var(--bg) 2px 34px);
+    }
+
     .mock-hud {
       position: absolute; top: 0; left: 0; right: 0;
-      display: flex; align-items: center; gap: var(--s-4); padding: var(--s-2) var(--s-3);
+      display: flex; align-items: center; gap: var(--s-4);
+      padding: var(--s-2) var(--s-4);
       background: color-mix(in srgb, var(--bg) 78%, transparent);
-      font-family: var(--font-mono); font-size: var(--fs-11); letter-spacing: 0.04em; color: var(--text-dim);
+      font-family: var(--font-mono); font-size: var(--fs-11);
+      letter-spacing: 0.04em; color: var(--text-dim);
     }
-    .mock-hud b { color: var(--text-dim); font-weight: 400; text-transform: uppercase; letter-spacing: var(--tracking-label); margin-right: var(--s-1); }
     .mock-hud .spacer { flex: 1; }
+    .mock-hud b { color: var(--text-mute); font-weight: 400; text-transform: uppercase; letter-spacing: var(--tracking-label); margin-right: var(--s-1); }
+
+    .mock-chip {
+      position: absolute; top: 40px; left: var(--s-4);
+      display: inline-flex; align-items: center; gap: var(--s-2);
+      padding: var(--s-1) var(--s-2);
+      background: var(--surface); border: 1px solid var(--border-strong);
+      border-left: 2px solid var(--accent); border-radius: var(--r-cell);
+      box-shadow: var(--shadow-float);
+      font-family: var(--font-mono); font-size: var(--fs-11);
+      letter-spacing: 0.04em; color: var(--text-dim);
+    }
+    .mock-chip svg { width: 12px; height: 12px; stroke: var(--accent); }
+
+    .mock-mark {
+      position: absolute; top: 14%; left: 31%; width: 26%; height: 16%;
+      border: 3px solid var(--accent); border-radius: var(--r);
+      box-shadow: 0 0 0 3px var(--accent-wash), 0 0 16px color-mix(in srgb, var(--accent) 35%, transparent);
+    }
+    .mock-mark__tag {
+      position: absolute; top: calc(14% + 16% + 6px); left: 31%;
+      font-family: var(--font-mono); font-size: var(--fs-11); letter-spacing: 0.04em;
+      color: var(--on-accent); background: var(--accent);
+      padding: 2px 6px; border-radius: var(--r-cell);
+    }
+
+    .mock-share {
+      position: absolute; left: var(--s-3); bottom: 56px; width: 170px;
+      background: var(--surface); border: 1px solid var(--border-strong);
+      border-radius: var(--r); overflow: hidden; box-shadow: var(--shadow-float);
+    }
+    .mock-share__head {
+      display: flex; align-items: center; gap: var(--s-1);
+      padding: var(--s-1) var(--s-2); border-bottom: 1px solid var(--border);
+      font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.06em;
+      text-transform: uppercase; color: var(--text-dim);
+    }
+    .mock-share__head svg { width: 10px; height: 10px; stroke: var(--accent); }
+    .mock-share__plan { display: block; width: 100%; height: 100px; background: var(--text); }
+
     .mock-tray {
       position: absolute; left: 50%; bottom: var(--s-4); transform: translateX(-50%);
       display: flex; gap: var(--s-2); padding: var(--s-2);
-      background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); box-shadow: var(--shadow-float);
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--r); box-shadow: var(--shadow-float);
     }
-    .mock-annot { position: absolute; top: 30%; left: 56%; width: 120px; height: 70px; pointer-events: none; }
+    .mock-tray span {
+      width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
+      border-radius: var(--r-cell); color: var(--text-dim);
+    }
+    .mock-tray span svg { width: 16px; height: 16px; }
+    .mock-tray .is-rec { color: var(--critical); }
+
     .mockcaption {
-      display: flex; justify-content: space-between; align-items: center;
-      padding: var(--s-2) var(--s-4); background: var(--surface); border-top: 1px solid var(--border);
+      display: flex; justify-content: space-between; align-items: center; gap: var(--s-3);
+      padding: var(--s-2) var(--s-4);
+      background: var(--surface); border-top: 1px solid var(--border);
     }
 
-    /* -- Cómo funciona -------------------------------------------------- */
-    section { padding: var(--s-10) 0; border-top: 1px solid var(--border); }
-    .section-head { text-align: center; margin-bottom: var(--s-8); }
+    /* -- Secciones ----------------------------------------------- */
+    section { padding: var(--s-16) 0; border-top: 1px solid var(--border); }
+    .section-head { text-align: center; margin-bottom: var(--s-10); }
     .section-head h2 { font-size: var(--fs-28); font-weight: 600; margin-top: var(--s-2); }
-    .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--s-5); counter-reset: step; }
-    .step { border: 1px solid var(--border); border-radius: var(--r); padding: var(--s-5); }
+
+    /* Cómo funciona */
+    .steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s-5); counter-reset: step; }
+    .step { border: 1px solid var(--border); border-radius: var(--r); padding: var(--s-6); }
     .step::before {
       counter-increment: step; content: counter(step);
       display: flex; align-items: center; justify-content: center;
       width: 28px; height: 28px; margin-bottom: var(--s-4);
       border: 1px solid var(--accent); border-radius: var(--r-cell); color: var(--accent-text);
-      font-family: var(--font-mono); font-weight: 500;
+      font-family: var(--font-mono); font-weight: 500; font-size: var(--fs-14);
     }
     .step h3 { font-size: var(--fs-16); font-weight: 600; margin-bottom: var(--s-1); }
     .step p { color: var(--text-dim); font-size: var(--fs-14); }
 
-    /* -- Funciones -------------------------------------------------- */
-    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: var(--r); overflow: hidden; }
-    .feat { background: var(--surface); padding: var(--s-5); }
-    .feat .icon { color: var(--accent-text); margin-bottom: var(--s-3); }
-    .feat h3 { font-size: var(--fs-14); font-weight: 600; margin-bottom: var(--s-1); }
-    .feat p { color: var(--text-dim); font-size: var(--fs-12); }
-
-    @media (max-width: 720px) {
-      .steps, .grid { grid-template-columns: 1fr; }
+    /* Qué incluye — lista tipo hoja de datos */
+    .specs { border-top: 1px solid var(--border); }
+    .spec-row {
+      display: grid; grid-template-columns: 56px minmax(0, 1fr) minmax(0, 1.6fr);
+      gap: var(--s-6); padding: var(--s-5) 0;
+      border-bottom: 1px solid var(--border); align-items: baseline;
+    }
+    .spec-row__n { font-family: var(--font-mono); font-size: var(--fs-12); color: var(--text-mute); }
+    .spec-row h3 { font-size: var(--fs-14); font-weight: 600; }
+    .spec-row p { color: var(--text-dim); font-size: var(--fs-14); }
+    @media (max-width: 640px) {
+      .spec-row { grid-template-columns: 32px minmax(0, 1fr); row-gap: var(--s-1); }
+      .spec-row p { grid-column: 1 / -1; }
     }
 
-    /* -- Entrar con código -------------------------------------------- */
+    /* Código de sesión */
     .fieldjoin { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s-5); }
     .fieldjoin__text h2 { font-size: var(--fs-20); font-weight: 600; margin-bottom: var(--s-1); }
     .fieldjoin__text p { color: var(--text-dim); font-size: var(--fs-14); max-width: 44ch; }
     .join { display: flex; gap: var(--s-2); }
     .join .field { text-transform: uppercase; width: 160px; }
 
-    /* -- Footer -------------------------------------------------------- */
-    footer { padding: var(--s-6) 0 var(--s-10); display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); flex-wrap: wrap; }
-    footer .foot-logo { height: 22px; }
+    /* Footer */
+    footer { padding: var(--s-6) 0 var(--s-16); display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); flex-wrap: wrap; }
+
+    @media (max-width: 720px) { .steps { grid-template-columns: 1fr; } }
   </style>
 </head>
 <body>
@@ -118,8 +172,7 @@
     </header>
 
     <section class="hero" style="border-top: 0;">
-      <span class="label">Soporte visual remoto</span>
-      <h1 class="headline">El teléfono de tu técnico de campo, <em>los ojos</em> de tu técnico de oficina</h1>
+      <h1 class="headline">El soporte técnico remoto <em>que ve lo que tú ves</em></h1>
       <p class="sub">Videollamada en vivo entre el celular de campo y la consola de oficina: señala, dibuja, congela el cuadro, toma fotos, graba y comparte pantalla — sin que nadie instale nada.</p>
       <div class="hero__cta">
         <a class="btn btn--primary" href="login.html?tab=create">Crear tu cuenta</a>
@@ -133,23 +186,38 @@
             <span><b>lat</b>42 MS</span>
             <span><b>res</b>1080P</span>
             <span class="spacer"></span>
-            <span>· Tu empresa</span>
+            <span>· Logo de tu empresa</span>
           </div>
-          <div class="viewer__brackets"><i></i></div>
-          <div class="viewer__reticle"></div>
-          <svg class="mock-annot" viewBox="0 0 120 70" fill="none" stroke="var(--accent)" stroke-width="3" stroke-linecap="round">
-            <path d="M8 60 C 40 10, 80 8, 112 34" />
-            <path d="M112 34 l-14 -6 M112 34 l-4 14" />
-          </svg>
+
+          <span class="mock-chip">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a4 4 0 0 0-4 4v6a4 4 0 0 0 8 0V5a4 4 0 0 0-4-4z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1M12 18v4M8 22h8"/></svg>
+            Tomando notas…
+          </span>
+
+          <div class="mock-mark"></div>
+          <span class="mock-mark__tag">-A7B1 · RELÉ SEGURIDAD</span>
+
+          <div class="mock-share">
+            <div class="mock-share__head">
+              <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/></svg>
+              Compartiendo
+            </div>
+            <svg class="mock-share__plan" viewBox="0 0 170 100" fill="none" stroke="var(--video-void)" stroke-width="1.4" aria-hidden="true">
+              <path d="M12 24h40v16h-40zM52 32h28M80 20v40M80 32h30M110 24h20v16h-20zM110 60h48M158 52v16M20 60h44v20h-44zM64 70h50"/>
+              <circle cx="80" cy="60" r="3" fill="var(--video-void)"/>
+              <circle cx="110" cy="60" r="3" fill="var(--video-void)"/>
+            </svg>
+          </div>
+
           <div class="mock-tray">
-            <span class="btn btn-icon" aria-hidden="true"><svg class="icon icon--sm" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg></span>
-            <span class="btn btn-icon" aria-hidden="true"><svg class="icon icon--sm" viewBox="0 0 24 24"><path d="M12 2v6M12 16v6M2 12h6M16 12h6"/></svg></span>
-            <span class="btn btn-icon" aria-hidden="true"><svg class="icon icon--sm" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/></svg></span>
+            <span><svg class="icon icon--sm" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg></span>
+            <span class="is-rec"><svg class="icon icon--sm" viewBox="0 0 24 24" fill="currentColor" stroke="none"><circle cx="12" cy="12" r="7"/></svg></span>
+            <span><svg class="icon icon--sm" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/></svg></span>
           </div>
         </div>
         <div class="mockcaption">
           <span class="label">Vista previa de la consola</span>
-          <span class="label">Puntero · dibujo · congelar</span>
+          <span class="label">Capturar · grabar · compartir pantalla</span>
         </div>
       </div>
     </section>
@@ -180,34 +248,34 @@
         <span class="label">Qué incluye</span>
         <h2>Todo lo que necesita una llamada de soporte</h2>
       </div>
-      <div class="grid">
-        <div class="feat">
-          <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+      <div class="specs">
+        <div class="spec-row">
+          <span class="spec-row__n">01</span>
           <h3>Puntero y dibujo en vivo</h3>
           <p>Señala, traza, marca con flechas y elipses o escribe una etiqueta directo sobre la cámara del técnico.</p>
         </div>
-        <div class="feat">
-          <svg class="icon" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+        <div class="spec-row">
+          <span class="spec-row__n">02</span>
           <h3>Congelar el cuadro</h3>
           <p>Detén la imagen para revisar un detalle con calma sin perder la conexión.</p>
         </div>
-        <div class="feat">
-          <svg class="icon" viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+        <div class="spec-row">
+          <span class="spec-row__n">03</span>
           <h3>Fotos y grabación</h3>
-          <p>Guarda fotos con las anotaciones incluidas o graba la sesión completa (imagen, marcas y audio).</p>
+          <p>Guarda fotos con las anotaciones incluidas o graba la sesión completa: imagen, marcas y audio.</p>
         </div>
-        <div class="feat">
-          <svg class="icon" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+        <div class="spec-row">
+          <span class="spec-row__n">04</span>
           <h3>Compartir pantalla</h3>
           <p>Manda tu pantalla al teléfono del técnico cuando haga falta mostrarle un plano o manual.</p>
         </div>
-        <div class="feat">
-          <svg class="icon" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        <div class="spec-row">
+          <span class="spec-row__n">05</span>
           <h3>Reporte con IA</h3>
           <p>Transcribe la llamada, junta tus notas y redacta un reporte de servicio en segundos.</p>
         </div>
-        <div class="feat">
-          <svg class="icon" viewBox="0 0 24 24"><path d="M4 16l4-6 4 4 3-4 5 6"/><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+        <div class="spec-row">
+          <span class="spec-row__n">06</span>
           <h3>Con tu marca</h3>
           <p>Tu logo y el nombre de tu empresa aparecen en la consola, la invitación y el reporte.</p>
         </div>
@@ -228,7 +296,7 @@
     </section>
 
     <footer>
-      <span id="footLogo" class="foot-logo" aria-label="Foko"></span>
+      <span id="footLogo" aria-label="Foko"></span>
       <span class="label">Soporte visual remoto</span>
     </footer>
   </div>
