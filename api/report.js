@@ -85,6 +85,13 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'No hay transcripción ni notas para procesar' });
   }
 
+  // Tope de entrada (debe coincidir con MAX_REPORT_CHARS de js/limits.js).
+  // Protege contra payloads gigantes / costo desbordado.
+  const MAX_REPORT_CHARS = 20000;
+  if ((transcript.length + notes.length) > MAX_REPORT_CHARS) {
+    return res.status(413).json({ error: 'El texto enviado es demasiado largo.' });
+  }
+
   const userMsg = [
     `Datos de la sesión:`,
     `- Empresa: ${companyName || 'No especificado'}`,

@@ -336,6 +336,7 @@
     import { Hud, toast } from './js/ui.js';
     import { mountLogo } from './js/logo.js';
     import { supabase, requireSession } from './js/supabase-client.js';
+    import { SESSION_MAX_MS, SESSION_WARN_MS, SESSION_MAX_MINUTES, MAX_REPORT_CHARS, MAX_PHOTOS_PER_SESSION } from './js/limits.js';
 
     const $ = (id) => document.getElementById(id);
     const params = new URLSearchParams(location.search);
@@ -355,7 +356,14 @@
       $('companyBadge').hidden = false;
     }
 
-    function newCode() { return 'FK-' + Math.random().toString(16).slice(2, 6).toUpperCase(); }
+    // 6 hex al azar (~16 millones de combinaciones): suficiente para que
+    // adivinar una sala activa en la ventana de 30 min sea impráctico,
+    // sin volver el código imposible de dictar.
+    function newCode() {
+      const b = new Uint8Array(3);
+      (crypto || window.crypto).getRandomValues(b);
+      return 'FK-' + Array.from(b, (x) => x.toString(16).padStart(2, '0')).join('').toUpperCase();
+    }
     let roomCode = (params.get('room') || newCode()).toUpperCase();
 
     const feed = $('feed');
@@ -437,7 +445,7 @@
         $('placeholder').hidden = true;
         $('toolbar').hidden = false;
         $('actions').hidden = false;
-        if (!sessionStart) sessionStart = Date.now();
+        if (!sessionStart) { sessionStart = Date.now(); armSessionLimit(); }
         hud.start();
       },
       onData: (msg) => { if (msg.type !== 'hello') ar.handleRemote(msg); },
@@ -498,6 +506,10 @@
 
     $('btnPhoto').addEventListener('click', () => {
       if (!feed.videoWidth) return;
+      if (captured.photos.length >= MAX_PHOTOS_PER_SESSION) {
+        toast(`Máximo ${MAX_PHOTOS_PER_SESSION} fotos por sesión`, 'warn');
+        return;
+      }
       ar.composite(feed).toBlob((blob) => {
         const url = URL.createObjectURL(blob);
         const name = `foto-${roomCode}-${stamp()}.jpg`;
@@ -787,6 +799,10 @@
       const btn = $('btnGenReport');
       btn.disabled = true; btn.textContent = 'Generando…';
       try {
+        const totalChars = (notes.finalText || '').length + ($('notesBox').value || '').length;
+        if (totalChars > MAX_REPORT_CHARS) {
+          throw new Error(`El texto es muy largo (${totalChars} caracteres, máximo ${MAX_REPORT_CHARS}). Acorta las notas o la transcripción.`);
+        }
         const { data: { session: fresh } } = await supabase.auth.getSession();
         if (!fresh) { location.href = 'login.html'; return; }
         lastReport = await notes.generateReport({
@@ -828,17 +844,33 @@
       w.document.close(); w.focus(); w.print();
     });
 
+    // ---- Corte por tiempo (límite de sesión) ----
+    let sessionTimers = [];
+    function armSessionLimit() {
+      sessionTimers.push(setTimeout(() => {
+        toast(`La sesión se cerrará en ${SESSION_MAX_MINUTES - SESSION_WARN_MS / 60000} min (límite de ${SESSION_MAX_MINUTES})`, 'warn', 9000);
+      }, SESSION_WARN_MS));
+      sessionTimers.push(setTimeout(async () => {
+        toast(`Sesión finalizada: límite de ${SESSION_MAX_MINUTES} minutos`, 'critical', 12000);
+        if (rec) { stopRec(); await new Promise((r) => setTimeout(r, 700)); }
+        try { hud.stop(); webrtc.destroy(); } catch (_) {}
+        openEndModal(true);
+      }, SESSION_MAX_MS));
+    }
+
     // ---- Cierre de sesión: guardar en el historial ----
     const endModal = $('endModal');
-    $('btnEnd').addEventListener('click', () => {
-      if (rec) { toast('Detén la grabación antes de finalizar', 'warn'); return; }
+    function openEndModal(forced) {
+      if (rec && !forced) { toast('Detén la grabación antes de finalizar', 'warn'); return; }
       $('endClient').value = '';
       // Prellena con las notas si el técnico las escribió durante la llamada.
       $('endDesc').value = ($('notesBox') && $('notesBox').value.trim()) || '';
       $('endSummary').textContent =
         `${captured.photos.length} foto(s) · ${captured.videos.length} video(s) · ${sessionDuration()}`;
+      $('endCancel').disabled = !!forced;   // si fue por límite de tiempo, ya no se puede "seguir"
       endModal.classList.add('open');
-    });
+    }
+    $('btnEnd').addEventListener('click', () => openEndModal(false));
     $('endCancel').addEventListener('click', () => endModal.classList.remove('open'));
     $('endDiscard').addEventListener('click', () => {
       if (!window.confirm('Salir sin guardar esta sesión en el historial. ¿Seguro?')) return;

@@ -60,11 +60,23 @@ export class WebRTCManager {
       if (this.role === 'field') this._connectToExpert();
     });
 
-    this.peer.on('connection', (conn) => this._setupDataConn(conn));
+    this.peer.on('connection', (conn) => {
+      // El experto acepta un solo técnico de campo. Si ya hay uno enlazado,
+      // rechaza al segundo (evita que un enlace filtrado meta a un tercero).
+      if (this.role === 'expert' && this.dataConn && this.dataConn.open && conn.peer !== this.remotePeerId) {
+        try { conn.close(); } catch (_) {}
+        return;
+      }
+      this._setupDataConn(conn);
+    });
 
     this.peer.on('call', (call) => {
       const kind = call.metadata && call.metadata.kind;
       if (this.role === 'expert' && kind === 'camera') {
+        if (this.cameraCall && this.remotePeerId && call.peer !== this.remotePeerId) {
+          try { call.close(); } catch (_) {}
+          return;
+        }
         // Responder con nuestro micrófono para que el campo nos oiga.
         call.answer(this.localStream || undefined);
         this.cameraCall = call;

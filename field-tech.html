@@ -132,7 +132,7 @@
         </div>
       </div>
 
-      <input class="field" id="codeInput" placeholder="FK-XXXX" maxlength="12" autocomplete="off" aria-label="Código de sesión">
+      <input class="field" id="codeInput" placeholder="FK-XXXXXX" maxlength="16" autocomplete="off" aria-label="Código de sesión">
 
       <label class="consent" id="consentRow">
         <input type="checkbox" id="consent">
@@ -149,6 +149,7 @@
     import { WebRTCManager } from './js/webrtc-manager.js';
     import { Hud, toast, runSystemsCheck } from './js/ui.js';
     import { mountLogo } from './js/logo.js';
+    import { SESSION_MAX_MS, SESSION_WARN_MS, SESSION_MAX_MINUTES } from './js/limits.js';
 
     const $ = (id) => document.getElementById(id);
     const params = new URLSearchParams(location.search);
@@ -185,6 +186,24 @@
       else { pill.classList.add('pill--rec'); dot.classList.add('dot--critical'); txt.textContent = 'SIN ENLACE'; }
     }
     setLive('offline');
+
+    // ---- Corte por tiempo ----
+    let sessionTimers = [];
+    function armSessionLimit() {
+      sessionTimers.push(setTimeout(() => {
+        toast(`La llamada se cerrará en ${SESSION_MAX_MINUTES - (SESSION_WARN_MS / 60000)} minutos (límite de ${SESSION_MAX_MINUTES} min)`, 'warn', 9000);
+      }, SESSION_WARN_MS));
+      sessionTimers.push(setTimeout(() => {
+        toast(`Llamada finalizada: límite de ${SESSION_MAX_MINUTES} minutos`, 'warn', 12000);
+        try { hud.stop(); webrtc && webrtc.destroy(); } catch (_) {}
+        webrtc = null;
+        setLive('offline');
+        $('dock').hidden = true;
+        $('gate').hidden = false;
+        $('gateErr').style.display = 'none';
+      }, SESSION_MAX_MS));
+    }
+    function clearSessionTimers() { sessionTimers.forEach(clearTimeout); sessionTimers = []; }
 
     // ---- Systems check ----
     let preflightOk = false;
@@ -267,7 +286,7 @@
           ar.handleRemote(msg);
         },
         onStatus: (s) => {
-          if (s.state === 'connected') { setLive('connected'); if (!sessionStart) sessionStart = Date.now(); toast('Enlace establecido', 'ok'); }
+          if (s.state === 'connected') { setLive('connected'); if (!sessionStart) { sessionStart = Date.now(); armSessionLimit(); } toast('Enlace establecido', 'ok'); }
           else if (s.state === 'waiting') setLive('waiting');
           else if (s.state === 'disconnected') { setLive('offline'); toast('El experto se desconectó', 'warn'); }
           else if (s.state === 'error') { setLive('offline'); showErr(s.message || 'Error de conexión'); }
