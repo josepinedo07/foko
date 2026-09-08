@@ -42,75 +42,52 @@
     }
     .mockstage {
       position: relative; aspect-ratio: 16 / 10;
-      background:
-        radial-gradient(120% 90% at 22% 12%, var(--accent-wash), transparent 55%),
-        repeating-linear-gradient(118deg, var(--surface-2) 0 2px, var(--bg) 2px 34px);
+      background: var(--video-void);
     }
-    .mock-photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center 38%; }
+    .mock-photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center 40%; }
+    /* Estado sin foto: retícula tenue, como un visor a la espera */
+    .mock-empty {
+      position: absolute; inset: 0;
+      background:
+        radial-gradient(closest-side, transparent 46%, color-mix(in srgb, var(--text) 10%, transparent) 47%, transparent 48%) center / 120px 120px no-repeat,
+        linear-gradient(color-mix(in srgb, var(--text) 4%, transparent), transparent);
+    }
+
+    /* Corchetes de esquina — enmarcan como una cámara */
+    .mock-brackets { position: absolute; inset: var(--s-3); pointer-events: none; }
+    .mock-brackets::before, .mock-brackets::after,
+    .mock-brackets i::before, .mock-brackets i::after {
+      content: ''; position: absolute; width: 16px; height: 16px;
+      border: 1px solid color-mix(in srgb, var(--text) 55%, transparent);
+    }
+    .mock-brackets::before { top: 0; left: 0; border-right: 0; border-bottom: 0; }
+    .mock-brackets::after  { top: 0; right: 0; border-left: 0; border-bottom: 0; }
+    .mock-brackets i::before { bottom: 0; left: 0; border-right: 0; border-top: 0; }
+    .mock-brackets i::after  { bottom: 0; right: 0; border-left: 0; border-top: 0; }
 
     .mock-hud {
       position: absolute; top: 0; left: 0; right: 0;
       display: flex; align-items: center; gap: var(--s-4);
       padding: var(--s-2) var(--s-4);
-      background: color-mix(in srgb, var(--bg) 78%, transparent);
+      background: linear-gradient(color-mix(in srgb, var(--video-void) 72%, transparent), transparent);
       font-family: var(--font-mono); font-size: var(--fs-11);
       letter-spacing: 0.04em; color: var(--text-dim);
     }
     .mock-hud .spacer { flex: 1; }
     .mock-hud b { color: var(--text-mute); font-weight: 400; text-transform: uppercase; letter-spacing: var(--tracking-label); margin-right: var(--s-1); }
 
-    .mock-chip {
-      position: absolute; top: 40px; left: var(--s-4);
-      display: inline-flex; align-items: center; gap: var(--s-2);
-      padding: var(--s-1) var(--s-2);
-      background: var(--surface); border: 1px solid var(--border-strong);
-      border-left: 2px solid var(--accent); border-radius: var(--r-cell);
-      box-shadow: var(--shadow-float);
-      font-family: var(--font-mono); font-size: var(--fs-11);
-      letter-spacing: 0.04em; color: var(--text-dim);
-    }
-    .mock-chip svg { width: 12px; height: 12px; stroke: var(--accent); }
-
+    /* El único momento "mira aquí": el componente que el experto marcó */
     .mock-mark {
-      position: absolute; top: 14%; left: 31%; width: 26%; height: 16%;
-      border: 3px solid var(--accent); border-radius: var(--r);
-      box-shadow: 0 0 0 3px var(--accent-wash), 0 0 16px color-mix(in srgb, var(--accent) 35%, transparent);
+      position: absolute; top: 30%; left: 34%; width: 24%; height: 20%;
+      border: 2px solid var(--accent); border-radius: var(--r-cell);
+      box-shadow: 0 0 0 3px var(--accent-wash);
     }
     .mock-mark__tag {
-      position: absolute; top: calc(14% + 16% + 6px); left: 31%;
+      position: absolute; top: calc(30% + 20% + 5px); left: 34%;
       font-family: var(--font-mono); font-size: var(--fs-11); letter-spacing: 0.04em;
       color: var(--on-accent); background: var(--accent);
-      padding: 2px 6px; border-radius: var(--r-cell);
+      padding: 2px 6px; border-radius: var(--r-cell); white-space: nowrap;
     }
-
-    .mock-share {
-      position: absolute; left: var(--s-3); bottom: 56px; width: 170px;
-      background: var(--surface); border: 1px solid var(--border-strong);
-      border-radius: var(--r); overflow: hidden; box-shadow: var(--shadow-float);
-    }
-    .mock-share__head {
-      display: flex; align-items: center; gap: var(--s-1);
-      padding: var(--s-1) var(--s-2); border-bottom: 1px solid var(--border);
-      font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.06em;
-      text-transform: uppercase; color: var(--text-dim);
-    }
-    .mock-share__head svg { width: 10px; height: 10px; stroke: var(--accent); }
-    .mock-share__plan { display: block; width: 100%; height: 100px; background: var(--text); }
-    .mock-share__plan path { stroke: var(--video-void); stroke-width: 1.6; fill: none; }
-    .mock-share__plan circle { fill: var(--video-void); }
-
-    .mock-tray {
-      position: absolute; left: 50%; bottom: var(--s-4); transform: translateX(-50%);
-      display: flex; gap: var(--s-2); padding: var(--s-2);
-      background: var(--surface); border: 1px solid var(--border);
-      border-radius: var(--r); box-shadow: var(--shadow-float);
-    }
-    .mock-tray span {
-      width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
-      border-radius: var(--r-cell); color: var(--text-dim);
-    }
-    .mock-tray span svg { width: 16px; height: 16px; }
-    .mock-tray .is-rec { color: var(--critical); }
 
     .mockcaption {
       display: flex; justify-content: space-between; align-items: center; gap: var(--s-3);
@@ -185,44 +162,23 @@
 
       <div class="mockshell">
         <div class="mockstage">
-          <img class="mock-photo" src="brand/hero-panel.jpg" alt="" aria-hidden="true">
+          <div class="mock-empty" aria-hidden="true"></div>
+          <img class="mock-photo" src="brand/hero-panel.jpg" alt="Consola de oficina viendo la cámara del técnico de campo">
+          <div class="mock-brackets" aria-hidden="true"><i></i></div>
           <div class="mock-hud">
             <span class="pill pill--live"><span class="dot dot--live"></span>LIVE</span>
             <span><b>lat</b>42 MS</span>
             <span><b>res</b>1080P</span>
             <span class="spacer"></span>
-            <span>· Logo de tu empresa</span>
+            <span>· Tu empresa</span>
           </div>
-
-          <span class="mock-chip">
-            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a4 4 0 0 0-4 4v6a4 4 0 0 0 8 0V5a4 4 0 0 0-4-4z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1M12 18v4M8 22h8"/></svg>
-            Tomando notas…
-          </span>
 
           <div class="mock-mark"></div>
           <span class="mock-mark__tag">-A7B1 · RELÉ SEGURIDAD</span>
-
-          <div class="mock-share">
-            <div class="mock-share__head">
-              <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/></svg>
-              Compartiendo
-            </div>
-            <svg class="mock-share__plan" viewBox="0 0 170 100" aria-hidden="true">
-              <path d="M12 24h40v16h-40zM52 32h28M80 20v40M80 32h30M110 24h20v16h-20zM110 60h48M158 52v16M20 60h44v20h-44zM64 70h50"/>
-              <circle cx="80" cy="60" r="3"/>
-              <circle cx="110" cy="60" r="3"/>
-            </svg>
-          </div>
-
-          <div class="mock-tray">
-            <span><svg class="icon icon--sm" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg></span>
-            <span class="is-rec"><svg class="icon icon--sm" viewBox="0 0 24 24" fill="currentColor" stroke="none"><circle cx="12" cy="12" r="7"/></svg></span>
-            <span><svg class="icon icon--sm" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/></svg></span>
-          </div>
         </div>
         <div class="mockcaption">
           <span class="label">Vista previa de la consola</span>
-          <span class="label">Capturar · grabar · compartir pantalla</span>
+          <span class="label">Señalar · congelar · fotografiar</span>
         </div>
       </div>
     </section>
@@ -312,9 +268,12 @@
     mountLogo(document.getElementById('footLogo'), { height: 30, showDot: false });
 
     // El mockup del hero muestra una foto real de tablero; si aún no está el
-    // archivo (brand/hero-panel.jpg), cae al fondo esquemático.
+    // archivo (brand/hero-panel.jpg), cae a un visor "en espera" sin la marca.
     const heroPhoto = document.querySelector('.mock-photo');
-    if (heroPhoto) heroPhoto.addEventListener('error', () => heroPhoto.remove());
+    if (heroPhoto) heroPhoto.addEventListener('error', () => {
+      heroPhoto.remove();
+      document.querySelectorAll('.mock-mark, .mock-mark__tag').forEach((el) => el.remove());
+    });
 
     const go = () => {
       const c = document.getElementById('code').value.trim().toUpperCase();
