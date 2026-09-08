@@ -67,15 +67,28 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: 'Sesión inválida o vencida. Vuelve a iniciar sesión.' });
   }
 
-  let companyName = null;
+  let companyName = null, companyId = null;
   try {
     const { data: profile } = await supabaseAdmin
       .from('profiles')
-      .select('companies ( name )')
+      .select('company_id, companies ( name )')
       .eq('user_id', user.id)
       .single();
     companyName = profile?.companies?.name || null;
+    companyId = profile?.company_id || null;
   } catch (_) { /* sin empresa asociada; seguimos sin membrete en el texto */ }
+
+  // Límite: 30 reportes por usuario por hora (protege el costo de la API).
+  try {
+    const since = new Date(Date.now() - 3600 * 1000).toISOString();
+    const { count } = await supabaseAdmin
+      .from('audit_log')
+      .select('id', { count: 'exact', head: true })
+      .eq('actor', user.id).eq('action', 'report.generated').gte('created_at', since);
+    if ((count || 0) >= 30) {
+      return res.status(429).json({ error: 'Límite de reportes por hora alcanzado. Intenta más tarde.' });
+    }
+  } catch (_) { /* si audit_log no existe todavía, no bloqueamos */ }
 
   let body = req.body;
   if (typeof body === 'string') { try { body = JSON.parse(body); } catch { body = {}; } }
@@ -116,6 +129,14 @@ export default async function handler(req, res) {
     });
     const report = (response.text || '').trim();
     if (!report) throw new Error('El modelo no devolvió texto (puede haber sido bloqueado por seguridad)');
+    // Registro para el límite por hora y la auditoría.
+    try {
+      await supabaseAdmin.from('audit_log').insert({
+        company_id: companyId, actor: user.id, action: 'report.generated',
+        target_type: 'session', target_id: (meta.room || null),
+        meta: { chars: transcript.length + notes.length },
+      });
+    } catch (_) { /* audit_log opcional */ }
     return res.status(200).json({ report });
   } catch (err) {
     const status = err?.status || 500;

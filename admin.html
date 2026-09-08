@@ -10,6 +10,7 @@
   <link rel="manifest" href="site.webmanifest">
   <meta name="theme-color" content="#0F1009">
   <link rel="stylesheet" href="css/design-system.css">
+  <script src="js/errlog.js"></script>
   <style>
     body { min-height: 100%; }
     .page { max-width: 1120px; margin: 0 auto; padding: 0 var(--s-5) var(--s-16); }
@@ -126,6 +127,16 @@
         </table>
       </div>
     </section>
+
+    <section id="errorsSection">
+      <div class="sec-head"><h2>Errores de cliente</h2><span class="label">Últimos 100</span></div>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Cuándo</th><th>Página</th><th>Mensaje</th><th>Usuario</th></tr></thead>
+          <tbody id="errorsBody"><tr><td colspan="4" class="state">Cargando…</td></tr></tbody>
+        </table>
+      </div>
+    </section>
   </div>
 
   <div class="denied" id="denied" hidden>
@@ -159,6 +170,7 @@
     $('who').textContent = state.session.user.email || '';
 
     const fmtDate = (s) => s ? new Date(s).toLocaleDateString('es-MX', { year: '2-digit', month: 'short', day: 'numeric' }) : '—';
+    const fmtDateTime = (s) => s ? new Date(s).toLocaleString('es-MX', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
     const esc = (t) => String(t ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
     async function load() {
@@ -166,12 +178,28 @@
       if (error) { toast('No se pudo cargar: ' + error.message, 'critical', 6000); return; }
       render(data);
       loadAudit();
+      loadErrors();
+    }
+
+    async function loadErrors() {
+      const { data, error } = await supabase.from('client_errors')
+        .select('created_at, page, message, user_id').order('created_at', { ascending: false }).limit(100);
+      if (error) { $('errorsBody').innerHTML = `<tr><td colspan="4" class="state">${esc(error.message)}</td></tr>`; return; }
+      const rows = data || [];
+      $('errorsBody').innerHTML = rows.length ? rows.map((e) => `
+        <tr>
+          <td class="mono">${fmtDateTime(e.created_at)}</td>
+          <td class="mono">${esc(e.page)}</td>
+          <td><span class="sub">${esc((e.message || '').slice(0, 140))}</span></td>
+          <td class="mono">${esc((e.user_id || '').slice(0, 8)) || '—'}</td>
+        </tr>`).join('') : '<tr><td colspan="4" class="state">Sin errores registrados.</td></tr>';
     }
 
     const ACTION_LABEL = {
       'session.saved': 'Guardó una sesión',
       'session.updated': 'Editó una sesión',
       'session.deleted': 'Eliminó una sesión',
+      'report.generated': 'Generó un reporte con IA',
     };
     async function loadAudit() {
       const { data, error } = await supabase.rpc('audit_feed', { p_limit: 200 });
@@ -185,7 +213,7 @@
           m.duration_s != null ? `${Math.round(m.duration_s / 60)} min` : '',
         ].filter(Boolean).join(' · ');
         return `<tr>
-          <td class="mono">${fmtDate(a.created_at)}</td>
+          <td class="mono">${fmtDateTime(a.created_at)}</td>
           <td class="mono">${esc(a.actor_email) || '—'}</td>
           <td>${esc(a.company_name) || '—'}</td>
           <td>${esc(ACTION_LABEL[a.action] || a.action)}</td>

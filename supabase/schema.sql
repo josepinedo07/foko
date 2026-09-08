@@ -469,3 +469,27 @@ begin
 end $$;
 
 grant execute on function public.audit_feed(int) to authenticated;
+
+-- ===========================================================================
+-- ERRORES DE CLIENTE (monitoreo)
+-- ===========================================================================
+-- Los captura js/errlog.js y los escribe api/log.js con service role.
+-- Solo el admin de plataforma los lee.
+
+create table if not exists public.client_errors (
+  id         bigint generated always as identity primary key,
+  user_id    uuid,
+  page       text,
+  message    text,
+  stack      text,
+  ua         text,
+  created_at timestamptz not null default now()
+);
+create index if not exists client_errors_created_idx on public.client_errors(created_at desc);
+alter table public.client_errors enable row level security;
+
+drop policy if exists "admin reads client errors" on public.client_errors;
+create policy "admin reads client errors" on public.client_errors
+  for select using (public.is_platform_admin());
+
+grant select on public.client_errors to authenticated;
