@@ -118,6 +118,8 @@
       <button class="btn btn--ghost btn--block" id="finishLogout" style="margin-top:var(--s-3);">Cerrar sesión</button>
     </div>
 
+    <div class="card" id="boot" hidden style="text-align:center; font-family:var(--font-mono); font-size:var(--fs-12); color:var(--text-dim);">Entrando…</div>
+
     <p class="foot hint">FOKO · soporte visual remoto</p>
   </div>
 
@@ -128,17 +130,38 @@
     const $ = (id) => document.getElementById(id);
     mountLogo($('logo'), { height: 48 });
 
+    // ¿Volvemos de un OAuth (Google)? El hash/param trae el token o code.
+    const returningFromOAuth = /[?#&](code|access_token|error)=/.test(location.search + location.hash);
+    if (returningFromOAuth) { $('card').hidden = true; $('boot').hidden = false; }
+
+    let routed = false;
     function routeByState(state) {
+      if (routed) return true;
       if (!state) return false;
-      if (state.isPlatformAdmin) { location.href = 'admin.html'; return true; }
-      if (state.company) { location.href = 'historial.html'; return true; }
+      routed = true;
+      if (state.isPlatformAdmin) { location.replace('admin.html'); return true; }
+      if (state.company) { location.replace('historial.html'); return true; }
       // Autenticado sin empresa: completar alta.
       $('card').hidden = true;
+      $('boot').hidden = true;
       $('finishCard').hidden = false;
       $('finishWho').textContent = `Sesión iniciada como ${state.session.user.email || 'tu cuenta'}. Crea tu empresa o únete a una.`;
       return true;
     }
-    getSessionAndProfile().then(routeByState);
+
+    // Reacciona cuando la sesión queda lista — incluida la que supabase-js
+    // establece al procesar el callback de OAuth (evento SIGNED_IN / INITIAL_SESSION).
+    supabase.auth.onAuthStateChange((event, session) => {
+      if (session && !routed) getSessionAndProfile().then(routeByState);
+    });
+    getSessionAndProfile().then((s) => {
+      if (!routeByState(s) && returningFromOAuth) {
+        // El listener aún no disparó; reintenta en breve y si no, muestra el login.
+        setTimeout(() => getSessionAndProfile().then((s2) => {
+          if (!routeByState(s2)) { $('boot').hidden = true; $('card').hidden = false; }
+        }), 1500);
+      }
+    });
 
     // ---- Google ----
     $('btnGoogle').addEventListener('click', async () => {
