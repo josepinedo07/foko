@@ -96,6 +96,8 @@
     }
     .mock-share__head svg { width: 10px; height: 10px; stroke: var(--accent); }
     .mock-share__plan { display: block; width: 100%; height: 100px; background: var(--text); }
+    .mock-share__plan path { stroke: var(--video-void); stroke-width: 1.6; fill: none; }
+    .mock-share__plan circle { fill: var(--video-void); }
 
     .mock-tray {
       position: absolute; left: 50%; bottom: var(--s-4); transform: translateX(-50%);
@@ -205,10 +207,10 @@
               <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/></svg>
               Compartiendo
             </div>
-            <svg class="mock-share__plan" viewBox="0 0 170 100" fill="none" stroke="var(--video-void)" stroke-width="1.4" aria-hidden="true">
+            <svg class="mock-share__plan" viewBox="0 0 170 100" aria-hidden="true">
               <path d="M12 24h40v16h-40zM52 32h28M80 20v40M80 32h30M110 24h20v16h-20zM110 60h48M158 52v16M20 60h44v20h-44zM64 70h50"/>
-              <circle cx="80" cy="60" r="3" fill="var(--video-void)"/>
-              <circle cx="110" cy="60" r="3" fill="var(--video-void)"/>
+              <circle cx="80" cy="60" r="3"/>
+              <circle cx="110" cy="60" r="3"/>
             </svg>
           </div>
 
