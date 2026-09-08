@@ -125,7 +125,7 @@
 
     <div class="stage" id="stage">
       <div class="viewer" id="viewer">
-        <video class="viewer__video" id="feed" autoplay playsinline></video>
+        <video class="viewer__video" id="feed" autoplay playsinline webkit-playsinline></video>
         <canvas class="viewer__layer" id="ar"></canvas>
         <div class="viewer__brackets"><i></i></div>
         <div class="viewer__reticle"></div>
@@ -339,6 +339,23 @@
 
     const CONN = { ok: 'conn conn--ok', warn: 'conn conn--warn', crit: 'conn conn--critical', idle: 'conn' };
 
+    // Safari en iOS/iPadOS no reproduce un <video> con audio sin gesto del
+    // usuario: feed.play() se rechaza y la imagen queda en negro (Android sí
+    // deja). Si falla, arrancamos en mudo (siempre permitido → ya se ve la
+    // imagen) y devolvemos el sonido en cuanto el experto toca la consola.
+    function playFeed() {
+      feed.play().catch(() => {
+        feed.muted = true;
+        feed.play().then(() => {
+          toast('Toca la pantalla para oír al técnico', 'info', 4000);
+          const unmute = () => { feed.muted = false; feed.play().catch(() => {}); };
+          window.addEventListener('pointerdown', unmute, { once: true });
+          window.addEventListener('keydown', unmute, { once: true });
+        }).catch(() => {});
+      });
+      feed.addEventListener('loadedmetadata', () => feed.play().catch(() => {}), { once: true });
+    }
+
     // ---- AR overlay ----
     const ar = new ARCanvas($('ar'), {
       interactive: true,
@@ -390,7 +407,7 @@
       roomCode,
       onRemoteStream: (stream) => {
         feed.srcObject = stream;
-        feed.play().catch(() => {});
+        playFeed();
         $('placeholder').hidden = true;
         $('toolbar').hidden = false;
         $('actions').hidden = false;

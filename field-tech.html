@@ -56,7 +56,7 @@
 <body>
   <div class="screen">
     <div class="viewer" id="viewer">
-      <video class="viewer__video" id="feed" autoplay playsinline muted></video>
+      <video class="viewer__video" id="feed" autoplay playsinline webkit-playsinline muted></video>
       <canvas class="viewer__layer" id="ar"></canvas>
       <div class="viewer__brackets"><i></i></div>
       <div class="viewer__reticle"></div>
@@ -81,7 +81,7 @@
           <svg class="icon" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>
         </button>
       </div>
-      <video id="screenVideo" autoplay playsinline></video>
+      <video id="screenVideo" autoplay playsinline webkit-playsinline></video>
     </div>
 
     <nav class="tray tray--sheet" id="dock" hidden aria-label="Controles">
@@ -214,8 +214,16 @@
       webrtc = new WebRTCManager({
         role: 'field',
         roomCode: room,
-        onRemoteStream: (stream) => { $('expertAudio').srcObject = stream; $('expertAudio').play().catch(() => {}); },
-        onScreenStream: (stream) => { $('screenVideo').srcObject = stream; $('screenshare').classList.add('on'); },
+        onRemoteStream: (stream) => {
+          const a = $('expertAudio');
+          a.srcObject = stream;
+          a.play().catch(() => {
+            // iOS: sin gesto no suena. Reintenta al primer toque.
+            const retry = () => a.play().catch(() => {});
+            window.addEventListener('pointerdown', retry, { once: true });
+          });
+        },
+        onScreenStream: (stream) => { $('screenVideo').srcObject = stream; $('screenVideo').play().catch(() => {}); $('screenshare').classList.add('on'); },
         onScreenStreamEnded: () => $('screenshare').classList.remove('on'),
         onData: (msg) => {
           if (msg.type === 'hello') {
