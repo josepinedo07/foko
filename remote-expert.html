@@ -104,11 +104,13 @@
       <span id="companyBadge" class="company-badge" hidden></span>
       <span id="status" class="conn">iniciando</span>
       <span class="spacer"></span>
+      <a class="btn btn--ghost" href="historial.html" id="btnHistory">Historial</a>
       <button class="btn btn--ghost" id="btnNotes" hidden>Notas</button>
       <button class="btn btn--ghost btn-icon" id="btnSettings" aria-label="Ajustes">
         <svg class="icon icon--sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.4-2.3 1a7 7 0 0 0-1.7-1L14.5 2h-5l-.4 2.6a7 7 0 0 0-1.7 1l-2.3-1-2 3.4L3 11a7 7 0 0 0 0 2l-2 1.5 2 3.4 2.3-1a7 7 0 0 0 1.7 1l.4 2.6h5l.4-2.6a7 7 0 0 0 1.7-1l2.3 1 2-3.4-2-1.5a7 7 0 0 0 .1-1z"/></svg>
       </button>
       <button class="btn btn--primary" id="btnInvite">Invitar a campo</button>
+      <button class="btn btn--danger" id="btnEnd">Finalizar</button>
     </div>
 
     <div class="hud">
@@ -302,6 +304,30 @@
     </div>
   </div>
 
+  <!-- Cierre de sesión -->
+  <div class="modal" id="endModal">
+    <div class="modal__card" style="max-width:460px;">
+      <div class="modal__head"><h2 class="modal__title">Finalizar sesión</h2></div>
+      <p class="text-dim" style="font-size:var(--fs-14); margin-bottom:var(--s-4);">Guarda esta llamada en el historial de tu empresa con las fotos y grabaciones.</p>
+      <div class="settings-row">
+        <label class="label" for="endClient">Nombre del cliente</label>
+        <input class="field" id="endClient" placeholder="Empresa / persona / equipo" autocomplete="off">
+      </div>
+      <div class="settings-row">
+        <label class="label" for="endDesc">Descripción</label>
+        <textarea class="field" id="endDesc" rows="3" placeholder="Qué se atendió, qué se resolvió, pendientes…"></textarea>
+      </div>
+      <p class="mono text-dim" id="endSummary" style="font-size:var(--fs-11);"></p>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:var(--s-5); gap:var(--s-2);">
+        <button class="btn btn--ghost" id="endDiscard">Salir sin guardar</button>
+        <div style="display:flex; gap:var(--s-2);">
+          <button class="btn" id="endCancel">Seguir en la llamada</button>
+          <button class="btn btn--primary" id="endSave">Guardar en historial</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script src="js/vendor/qrcode.min.js"></script>
   <script type="module">
     import { ARCanvas } from './js/ar-canvas.js';
@@ -466,12 +492,17 @@
       }
     });
 
+    // Fotos y grabaciones se guardan en memoria para subirlas al historial
+    // en la pantalla de cierre (además de la descarga inmediata al equipo).
+    const captured = { photos: [], videos: [] };
+
     $('btnPhoto').addEventListener('click', () => {
       if (!feed.videoWidth) return;
       ar.composite(feed).toBlob((blob) => {
         const url = URL.createObjectURL(blob);
         const name = `foto-${roomCode}-${stamp()}.jpg`;
         downloadUrl(url, name);
+        captured.photos.push({ blob, name });
         const img = document.createElement('img');
         img.src = url; img.title = name;
         img.addEventListener('click', () => window.open(url, '_blank'));
@@ -520,7 +551,9 @@
         cancelAnimationFrame(recRaf);
         recAudioCtx && recAudioCtx.close();
         const blob = new Blob(recChunks, { type: recChunks[0]?.type || 'video/webm' });
-        downloadUrl(URL.createObjectURL(blob), `grabacion-${roomCode}-${stamp()}.webm`);
+        const name = `grabacion-${roomCode}-${stamp()}.webm`;
+        downloadUrl(URL.createObjectURL(blob), name);
+        captured.videos.push({ blob, name });
         rec = null;
       };
       rec.start();
@@ -793,6 +826,83 @@
       w.document.write('<pre style="font:14px/1.6 ui-monospace,monospace;white-space:pre-wrap;padding:32px;max-width:720px;margin:auto">' +
         lastReport.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c])) + '</pre>');
       w.document.close(); w.focus(); w.print();
+    });
+
+    // ---- Cierre de sesión: guardar en el historial ----
+    const endModal = $('endModal');
+    $('btnEnd').addEventListener('click', () => {
+      if (rec) { toast('Detén la grabación antes de finalizar', 'warn'); return; }
+      $('endClient').value = '';
+      // Prellena con las notas si el técnico las escribió durante la llamada.
+      $('endDesc').value = ($('notesBox') && $('notesBox').value.trim()) || '';
+      $('endSummary').textContent =
+        `${captured.photos.length} foto(s) · ${captured.videos.length} video(s) · ${sessionDuration()}`;
+      endModal.classList.add('open');
+    });
+    $('endCancel').addEventListener('click', () => endModal.classList.remove('open'));
+    $('endDiscard').addEventListener('click', () => {
+      if (!window.confirm('Salir sin guardar esta sesión en el historial. ¿Seguro?')) return;
+      leaveToHistory();
+    });
+
+    function leaveToHistory() {
+      try { hud.stop(); notes.stopTranscription(); webrtc.destroy(); } catch (_) {}
+      location.href = 'historial.html';
+    }
+
+    $('endSave').addEventListener('click', async () => {
+      if (!company) { toast('Tu cuenta no tiene empresa; no se puede guardar', 'critical', 5000); return; }
+      const btn = $('endSave');
+      btn.disabled = true; $('endCancel').disabled = true; $('endDiscard').disabled = true;
+      try {
+        const sessionId = (crypto.randomUUID && crypto.randomUUID()) ||
+          ('xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+            const r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+          }));
+        const ended = new Date();
+        const durationSec = sessionStart ? Math.round((ended.getTime() - sessionStart) / 1000) : null;
+
+        btn.textContent = 'Guardando…';
+        const { error: sErr } = await supabase.from('sessions').insert({
+          id: sessionId,
+          company_id: company.id,
+          created_by: session.user.id,
+          room_code: roomCode,
+          client_name: $('endClient').value.trim() || null,
+          description: $('endDesc').value.trim() || null,
+          started_at: sessionStart ? new Date(sessionStart).toISOString() : null,
+          ended_at: ended.toISOString(),
+          duration_seconds: durationSec,
+          photo_count: captured.photos.length,
+          video_count: captured.videos.length,
+        });
+        if (sErr) throw sErr;
+
+        const items = [
+          ...captured.photos.map((p, i) => ({ kind: 'photo', blob: p.blob, path: `${company.id}/${sessionId}/foto-${i + 1}.jpg`, ct: 'image/jpeg' })),
+          ...captured.videos.map((v, i) => ({ kind: 'video', blob: v.blob, path: `${company.id}/${sessionId}/video-${i + 1}.webm`, ct: v.blob.type || 'video/webm' })),
+        ];
+        const rows = [];
+        for (let i = 0; i < items.length; i++) {
+          const it = items[i];
+          btn.textContent = `Subiendo ${i + 1}/${items.length}…`;
+          const { error: uErr } = await supabase.storage.from('sessions').upload(it.path, it.blob, { contentType: it.ct, upsert: true });
+          if (uErr) throw uErr;
+          const { data: pub } = supabase.storage.from('sessions').getPublicUrl(it.path);
+          rows.push({ session_id: sessionId, company_id: company.id, kind: it.kind, storage_path: it.path, url: pub.publicUrl });
+        }
+        if (rows.length) {
+          const { error: mErr } = await supabase.from('session_media').insert(rows);
+          if (mErr) throw mErr;
+        }
+
+        toast('Sesión guardada en el historial', 'ok');
+        leaveToHistory();
+      } catch (e) {
+        toast('No se pudo guardar: ' + (e.message || e), 'critical', 6000);
+        btn.disabled = false; $('endCancel').disabled = false; $('endDiscard').disabled = false;
+        btn.textContent = 'Guardar en historial';
+      }
     });
 
     applyCfg();

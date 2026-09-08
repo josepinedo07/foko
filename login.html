@@ -84,7 +84,7 @@
     // Ya autenticado: directo a donde corresponda.
     getSessionAndProfile().then((state) => {
       if (state && state.isPlatformAdmin) location.href = 'admin.html';
-      else if (state && state.company) location.href = 'remote-expert.html';
+      else if (state && state.company) location.href = 'historial.html';
     });
 
     // ---- Pestañas ----
@@ -136,7 +136,7 @@
         if (state && state.isPlatformAdmin) {
           location.href = 'admin.html';
         } else if (state && state.company) {
-          location.href = 'remote-expert.html';
+          location.href = 'historial.html';
         } else {
           showErr('Tu cuenta no tiene una empresa todavía. Usa "Crear empresa" o "Unirme".');
         }
@@ -165,7 +165,7 @@
         if (rpcErr) throw rpcErr;
 
         showOk('Empresa creada. Entrando…');
-        location.href = 'remote-expert.html';
+        location.href = 'historial.html';
       } catch (err) {
         showErr(err.message);
       } finally {
@@ -191,7 +191,7 @@
         if (rpcErr) throw rpcErr;
 
         showOk('Listo, ya eres parte del equipo. Entrando…');
-        location.href = 'remote-expert.html';
+        location.href = 'historial.html';
       } catch (err) {
         showErr(err.message);
       } finally {

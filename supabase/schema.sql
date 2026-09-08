@@ -305,3 +305,95 @@ grant execute on function public.admin_set_admin(text, boolean) to authenticated
 insert into public.platform_admins (user_id)
 select id from auth.users where lower(email) = 'josepinedo@chambeoapp.com'
 on conflict (user_id) do nothing;
+
+-- ===========================================================================
+-- HISTORIAL DE SESIONES DE SOPORTE
+-- ===========================================================================
+-- Cada llamada de soporte que el técnico de oficina decide guardar en la
+-- pantalla de cierre crea una fila en `sessions` + N filas en `session_media`
+-- (fotos y videos suben al bucket público `sessions`). La consola vive en
+-- `historial.html`. Re-ejecutable.
+
+create table if not exists public.sessions (
+  id               uuid primary key default gen_random_uuid(),
+  company_id       uuid not null references public.companies(id) on delete cascade,
+  created_by       uuid not null references auth.users(id),
+  room_code        text,
+  client_name      text,
+  description      text,
+  started_at       timestamptz,
+  ended_at         timestamptz,
+  duration_seconds integer,
+  photo_count      integer not null default 0,
+  video_count      integer not null default 0,
+  created_at       timestamptz not null default now()
+);
+create index if not exists sessions_company_idx on public.sessions(company_id, created_at desc);
+alter table public.sessions enable row level security;
+
+create table if not exists public.session_media (
+  id           uuid primary key default gen_random_uuid(),
+  session_id   uuid not null references public.sessions(id) on delete cascade,
+  company_id   uuid not null references public.companies(id) on delete cascade,
+  kind         text not null check (kind in ('photo', 'video')),
+  storage_path text not null,
+  url          text,
+  created_at   timestamptz not null default now()
+);
+create index if not exists session_media_session_idx on public.session_media(session_id, created_at);
+alter table public.session_media enable row level security;
+
+-- RLS: los miembros de la empresa ven y gestionan sus sesiones; el admin, todas.
+drop policy if exists "read company sessions" on public.sessions;
+create policy "read company sessions" on public.sessions
+  for select using (company_id = public.my_company_id() or public.is_platform_admin());
+
+drop policy if exists "insert company sessions" on public.sessions;
+create policy "insert company sessions" on public.sessions
+  for insert with check (company_id = public.my_company_id() and created_by = auth.uid());
+
+drop policy if exists "update company sessions" on public.sessions;
+create policy "update company sessions" on public.sessions
+  for update using (company_id = public.my_company_id() or public.is_platform_admin());
+
+drop policy if exists "delete company sessions" on public.sessions;
+create policy "delete company sessions" on public.sessions
+  for delete using (company_id = public.my_company_id() or public.is_platform_admin());
+
+drop policy if exists "read company session media" on public.session_media;
+create policy "read company session media" on public.session_media
+  for select using (company_id = public.my_company_id() or public.is_platform_admin());
+
+drop policy if exists "insert company session media" on public.session_media;
+create policy "insert company session media" on public.session_media
+  for insert with check (company_id = public.my_company_id());
+
+drop policy if exists "delete company session media" on public.session_media;
+create policy "delete company session media" on public.session_media
+  for delete using (company_id = public.my_company_id() or public.is_platform_admin());
+
+grant select, insert, update, delete on public.sessions to authenticated;
+grant select, insert, delete on public.session_media to authenticated;
+
+-- Storage: bucket "sessions" (fotos y videos del historial).
+-- Público de solo lectura; escritura/borrado solo en la carpeta de tu empresa
+-- (sessions/{company_id}/{session_id}/...). Rutas con UUID, no adivinables.
+insert into storage.buckets (id, name, public)
+values ('sessions', 'sessions', true)
+on conflict (id) do nothing;
+
+drop policy if exists "public read session files" on storage.objects;
+create policy "public read session files" on storage.objects
+  for select using (bucket_id = 'sessions');
+
+drop policy if exists "company writes session files" on storage.objects;
+create policy "company writes session files" on storage.objects
+  for insert with check (
+    bucket_id = 'sessions' and (storage.foldername(name))[1] = public.my_company_id()::text
+  );
+
+drop policy if exists "company deletes session files" on storage.objects;
+create policy "company deletes session files" on storage.objects
+  for delete using (
+    bucket_id = 'sessions' and (storage.foldername(name))[1] = public.my_company_id()::text
+  );
