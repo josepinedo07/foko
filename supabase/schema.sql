@@ -376,15 +376,22 @@ grant select, insert, update, delete on public.sessions to authenticated;
 grant select, insert, delete on public.session_media to authenticated;
 
 -- Storage: bucket "sessions" (fotos y videos del historial).
--- Público de solo lectura; escritura/borrado solo en la carpeta de tu empresa
--- (sessions/{company_id}/{session_id}/...). Rutas con UUID, no adivinables.
+-- PRIVADO: los archivos no son legibles por URL directa. El historial genera
+-- URLs firmadas temporales. Lectura/escritura/borrado solo en la carpeta de
+-- la propia empresa (sessions/{company_id}/{session_id}/...), o el admin.
 insert into storage.buckets (id, name, public)
-values ('sessions', 'sessions', true)
-on conflict (id) do nothing;
+values ('sessions', 'sessions', false)
+on conflict (id) do update set public = false;
 
 drop policy if exists "public read session files" on storage.objects;
-create policy "public read session files" on storage.objects
-  for select using (bucket_id = 'sessions');
+drop policy if exists "company reads session files" on storage.objects;
+create policy "company reads session files" on storage.objects
+  for select using (
+    bucket_id = 'sessions' and (
+      (storage.foldername(name))[1] = public.my_company_id()::text
+      or public.is_platform_admin()
+    )
+  );
 
 drop policy if exists "company writes session files" on storage.objects;
 create policy "company writes session files" on storage.objects
@@ -395,5 +402,8 @@ create policy "company writes session files" on storage.objects
 drop policy if exists "company deletes session files" on storage.objects;
 create policy "company deletes session files" on storage.objects
   for delete using (
-    bucket_id = 'sessions' and (storage.foldername(name))[1] = public.my_company_id()::text
+    bucket_id = 'sessions' and (
+      (storage.foldername(name))[1] = public.my_company_id()::text
+      or public.is_platform_admin()
+    )
   );

@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FOKO · Política de Privacidad y Tratamiento de Datos</title>
+  <meta name="description" content="Cómo FOKO trata los datos personales en el soporte remoto por video: qué se recopila, para qué, con quién se comparte, tus derechos y el marco legal de Venezuela y Latinoamérica.">
+  <link rel="icon" href="brand/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="brand/favicon-32.png" sizes="32x32" type="image/png">
+  <link rel="apple-touch-icon" href="brand/apple-touch-icon.png">
+  <link rel="manifest" href="site.webmanifest">
+  <meta name="theme-color" content="#0F1009">
+  <link rel="stylesheet" href="css/design-system.css">
+  <style>
+    body { overflow-x: hidden; }
+    .page { max-width: 760px; margin: 0 auto; padding: 0 var(--s-5) var(--s-16); }
+
+    .nav { display: flex; align-items: center; gap: var(--s-4); padding: var(--s-5) 0; border-bottom: 1px solid var(--border); }
+    .nav .spacer { flex: 1; }
+
+    .doc { padding-top: var(--s-10); }
+    .doc h1 { font-family: var(--font-display); font-weight: 700; letter-spacing: var(--tracking-display); font-size: clamp(26px, 4vw, var(--fs-40)); line-height: 1.15; }
+    .doc .updated { font-family: var(--font-mono); font-size: var(--fs-12); color: var(--text-mute); margin-top: var(--s-3); }
+    .doc .lead { color: var(--text-dim); font-size: var(--fs-16); margin-top: var(--s-5); }
+
+    .toc { border: 1px solid var(--border); border-radius: var(--r); padding: var(--s-4) var(--s-5); margin: var(--s-8) 0; }
+    .toc .label { display: block; margin-bottom: var(--s-2); }
+    .toc ol { margin: 0; padding-left: var(--s-5); color: var(--text-dim); font-size: var(--fs-14); columns: 2; column-gap: var(--s-6); }
+    .toc a { color: var(--text-dim); }
+    .toc a:hover { color: var(--accent-text); }
+    @media (max-width: 560px) { .toc ol { columns: 1; } }
+
+    .doc section { padding-top: var(--s-8); }
+    .doc h2 { font-size: var(--fs-20); font-weight: 600; scroll-margin-top: var(--s-5); }
+    .doc h2 .n { font-family: var(--font-mono); color: var(--text-mute); font-weight: 400; margin-right: var(--s-3); }
+    .doc h3 { font-size: var(--fs-16); font-weight: 600; margin-top: var(--s-5); }
+    .doc p, .doc li { color: var(--text-dim); font-size: var(--fs-14); line-height: 1.7; }
+    .doc p { margin-top: var(--s-3); }
+    .doc ul, .doc ol.list { margin-top: var(--s-3); padding-left: var(--s-5); }
+    .doc li { margin-top: var(--s-1); }
+    .doc strong { color: var(--text); font-weight: 600; }
+    .doc a { color: var(--accent-text); }
+
+    .doc table { width: 100%; border-collapse: collapse; margin-top: var(--s-4); font-size: var(--fs-12); }
+    .doc th, .doc td { text-align: left; padding: var(--s-2) var(--s-3); border-bottom: 1px solid var(--border); vertical-align: top; }
+    .doc th { font-family: var(--font-mono); font-size: var(--fs-11); letter-spacing: var(--tracking-label); text-transform: uppercase; color: var(--text-dim); }
+    .doc td { color: var(--text-dim); }
+    .tablewrap { overflow-x: auto; }
+
+    .callout { border: 1px solid var(--border-strong); border-left: 2px solid var(--accent); border-radius: var(--r-cell); padding: var(--s-4); margin-top: var(--s-4); background: var(--surface); }
+    .callout p { margin-top: 0; }
+    .ph { color: var(--warn); font-family: var(--font-mono); font-size: 0.92em; }
+
+    footer { padding: var(--s-10) 0 var(--s-16); border-top: 1px solid var(--border); margin-top: var(--s-12); display: flex; gap: var(--s-4); flex-wrap: wrap; }
+    footer a { color: var(--text-dim); font-size: var(--fs-12); }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="nav">
+      <a href="index.html" id="navLogo" aria-label="Foko"></a>
+      <span class="spacer"></span>
+      <a class="btn btn--ghost" href="index.html">Inicio</a>
+      <a class="btn" href="login.html">Iniciar sesión</a>
+    </header>
+
+    <article class="doc">
+      <h1>Política de Privacidad y Tratamiento de Datos Personales</h1>
+      <p class="updated">Versión 1.0 · Vigente desde el 8 de septiembre de 2026</p>
+      <p class="lead">
+        Este documento explica cómo <strong>FOKO</strong> —servicio de soporte técnico remoto por video—
+        recopila, usa, comparte, conserva y protege datos personales, y cómo puedes ejercer tus derechos.
+        Está redactado tomando como referencia el ordenamiento de la <strong>República Bolivariana de Venezuela</strong>
+        y las leyes de protección de datos de otros países de <strong>Latinoamérica</strong> desde donde puede usarse el servicio.
+      </p>
+
+      <div class="callout">
+        <p><strong>Aviso importante.</strong> Este es un documento base. Antes de su publicación definitiva debe ser
+        revisado y adaptado por un profesional del derecho habilitado en la jurisdicción donde opere el responsable.
+        Los campos entre corchetes (<span class="ph">[ASÍ]</span>) deben completarse con los datos reales de la empresa.</p>
+      </div>
+
+      <div class="toc">
+        <span class="label">Contenido</span>
+        <ol>
+          <li><a href="#responsable">Responsable del tratamiento</a></li>
+          <li><a href="#roles">Roles: responsable y encargado</a></li>
+          <li><a href="#datos">Datos que se tratan</a></li>
+          <li><a href="#finalidades">Finalidades</a></li>
+          <li><a href="#legitimacion">Base de legitimación y consentimiento</a></li>
+          <li><a href="#video">Video, audio y grabaciones</a></li>
+          <li><a href="#ia">Transcripción y reporte con IA</a></li>
+          <li><a href="#terceros">Terceros y subprocesadores</a></li>
+          <li><a href="#transferencias">Transferencias internacionales</a></li>
+          <li><a href="#conservacion">Plazos de conservación</a></li>
+          <li><a href="#seguridad">Seguridad</a></li>
+          <li><a href="#derechos">Tus derechos</a></li>
+          <li><a href="#ejercicio">Cómo ejercer tus derechos</a></li>
+          <li><a href="#menores">Menores de edad</a></li>
+          <li><a href="#cookies">Cookies y almacenamiento local</a></li>
+          <li><a href="#cambios">Cambios a esta política</a></li>
+          <li><a href="#marco">Marco normativo aplicable</a></li>
+          <li><a href="#contacto">Contacto</a></li>
+        </ol>
+      </div>
+
+      <section id="responsable">
+        <h2><span class="n">01</span>Responsable del tratamiento</h2>
+        <p>El responsable del tratamiento de los datos personales recabados a través de FOKO es:</p>
+        <ul>
+          <li><strong>Razón social:</strong> Grupo Chambeo, C.A.</li>
+          <li><strong>Identificación fiscal (RIF / equivalente):</strong> J-50797988-1</li>
+          <li><strong>País de establecimiento:</strong> República Bolivariana de Venezuela</li>
+          <li><strong>Domicilio:</strong> <span class="ph">[DOMICILIO]</span></li>
+          <li><strong>Correo de contacto de privacidad:</strong> <span class="ph">[privacidad@fokoremote.com]</span></li>
+          <li><strong>Sitio:</strong> <a href="https://fokoremote.com">fokoremote.com</a></li>
+        </ul>
+        <p>Cuando en este documento se dice «nosotros», «FOKO» o «el responsable», se hace referencia a la entidad anterior.</p>
+      </section>
+
+      <section id="roles">
+        <h2><span class="n">02</span>Roles: responsable y encargado</h2>
+        <p>FOKO opera bajo dos roles distintos según el tipo de dato:</p>
+        <ul>
+          <li><strong>Como responsable</strong> respecto de los datos de las cuentas de los <em>técnicos de oficina</em>
+            y de las <em>empresas suscriptoras</em> (correo, nombre, empresa, datos de acceso). FOKO decide para qué y cómo se tratan.</li>
+          <li><strong>Como encargado del tratamiento</strong> respecto de los datos que cada <strong>empresa suscriptora</strong>
+            captura sobre <em>sus propios clientes</em> durante una sesión de soporte (nombre del cliente, descripción del caso,
+            fotografías, video y audio del sitio del cliente). En ese caso, la <strong>empresa suscriptora es la responsable</strong>
+            de esos datos y FOKO los trata únicamente siguiendo sus instrucciones y para prestarle el servicio.</li>
+        </ul>
+        <p>La empresa suscriptora se obliga a contar con la base legal y los avisos necesarios frente a sus clientes y a los
+          técnicos de campo, y a usar FOKO conforme a la ley aplicable.</p>
+      </section>
+
+      <section id="datos">
+        <h2><span class="n">03</span>Datos que se tratan</h2>
+        <div class="tablewrap">
+        <table>
+          <thead><tr><th>Categoría</th><th>Datos</th><th>Origen</th></tr></thead>
+          <tbody>
+            <tr><td>Cuenta</td><td>Correo electrónico; nombre (si se proporciona); identificador de usuario; rol (dueño / miembro / administrador); contraseña (almacenada cifrada, nunca en texto claro).</td><td>Tú, al registrarte.</td></tr>
+            <tr><td>Acceso con Google</td><td>Si eliges «Continuar con Google»: correo, nombre y foto de perfil que Google comparte con la aplicación, previa tu autorización en Google.</td><td>Google, con tu consentimiento.</td></tr>
+            <tr><td>Empresa</td><td>Nombre de la empresa; logotipo; código de invitación.</td><td>El dueño de la cuenta.</td></tr>
+            <tr><td>Sesión de soporte</td><td>Nombre o identificación del cliente atendido; descripción del caso; código de sala; fecha, hora y duración; número de fotos y videos.</td><td>El técnico de oficina.</td></tr>
+            <tr><td>Contenido multimedia</td><td>Fotografías capturadas de la cámara del técnico de campo (con anotaciones); grabaciones de video con audio de la sesión.</td><td>Se generan durante la llamada y se guardan solo si el técnico de oficina decide archivarlas.</td></tr>
+            <tr><td>Comunicación en vivo</td><td>Video y audio transmitidos entre los participantes durante la llamada. Se transmiten <strong>punto a punto</strong> y <strong>no se almacenan</strong>, salvo que exista una grabación.</td><td>Cámara y micrófono de los participantes.</td></tr>
+            <tr><td>Voz para transcripción</td><td>Si el técnico de oficina activa el asistente de notas: su voz se convierte a texto mediante el motor de reconocimiento de voz del navegador.</td><td>Micrófono del técnico de oficina.</td></tr>
+            <tr><td>Datos técnicos</td><td>Métricas de la conexión (latencia, resolución, fotogramas por segundo); tipo de navegador y dispositivo; dirección IP (usada por los servidores de señalización y de retransmisión para establecer la llamada).</td><td>Automático.</td></tr>
+            <tr><td>Preferencias locales</td><td>Ajustes guardados en tu navegador (p. ej. si el asistente de notas está activado, idioma de transcripción). No se envían a nuestros servidores.</td><td>Tu navegador.</td></tr>
+          </tbody>
+        </table>
+        </div>
+        <p>FOKO <strong>no</strong> solicita ni trata deliberadamente categorías especiales de datos (salud, origen étnico,
+          afiliación política o sindical, biometría con fines de identificación, etc.). Si aparecen de forma incidental en una
+          fotografía o grabación, se aplican las mismas medidas de seguridad y plazos de conservación descritos aquí.</p>
+      </section>
+
+      <section id="finalidades">
+        <h2><span class="n">04</span>Finalidades</h2>
+        <p>Los datos se tratan para:</p>
+        <ol class="list">
+          <li>Crear y administrar tu cuenta y la de tu empresa, y autenticar tu acceso.</li>
+          <li>Establecer y sostener la videollamada de soporte (señalización, recorrido de red, transmisión).</li>
+          <li>Permitir las funciones de la sesión: puntero, dibujo, congelado, captura de fotos, grabación y compartición de pantalla.</li>
+          <li>Guardar el <strong>historial de soporte</strong> de tu empresa cuando el técnico de oficina así lo decide, con las fotos, videos, duración y descripción.</li>
+          <li>Generar, si se solicita, un <strong>reporte de servicio</strong> a partir de la transcripción y las notas.</li>
+          <li>Mostrar la marca de tu empresa (logo y nombre) en la consola, la invitación y el reporte.</li>
+          <li>Mantener la seguridad del servicio, prevenir el fraude y el abuso, y cumplir obligaciones legales.</li>
+          <li>Soporte al usuario y mejora del servicio, sobre datos técnicos y agregados.</li>
+        </ol>
+        <p>No usamos los datos para publicidad, ni los vendemos, ni los cedemos a terceros con fines comerciales.</p>
+      </section>
+
+      <section id="legitimacion">
+        <h2><span class="n">05</span>Base de legitimación y consentimiento</h2>
+        <p>El tratamiento se sustenta, según el caso, en:</p>
+        <ul>
+          <li><strong>El consentimiento</strong> del titular —libre, específico, informado e inequívoco—, especialmente para el
+            uso de cámara y micrófono, la grabación de la sesión y el uso del asistente de notas con IA. El consentimiento puede
+            retirarse en cualquier momento, sin efecto retroactivo.</li>
+          <li><strong>La ejecución de la relación contractual</strong> entre FOKO y la empresa suscriptora, y entre la empresa y su cliente.</li>
+          <li><strong>El cumplimiento de obligaciones legales</strong> aplicables al responsable.</li>
+          <li><strong>El interés legítimo</strong> en garantizar la seguridad del servicio, ponderado frente a los derechos del titular.</li>
+        </ul>
+        <p>Antes de conectar la cámara, el técnico de campo ve un aviso y debe aceptar expresamente que la sesión puede grabarse
+          y que las imágenes pueden ser almacenadas por la empresa de soporte.</p>
+      </section>
+
+      <section id="video">
+        <h2><span class="n">06</span>Video, audio y grabaciones</h2>
+        <p>La transmisión de video y audio entre los participantes es <strong>punto a punto (WebRTC)</strong> y va cifrada en
+          tránsito. FOKO no intercepta ni conserva esa transmisión.</p>
+        <p>Existe grabación <strong>solo</strong> cuando el técnico de oficina pulsa «Grabar». En ese caso:</p>
+        <ul>
+          <li>La grabación incluye la imagen de la cámara del técnico de campo, las anotaciones superpuestas y el audio de la llamada.</li>
+          <li>Al finalizar la sesión, el técnico de oficina decide si la guarda en el historial de su empresa. Si la guarda,
+            el archivo se almacena en el proveedor de almacenamiento (ver sección 8) en una carpeta separada por empresa.</li>
+          <li>El acceso a las grabaciones y fotos guardadas queda restringido a los miembros de esa empresa y, para fines de
+            soporte y seguridad de la plataforma, al administrador de FOKO. Los archivos se sirven mediante enlaces temporales firmados.</li>
+        </ul>
+        <p>Grabar a personas puede requerir su conocimiento y, en varios países, su consentimiento. La empresa suscriptora es
+          responsable de informar y obtener las autorizaciones necesarias de las personas que aparezcan en cámara.</p>
+      </section>
+
+      <section id="ia">
+        <h2><span class="n">07</span>Transcripción y reporte con IA</h2>
+        <p>El asistente de notas es <strong>opcional</strong> y está desactivado por defecto. Cuando se activa:</p>
+        <ul>
+          <li>La <strong>transcripción de voz</strong> se realiza con el motor de reconocimiento de voz del navegador del técnico
+            de oficina. En algunos navegadores (por ejemplo Google Chrome) ese motor procesa el audio en servidores del fabricante del navegador.</li>
+          <li>El <strong>reporte de servicio</strong> se genera enviando la transcripción y las notas escritas a
+            <strong>Google (Gemini API / Google AI Studio)</strong>, que devuelve el texto del reporte. Según las condiciones de
+            ese servicio para desarrolladores, ese contenido no se utiliza para entrenar sus modelos.</li>
+          <li>El reporte se muestra al técnico y puede descargarse o imprimirse. FOKO no almacena el reporte en sus servidores
+            salvo que se guarde como parte del historial de la sesión.</li>
+        </ul>
+        <p>No se debe introducir en las notas ni dictar información que no sea estrictamente necesaria para el servicio.</p>
+      </section>
+
+      <section id="terceros">
+        <h2><span class="n">08</span>Terceros y subprocesadores</h2>
+        <p>Para prestar el servicio, FOKO se apoya en los siguientes proveedores, que actúan como encargados o subprocesadores:</p>
+        <div class="tablewrap">
+        <table>
+          <thead><tr><th>Proveedor</th><th>Función</th><th>Datos que maneja</th></tr></thead>
+          <tbody>
+            <tr><td>Supabase</td><td>Base de datos, autenticación y almacenamiento de archivos.</td><td>Datos de cuenta, empresa, sesiones; fotos y videos guardados.</td></tr>
+            <tr><td>Vercel</td><td>Alojamiento del sitio y de la función que genera el reporte.</td><td>Datos técnicos de la petición; contenido enviado a la función de reporte en tránsito.</td></tr>
+            <tr><td>Google</td><td>Inicio de sesión con Google (opcional); reconocimiento de voz del navegador Chrome; generación del reporte (Gemini API).</td><td>Correo/nombre/foto de perfil (si usas Google); audio de la voz a transcribir; transcripción y notas para el reporte.</td></tr>
+            <tr><td>Broker de señalización PeerJS</td><td>Intercambio de los mensajes iniciales para establecer la llamada punto a punto.</td><td>Identificadores de sala y de par; dirección IP.</td></tr>
+            <tr><td>Servidores STUN/TURN (Google; OpenRelay / Metered)</td><td>Recorrido de red y, si la conexión directa falla, retransmisión cifrada del audio y video.</td><td>Dirección IP; flujo de audio/video cifrado durante la llamada (no se almacena).</td></tr>
+            <tr><td>GitHub Pages</td><td>Espejo estático del sitio (sin la función de reporte).</td><td>Datos técnicos de la petición.</td></tr>
+          </tbody>
+        </table>
+        </div>
+        <p>Con cada proveedor existe una relación contractual que le exige tratar los datos solo para las finalidades indicadas
+          y aplicar medidas de seguridad. La lista puede actualizarse; los cambios se reflejarán en esta página.</p>
+      </section>
+
+      <section id="transferencias">
+        <h2><span class="n">09</span>Transferencias internacionales</h2>
+        <p>Algunos de los proveedores anteriores procesan datos en servidores ubicados <strong>fuera de tu país</strong>,
+          principalmente en <strong>Estados Unidos</strong> <span class="ph">[verificar la región exacta configurada en Supabase y Vercel]</span>.
+          Al usar FOKO, y en particular al aceptar los avisos de cámara/grabación y de asistente de IA, consientes esa
+          transferencia internacional, que se realiza con proveedores que ofrecen garantías contractuales de protección
+          equivalentes a las exigidas por la normativa aplicable.</p>
+        <p>Si la legislación de tu país exige una base adicional para la transferencia internacional (autorización del titular,
+          cláusulas contractuales tipo, etc.), la empresa suscriptora y FOKO adoptarán la que corresponda.</p>
+      </section>
+
+      <section id="conservacion">
+        <h2><span class="n">10</span>Plazos de conservación</h2>
+        <ul>
+          <li><strong>Datos de cuenta y empresa:</strong> mientras la cuenta esté activa y hasta <span class="ph">[X meses]</span> después de su cierre, salvo obligación legal de conservarlos más tiempo.</li>
+          <li><strong>Historial de sesiones (metadatos, fotos, videos):</strong> mientras la empresa suscriptora los mantenga en su historial. La empresa puede eliminarlos en cualquier momento desde la aplicación; al eliminarlos se borran también los archivos asociados. <span class="ph">[Definir plazo máximo, p. ej. 24 meses.]</span></li>
+          <li><strong>Transmisión en vivo:</strong> no se conserva.</li>
+          <li><strong>Transcripción y reporte:</strong> no se conservan en los servidores de FOKO salvo que se guarden en el historial.</li>
+          <li><strong>Registros técnicos y de seguridad:</strong> <span class="ph">[X meses]</span>.</li>
+        </ul>
+        <p>Vencidos los plazos, los datos se eliminan o se anonimizan de forma irreversible.</p>
+      </section>
+
+      <section id="seguridad">
+        <h2><span class="n">11</span>Seguridad</h2>
+        <ul>
+          <li>Cifrado en tránsito (HTTPS/TLS) en todo el sitio y cifrado de la transmisión de video/audio (WebRTC/DTLS-SRTP).</li>
+          <li>Contraseñas almacenadas con funciones de derivación de clave (hash), nunca en texto claro.</li>
+          <li><strong>Aislamiento por empresa</strong> a nivel de base de datos mediante políticas de seguridad a nivel de fila (RLS): cada usuario solo accede a los datos de su empresa.</li>
+          <li>Archivos del historial en almacenamiento privado, accesibles solo mediante enlaces temporales firmados.</li>
+          <li>Acceso interno restringido y bajo el principio de mínimo privilegio.</li>
+        </ul>
+        <p>Ningún sistema es completamente infalible. Si ocurre un incidente de seguridad que afecte tus datos de forma
+          significativa, se te notificará y se informará a la autoridad competente cuando la ley lo exija.</p>
+      </section>
+
+      <section id="derechos">
+        <h2><span class="n">12</span>Tus derechos</h2>
+        <p>Como titular de los datos puedes ejercer, de forma gratuita, los derechos que te reconoce la legislación aplicable, entre ellos:</p>
+        <ul>
+          <li><strong>Acceso / información:</strong> saber qué datos tuyos se tratan, con qué fin y con quién se comparten
+            (en Venezuela, la acción de <strong>habeas data</strong> del artículo 28 de la Constitución).</li>
+          <li><strong>Rectificación / actualización:</strong> corregir datos inexactos o incompletos.</li>
+          <li><strong>Cancelación / supresión / destrucción:</strong> pedir que se eliminen tus datos cuando ya no sean
+            necesarios o retires el consentimiento.</li>
+          <li><strong>Oposición:</strong> oponerte a un tratamiento por motivos legítimos.</li>
+          <li><strong>Revocación del consentimiento</strong> en cualquier momento.</li>
+          <li><strong>Portabilidad</strong> y <strong>limitación</strong> del tratamiento, donde la ley lo prevea.</li>
+          <li><strong>No ser objeto de decisiones automatizadas</strong> con efectos jurídicos; el reporte con IA es una ayuda de
+            redacción y siempre lo revisa una persona.</li>
+          <li><strong>Reclamar</strong> ante la autoridad de control de tu país.</li>
+        </ul>
+      </section>
+
+      <section id="ejercicio">
+        <h2><span class="n">13</span>Cómo ejercer tus derechos</h2>
+        <p>Escribe a <span class="ph">[privacidad@fokoremote.com]</span> indicando: tu nombre, el derecho que ejerces, una
+          descripción clara de tu solicitud y un medio para responderte. Podremos pedirte que acredites tu identidad.</p>
+        <p>Responderemos en el plazo que fije la ley de tu país (a título orientativo, entre <strong>10 y 20 días hábiles</strong>).
+          Si los datos los trata una empresa suscriptora en calidad de responsable (ver sección 2), trasladaremos tu solicitud a
+          esa empresa o te indicaremos cómo contactarla.</p>
+      </section>
+
+      <section id="menores">
+        <h2><span class="n">14</span>Menores de edad</h2>
+        <p>FOKO es una herramienta profesional y no está dirigida a menores de edad. No recabamos conscientemente datos de
+          menores. Si un menor aparece de forma incidental en una imagen o grabación, la empresa suscriptora debe contar con la
+          autorización de quien ejerza la patria potestad o representación legal.</p>
+      </section>
+
+      <section id="cookies">
+        <h2><span class="n">15</span>Cookies y almacenamiento local</h2>
+        <p>FOKO no usa cookies de publicidad ni de seguimiento de terceros. Utiliza:</p>
+        <ul>
+          <li><strong>Almacenamiento de sesión de autenticación</strong> (necesario para mantenerte conectado).</li>
+          <li><strong>Almacenamiento local del navegador</strong> para recordar preferencias de la interfaz (p. ej. si el
+            asistente de notas está activado). Esta información no sale de tu dispositivo.</li>
+        </ul>
+      </section>
+
+      <section id="cambios">
+        <h2><span class="n">16</span>Cambios a esta política</h2>
+        <p>Podemos actualizar esta política para reflejar cambios en el servicio o en la ley. La versión vigente es siempre la
+          publicada en esta página, con su fecha. Si el cambio es sustancial, se avisará por un medio razonable (aviso en la
+          aplicación o correo).</p>
+      </section>
+
+      <section id="marco">
+        <h2><span class="n">17</span>Marco normativo aplicable</h2>
+        <p>Esta política se interpreta conforme a la legislación del país de establecimiento del responsable y, cuando aplique
+          por el lugar de residencia del titular, conforme a las normas locales de protección de datos, entre ellas:</p>
+        <ul>
+          <li><strong>Venezuela:</strong> Constitución de la República Bolivariana de Venezuela, artículos 28 (habeas data) y 60
+            (protección del honor, vida privada, intimidad y propia imagen); Ley de Infogobierno; y demás normativa sobre datos y
+            comunicaciones.</li>
+          <li><strong>Colombia:</strong> Ley 1581 de 2012 y Decreto 1377 de 2013 (régimen general de protección de datos y política de tratamiento).</li>
+          <li><strong>Brasil:</strong> Lei Geral de Proteção de Dados (Lei n.º 13.709/2018 — LGPD).</li>
+          <li><strong>Argentina:</strong> Ley 25.326 de Protección de los Datos Personales y su reglamentación.</li>
+          <li><strong>México:</strong> Ley Federal de Protección de Datos Personales en Posesión de los Particulares.</li>
+          <li><strong>Perú:</strong> Ley 29733 de Protección de Datos Personales.</li>
+          <li><strong>Chile:</strong> Ley 19.628 sobre protección de la vida privada y su reforma de 2024.</li>
+          <li><strong>Uruguay:</strong> Ley 18.331 de Protección de Datos Personales.</li>
+          <li><strong>Ecuador:</strong> Ley Orgánica de Protección de Datos Personales.</li>
+        </ul>
+      </section>
+
+      <section id="contacto">
+        <h2><span class="n">18</span>Contacto</h2>
+        <p>
+          Grupo Chambeo, C.A.<br>
+          <span class="ph">[DOMICILIO]</span><br>
+          Correo: <span class="ph">[privacidad@fokoremote.com]</span><br>
+          Sitio: <a href="https://fokoremote.com">fokoremote.com</a>
+        </p>
+      </section>
+    </article>
+
+    <footer>
+      <a href="index.html">Inicio</a>
+      <a href="login.html">Iniciar sesión</a>
+      <a href="mailto:[privacidad@fokoremote.com]" class="ph">[privacidad@fokoremote.com]</a>
+    </footer>
+  </div>
+
+  <script type="module">
+    import { mountLogo } from './js/logo.js';
+    mountLogo(document.getElementById('navLogo'), { height: 26 });
+  </script>
+</body>
+</html>

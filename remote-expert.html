@@ -888,8 +888,9 @@
           btn.textContent = `Subiendo ${i + 1}/${items.length}…`;
           const { error: uErr } = await supabase.storage.from('sessions').upload(it.path, it.blob, { contentType: it.ct, upsert: true });
           if (uErr) throw uErr;
-          const { data: pub } = supabase.storage.from('sessions').getPublicUrl(it.path);
-          rows.push({ session_id: sessionId, company_id: company.id, kind: it.kind, storage_path: it.path, url: pub.publicUrl });
+          // El bucket es privado: se guarda solo la ruta; el historial genera
+          // URLs firmadas temporales al abrir cada sesión.
+          rows.push({ session_id: sessionId, company_id: company.id, kind: it.kind, storage_path: it.path, url: null });
         }
         if (rows.length) {
           const { error: mErr } = await supabase.from('session_media').insert(rows);

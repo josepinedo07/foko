@@ -215,7 +215,7 @@
 
     // ---- Detalle ----
     let current = null;
-    function openDetail(id) {
+    async function openDetail(id) {
       const s = sessions.find((x) => x.id === id);
       if (!s) return;
       current = s;
@@ -230,10 +230,20 @@
       const media = s.session_media || [];
       const photos = media.filter((m) => m.kind === 'photo');
       const videos = media.filter((m) => m.kind === 'video');
+
+      // Bucket privado → URLs firmadas temporales (1 h).
+      const paths = media.map((m) => m.storage_path).filter(Boolean);
+      const signed = {};
+      if (paths.length) {
+        const { data } = await supabase.storage.from('sessions').createSignedUrls(paths, 3600);
+        (data || []).forEach((d) => { if (d && d.signedUrl) signed[d.path] = d.signedUrl; });
+      }
+      const urlFor = (m) => signed[m.storage_path] || m.url || '';
+
       $('dPhotosLabel').hidden = !photos.length;
-      $('dPhotos').innerHTML = photos.map((m) => `<img src="${esc(m.url)}" alt="Foto de la sesión" loading="lazy">`).join('');
+      $('dPhotos').innerHTML = photos.map((m) => `<img src="${esc(urlFor(m))}" alt="Foto de la sesión" loading="lazy">`).join('');
       $('dVideosLabel').hidden = !videos.length;
-      $('dVideos').innerHTML = videos.map((m) => `<video src="${esc(m.url)}" controls preload="metadata"></video>`).join('');
+      $('dVideos').innerHTML = videos.map((m) => `<video src="${esc(urlFor(m))}" controls preload="metadata"></video>`).join('');
 
       $('dView').hidden = false; $('dEdit').hidden = true;
       $('detailModal').classList.add('open');
