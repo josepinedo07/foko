@@ -67,6 +67,22 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: 'Sesión inválida o vencida. Vuelve a iniciar sesión.' });
   }
 
+  // Sesión única: el session_id del JWT debe seguir siendo la sesión vigente
+  // del perfil. Si alguien inició sesión en otro dispositivo, esta queda fuera.
+  try {
+    const claims = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString('utf8'));
+    if (claims.session_id) {
+      const { data: act } = await supabaseAdmin
+        .from('active_sessions')
+        .select('session_id')
+        .eq('profile_id', user.id)
+        .maybeSingle();
+      if (act && act.session_id && act.session_id !== claims.session_id) {
+        return res.status(401).json({ code: 'SESSION_SUPERSEDED', error: 'Se inició sesión en otro dispositivo.' });
+      }
+    }
+  } catch (_) { /* si el token no trae session_id, no bloqueamos */ }
+
   let companyName = null, companyId = null;
   try {
     const { data: profile } = await supabaseAdmin

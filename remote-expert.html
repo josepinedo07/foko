@@ -338,6 +338,7 @@
     import { mountLogo } from './js/logo.js';
     import { supabase, requireSession } from './js/supabase-client.js';
     import { enforceAccess } from './js/gate.js';
+    import { guardSession } from './js/session-guard.js';
     import { SESSION_MAX_MS, SESSION_WARN_MS, SESSION_MAX_MINUTES, MAX_REPORT_CHARS, MAX_PHOTOS_PER_SESSION, ROOM_IDLE_MINUTES } from './js/limits.js';
     import { logAudit } from './js/audit.js';
 
@@ -352,6 +353,7 @@
     if (authState && !enforceAccess(authState)) throw new Error('acceso suspendido');
     if (!authState) throw new Error('Redirigiendo a login…');
     const { session } = authState;
+    guardSession(session);
     let company = authState.company;   // { id, name, logo_url, invite_code } | null
     const myRole = authState.profile ? authState.profile.role : null;
 

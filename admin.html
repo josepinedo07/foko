@@ -253,6 +253,7 @@
 
   <script type="module">
     import { supabase, getSessionAndProfile } from './js/supabase-client.js';
+    import { guardSession } from './js/session-guard.js';
     import { mountLogo } from './js/logo.js';
     import { toast } from './js/ui.js';
 
@@ -268,6 +269,7 @@
       $('boot').hidden = true; mountLogo($('deniedLogo'), { height: 40 }); $('denied').hidden = false;
       throw new Error('no admin');
     }
+    guardSession(state.session);
     $('boot').hidden = true; $('page').hidden = false;
     mountLogo($('logo'), { height: 26 });
     $('who').textContent = state.session.user.email || '';

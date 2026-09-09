@@ -142,6 +142,7 @@
   <script type="module">
     import { supabase, requireSession } from './js/supabase-client.js';
     import { enforceAccess } from './js/gate.js';
+    import { guardSession } from './js/session-guard.js';
     import { mountLogo } from './js/logo.js';
     import { toast } from './js/ui.js';
     import { logAudit } from './js/audit.js';
@@ -151,6 +152,7 @@
     const state = await requireSession('login.html');
     if (state && !enforceAccess(state)) throw new Error('acceso suspendido');
     if (!state) throw new Error('sin sesión');
+    guardSession(state.session);
     if (state.isPlatformAdmin && !state.company) { location.href = 'admin.html'; throw new Error('admin'); }
     if (!state.company) {
       $('boot').textContent = 'Tu cuenta no tiene una empresa. Ve a login.';

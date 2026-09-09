@@ -86,6 +86,10 @@ export class NotesAssistant {
       body: JSON.stringify({ transcript: this.finalText, notes, meta }),
     });
     const data = await res.json().catch(() => ({}));
+    if (data.code === 'SESSION_SUPERSEDED') {
+      location.replace('login.html?superseded=1');
+      throw new Error('Sesión iniciada en otro dispositivo.');
+    }
     if (!res.ok) throw new Error(data.error || `Error ${res.status}`);
     return data.report || '';
   }
