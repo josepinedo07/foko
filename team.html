@@ -60,6 +60,7 @@
     </div>
 
     <h1 style="font-size:var(--fs-20); font-weight:600; margin-bottom:var(--s-4);">Equipo</h1>
+    <p class="sub" style="margin-bottom:var(--s-4); color:var(--text-dim); font-size:var(--fs-13);">Los <strong>expertos</strong> (y administradores) consumen asiento del plan. Los <strong>técnicos de campo</strong> son gratis e ilimitados.</p>
 
     <div class="seatbar">
       <span id="seatText">—</span>
@@ -77,9 +78,9 @@
       <div class="invite">
         <input class="field" id="invEmail" type="email" placeholder="correo de la persona a invitar">
         <select class="field" id="invRole" style="flex:0 0 auto; width:auto;">
-          <option value="field_tech">Técnico de campo</option>
-          <option value="expert">Técnico de oficina</option>
-          <option value="org_admin">Administrador</option>
+          <option value="pro">Experto (asiento)</option>
+          <option value="field_tech">Técnico de campo (gratis)</option>
+          <option value="org_admin">Administrador (asiento)</option>
         </select>
         <button class="btn btn--primary" id="invBtn">Invitar</button>
       </div>
@@ -127,7 +128,7 @@
       if (error) { toast(error.message, 'critical', 5000); return; }
       team = data;
       const used = team.seats_used, lim = team.seat_limit;
-      $('seatText').textContent = `${used} de ${lim} técnicos de campo`;
+      $('seatText').textContent = `${used} de ${lim} asientos de experto`;
       const pct = Math.min(100, Math.round(used / Math.max(1, lim) * 100));
       $('seatFill').style.width = pct + '%';
       $('seatFill').classList.toggle('full', used >= lim);
@@ -138,8 +139,8 @@
           <td>${u.user_id === state.session.user.id
             ? '<span class="pill2">admin (tú)</span>'
             : `<select class="field" data-user="${u.user_id}" data-act="role" style="width:auto;font-size:var(--fs-11);">
+                 <option value="pro"${u.role === 'pro' ? ' selected' : ''}>pro</option>
                  <option value="field_tech"${u.role === 'field_tech' ? ' selected' : ''}>field_tech</option>
-                 <option value="expert"${u.role === 'expert' ? ' selected' : ''}>expert</option>
                  <option value="org_admin"${u.role === 'org_admin' ? ' selected' : ''}>org_admin</option>
                </select>`}</td>
           <td><span class="pill2">${u.status}</span></td>
@@ -157,7 +158,7 @@
       const full = (used + pend.length) >= lim;
       $('invEmail').disabled = full; $('invRole').disabled = full; $('invBtn').disabled = full;
       $('upsell').hidden = !full;
-      $('upsell').innerHTML = `Llegaste al límite de <strong>${lim}</strong> técnicos de campo de tu plan.
+      $('upsell').innerHTML = `Llegaste al límite de <strong>${lim}</strong> asientos de experto de tu plan.
         Para agregar más, <a href="billing.html">revisa tu plan</a> o escríbenos a
         <a href="mailto:privacidad@fokoremote.com?subject=Más%20asientos">privacidad@fokoremote.com</a>.`;
     }

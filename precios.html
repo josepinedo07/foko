@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>FOKO · Precios</title>
-  <meta name="description" content="Planes de FOKO — soporte técnico remoto por video. Precio por cuadrilla, técnicos de campo por asiento, onboarding acompañado.">
+  <meta name="description" content="Planes de FOKO — soporte técnico remoto por video. Pagas por experto; los técnicos de campo son ilimitados y gratis.">
   <link rel="icon" href="brand/favicon.svg" type="image/svg+xml">
   <link rel="icon" href="brand/favicon-32.png" sizes="32x32" type="image/png">
   <link rel="apple-touch-icon" href="brand/apple-touch-icon.png">
@@ -27,9 +27,9 @@
     .toggle button[aria-pressed='true'] { background: var(--surface-2); color: var(--text); }
     .toggle .save { color: var(--accent-text); }
 
-    .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: var(--s-3); margin-top: var(--s-8); align-items: stretch; }
-    @media (max-width: 1080px) { .grid { grid-template-columns: repeat(2, 1fr); max-width: 640px; margin-inline: auto; } }
-    @media (max-width: 560px) { .grid { grid-template-columns: 1fr; max-width: 380px; } }
+    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--s-4); margin-top: var(--s-8); align-items: stretch; max-width: 840px; margin-inline: auto; }
+    @media (max-width: 820px) { .grid { grid-template-columns: 1fr; max-width: 400px; } }
+    
 
     .plan { border: 1px solid var(--border); border-radius: var(--r); padding: var(--s-5); display: flex; flex-direction: column; }
     .plan--feature { border-color: var(--accent); }
@@ -43,6 +43,9 @@
     .plan ul { list-style: none; margin: var(--s-4) 0; padding: 0; display: flex; flex-direction: column; gap: var(--s-2); flex: 1; }
     .plan li { display: flex; gap: var(--s-2); color: var(--text-dim); font-size: var(--fs-12); line-height: 1.4; }
     .plan li svg { width: 13px; height: 13px; flex: none; margin-top: 3px; stroke: var(--accent); fill: none; stroke-width: 2.2; }
+    .plan li.hi span { color: var(--text); }
+    .plan__name { font-size: var(--fs-16); font-weight: 600; margin-top: var(--s-1); }
+    .plan__price b { font-family: var(--font-display); font-weight: 700; font-size: var(--fs-40); letter-spacing: var(--tracking-display); }
     .plan .btn { width: 100%; }
 
     footer { padding: var(--s-12) 0 var(--s-8); display: flex; gap: var(--s-4); flex-wrap: wrap; align-items: center; border-top: 1px solid var(--border); margin-top: var(--s-10); }
@@ -60,8 +63,8 @@
     </header>
 
     <div class="head">
-      <h1>Un plan por cuadrilla</h1>
-      <p>El equipo de oficina no paga asiento. Pagas por los técnicos de campo que conectas. Onboarding acompañado.</p>
+      <h1>Pagas por experto, no por llamada</h1>
+      <p>El asiento es para quien <strong>guía</strong> la sesión. Los técnicos de campo que comparten cámara son ilimitados y sin costo. Onboarding acompañado.</p>
       <div class="toggle" role="group" aria-label="Periodo de facturación">
         <button id="tMonth" aria-pressed="true">Mensual</button>
         <button id="tYear" aria-pressed="false">Anual <span class="save">−17%</span></button>
@@ -91,34 +94,27 @@
     let plans = [];
 
     const usd = (cents) => '$' + (cents / 100).toLocaleString('en-US', { maximumFractionDigits: 0 });
-    const FEATURE_LABEL = { export: 'Exportar el historial', sso: 'Inicio de sesión SSO', api: 'Acceso por API' };
-
+    
     function planCard(p) {
       const monthly = p.price_cents;
       const shown = annual ? monthly * 10 : monthly;   // anual = mensual × 10 (−17%)
       const per = annual ? '/año' : '/mes';
-      const isFeature = p.id === 'cuadrilla';
-      const isEntry = p.id === 'arranque';
-
-      const seatLine = p.per_extra_seat_cents
-        ? `${p.included_seats} técnicos de campo incluidos, luego ${usd(p.per_extra_seat_cents)} c/u`
-        : `hasta ${p.included_seats} técnicos de campo`;
-
-      const feats = Object.keys(p.features || {})
-        .filter((k) => p.features[k] && FEATURE_LABEL[k])
-        .map((k) => `<li>${CHECK}<span>${FEATURE_LABEL[k]}</span></li>`).join('');
+      const isFeature = p.id === 'equipo';
+      const seats = p.included_seats;
+      const retention = p.recording_retention_days || p.retention_days || 30;
 
       return `<article class="plan ${isFeature ? 'plan--feature' : ''}">
-        <div class="plan__tag">${isFeature ? 'Más elegido' : isEntry ? 'Puerta de entrada' : ''}</div>
+        <div class="plan__tag">${isFeature ? 'Más elegido' : ''}</div>
         <div class="plan__name">${p.name}</div>
         <div class="plan__price"><b>${usd(shown)}</b> <span>${per}</span></div>
-        <div class="plan__sub">${seatLine}</div>
+        <div class="plan__sub">${seats} ${seats === 1 ? 'experto' : 'expertos'} (quien guía la sesión)</div>
         <ul>
-          <li>${CHECK}<span>Técnicos de oficina ilimitados</span></li>
+          <li class="hi">${CHECK}<span><strong>Técnicos de campo ilimitados y sin costo</strong></span></li>
           <li>${CHECK}<span>Puntero, dibujo, congelar, fotos y grabación</span></li>
-          <li>${CHECK}<span>Historial ${p.retention_days ? p.retention_days + ' días' : '24 meses'}</span></li>
+          <li>${CHECK}<span>Notas internas de sesión y de coaching</span></li>
           <li>${CHECK}<span>Reporte de servicio con IA</span></li>
-          ${feats}
+          <li>${CHECK}<span>Grabaciones se conservan ${retention} días</span></li>
+          <li>${CHECK}<span>Una sesión activa por persona</span></li>
         </ul>
         <a class="btn ${isFeature ? 'btn--primary' : ''}" href="${DEMO}">Agendar demo</a>
       </article>`;
@@ -129,14 +125,14 @@
         <div class="plan__tag">A tu medida</div>
         <div class="plan__name">Enterprise</div>
         <div class="plan__price"><b>Hablemos</b></div>
-        <div class="plan__sub">Varias cuadrillas, integraciones, SLA</div>
+        <div class="plan__sub">Más de 3 asientos</div>
         <ul>
-          <li>${CHECK}<span>Todo lo de Flota</span></li>
-          <li>${CHECK}<span>Retención y asientos a medida</span></li>
-          <li>${CHECK}<span>Onboarding y soporte dedicado</span></li>
-          <li>${CHECK}<span>Facturación y contrato local</span></li>
+          <li>${CHECK}<span>Asientos de experto a medida</span></li>
+          <li>${CHECK}<span>Retención de grabaciones extendida</span></li>
+          <li>${CHECK}<span>SSO y exportación de notas</span></li>
+          <li>${CHECK}<span>Soporte dedicado</span></li>
         </ul>
-        <a class="btn" href="mailto:privacidad@fokoremote.com?subject=Enterprise%20FOKO">Hablar con nosotros</a>
+        <a class="btn" href="${DEMO}">Agendar demo</a>
       </article>`;
     }
 
