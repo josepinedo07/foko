@@ -9,7 +9,8 @@
   },
   "dependencies": {
     "@google/genai": "^2.21.0",
-    "@supabase/supabase-js": "^2.115.0"
+    "@supabase/supabase-js": "^2.115.0",
+    "stripe": "^17.7.0"
   },
   "keywords": [
     "webrtc",
