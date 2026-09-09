@@ -793,6 +793,9 @@ end $$;
 grant execute on function public.set_user_role(uuid, text) to authenticated;
 
 -- --- Alta self-serve: roles nuevos + enforcement de asientos ----------
+drop function if exists public.create_company_and_join(text);
+drop function if exists public.join_company_by_code(text);
+
 create or replace function public.create_company_and_join(company_name text)
 returns public.companies
 language plpgsql security definer set search_path = public
