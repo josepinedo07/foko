@@ -73,3 +73,32 @@ gradientes/glassmorphism genéricos de SaaS ni íconos emoji en la UI final
   si ya existe un token de estado (`--ok/--warn/--critical/--info`) para eso.
 - Nada de emoji en botones/UI de producto; usar los SVG inline existentes como
   plantilla para íconos nuevos.
+
+## Planes, organizaciones y facturación (multi-tenant)
+
+Añadido sobre el modelo existente **sin renombrar tablas**:
+`companies` = organización (columnas nuevas: `plan_id`, `seat_limit`, `status`
+trialing|active|past_due|paused|canceled, `trial_ends_at`, `billing_mode`
+manual|stripe, `stripe_customer_id`, `slug`, `notes`, `past_due_since`).
+`profiles` = usuario (`status` invited|active|disabled, `last_active_at`,
+`invited_by`). Roles: **owner→org_admin, member→expert**. El **superadmin** sigue
+siendo una fila en `platform_admins`. El **técnico de campo NO es usuario** (entra
+por link/QR); los asientos cuentan org_admin + expert activos.
+
+- `plans` (tabla, fuente de verdad de precios): founder(oculto)/cuadrilla/taller/flota.
+- `invitations` (token+email+role, 14 días). RPCs: `admin_create_organization`,
+  `admin_update_organization`, `invite_user`, `accept_invitation`,
+  `set_user_role`, `set_user_status`, `admin_orgs`, `admin_org_detail`,
+  `org_team`, `org_billing`, `admin_find_user`, `seats_used`, `org_access_state`,
+  `_mrr_cents`, `touch_activity`.
+- Enforcement: RLS de INSERT en `sessions`/`session_media` exige
+  `org_access_state() = 'ok'`; `api/report.js` idem (402 si walled).
+  `js/gate.js` `enforceAccess(state)` pone el muro en el cliente.
+- Páginas: `precios.html` (pública), `admin.html` (superadmin, reconstruida),
+  `team.html` + `billing.html` (org_admin), `invite.html` (acepta invitación).
+  `api/invite.js` manda el correo (Supabase Auth). Stripe: `api/_stripe.js` +
+  `api/{stripe-checkout,stripe-webhook,billing-portal}.js` detrás de
+  `BILLING_STRIPE_ENABLED` (off = todo manual, endpoints 404).
+- SQL por fases: `supabase/phase1-plans-orgs.sql`, `phase2.sql`, `phase5.sql`,
+  `phase6-stripe.sql`. Tests: `supabase/tests.sql` (pgTAP) + `QA.md`.
+- `getSessionAndProfile()` ahora trae `accessState` y `profile.status`.
