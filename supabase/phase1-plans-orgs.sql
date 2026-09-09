@@ -70,7 +70,7 @@ alter table public.profiles alter column role set default 'expert';
 
 -- --- Invitaciones por email --------------------------------------------
 create table if not exists public.invitations (
-  token       text primary key default encode(gen_random_bytes(18), 'hex'),
+  token       text primary key default md5(random()::text || clock_timestamp()::text || random()::text) || md5(gen_random_uuid()::text),
   company_id  uuid not null references public.companies(id) on delete cascade,
   email       text not null,
   role        text not null default 'expert' check (role in ('org_admin','expert')),
