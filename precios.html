@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FOKO · Precios</title>
+  <meta name="description" content="Planes de FOKO — soporte técnico remoto por video. Precio por técnico, sin instalar nada, onboarding acompañado.">
+  <link rel="icon" href="brand/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="brand/favicon-32.png" sizes="32x32" type="image/png">
+  <link rel="apple-touch-icon" href="brand/apple-touch-icon.png">
+  <link rel="manifest" href="site.webmanifest">
+  <meta name="theme-color" content="#0F1009">
+  <link rel="stylesheet" href="css/design-system.css">
+  <script src="js/errlog.js"></script>
+  <style>
+    body { overflow-x: hidden; }
+    .page { max-width: 1080px; margin: 0 auto; padding: 0 var(--s-6) var(--s-16); }
+    .nav { display: flex; align-items: center; gap: var(--s-4); padding: var(--s-6) 0; }
+    .nav .spacer { flex: 1; }
+
+    .head { text-align: center; padding: var(--s-12) 0 var(--s-8); }
+    .head h1 { font-family: var(--font-display); font-weight: 700; letter-spacing: var(--tracking-display); font-size: clamp(30px, 5vw, 52px); line-height: 1.12; }
+    .head p { color: var(--text-dim); font-size: var(--fs-16); margin-top: var(--s-4); max-width: 46ch; margin-inline: auto; }
+
+    .toggle { display: inline-flex; gap: var(--s-1); padding: var(--s-1); border: 1px solid var(--border); border-radius: var(--r); margin: var(--s-6) auto 0; }
+    .toggle button {
+      background: transparent; border: 0; cursor: pointer; padding: var(--s-2) var(--s-4);
+      border-radius: var(--r-cell); font-family: var(--font-mono); font-size: var(--fs-11);
+      letter-spacing: var(--tracking-label); text-transform: uppercase; color: var(--text-dim);
+    }
+    .toggle button[aria-pressed='true'] { background: var(--surface-2); color: var(--text); }
+    .toggle .save { color: var(--accent-text); }
+
+    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--s-4); margin-top: var(--s-8); }
+    @media (max-width: 860px) { .grid { grid-template-columns: 1fr; max-width: 420px; margin-inline: auto; } }
+
+    .plan { border: 1px solid var(--border); border-radius: var(--r); padding: var(--s-6); display: flex; flex-direction: column; }
+    .plan--feature { border-color: var(--accent); }
+    .plan__tag { font-family: var(--font-mono); font-size: var(--fs-11); letter-spacing: var(--tracking-label); text-transform: uppercase; color: var(--accent-text); min-height: 1em; }
+    .plan__name { font-size: var(--fs-20); font-weight: 600; margin-top: var(--s-2); }
+    .plan__price { margin: var(--s-4) 0 var(--s-1); }
+    .plan__price b { font-family: var(--font-display); font-weight: 700; font-size: var(--fs-40); letter-spacing: var(--tracking-display); }
+    .plan__price span { color: var(--text-dim); font-family: var(--font-mono); font-size: var(--fs-12); }
+    .plan__sub { color: var(--text-mute); font-family: var(--font-mono); font-size: var(--fs-11); letter-spacing: 0.03em; min-height: 1.4em; }
+    .plan ul { list-style: none; margin: var(--s-5) 0; padding: 0; display: flex; flex-direction: column; gap: var(--s-2); flex: 1; }
+    .plan li { display: flex; gap: var(--s-2); color: var(--text-dim); font-size: var(--fs-14); }
+    .plan li svg { width: 15px; height: 15px; flex: none; margin-top: 3px; stroke: var(--accent); fill: none; stroke-width: 2; }
+    .plan .btn { width: 100%; }
+
+    .foot-cta { text-align: center; margin-top: var(--s-12); padding-top: var(--s-10); border-top: 1px solid var(--border); }
+    .foot-cta p { color: var(--text-dim); font-size: var(--fs-14); margin-bottom: var(--s-4); }
+
+    footer { padding: var(--s-10) 0 var(--s-8); display: flex; gap: var(--s-4); flex-wrap: wrap; align-items: center; }
+    footer a { color: var(--text-dim); font-size: var(--fs-12); }
+    footer .spacer { flex: 1; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="nav">
+      <a href="index.html" id="navLogo" aria-label="Foko"></a>
+      <span class="spacer"></span>
+      <a class="btn btn--ghost" href="index.html">Inicio</a>
+      <a class="btn" href="login.html">Iniciar sesión</a>
+    </header>
+
+    <div class="head">
+      <h1>Precio por técnico, sin sorpresas</h1>
+      <p>El técnico de campo entra por un enlace y no cuenta como asiento. Pagas solo por tu equipo de oficina. Onboarding acompañado.</p>
+      <div class="toggle" role="group" aria-label="Periodo de facturación">
+        <button id="tMonth" aria-pressed="true">Mensual</button>
+        <button id="tYear" aria-pressed="false">Anual <span class="save">−17%</span></button>
+      </div>
+    </div>
+
+    <div class="grid" id="grid"><p class="label" style="grid-column:1/-1; text-align:center;">Cargando planes…</p></div>
+
+    <div class="foot-cta">
+      <p>¿Equipo grande, varias cuadrillas o necesitas algo a medida?</p>
+      <a class="btn btn--primary" href="mailto:privacidad@fokoremote.com?subject=Demo%20FOKO">Agendar demo</a>
+    </div>
+
+    <footer>
+      <span id="footLogo" aria-label="Foko"></span>
+      <span class="spacer"></span>
+      <a href="privacidad.html">Privacidad</a>
+      <a href="terminos.html">Condiciones</a>
+    </footer>
+  </div>
+
+  <script type="module">
+    import { supabase } from './js/supabase-client.js';
+    import { mountLogo } from './js/logo.js';
+
+    mountLogo(document.getElementById('navLogo'), { height: 28 });
+    mountLogo(document.getElementById('footLogo'), { height: 20, showDot: false });
+
+    const CHECK = '<svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>';
+    let annual = false;
+    let plans = [];
+
+    const usd = (cents) => '$' + (cents / 100).toLocaleString('en-US', { maximumFractionDigits: 0 });
+
+    function render() {
+      const grid = document.getElementById('grid');
+      if (!plans.length) { grid.innerHTML = '<p class="label" style="grid-column:1/-1;text-align:center;">No se pudieron cargar los planes.</p>'; return; }
+      const feature = plans.find((p) => p.id === 'taller')?.id;
+      grid.innerHTML = plans.map((p) => {
+        const monthly = p.price_cents;
+        const shown = annual ? Math.round(monthly * 12 * 0.83) : monthly;
+        const per = annual ? '/año' : '/mes';
+        const extra = p.per_extra_seat_cents
+          ? `luego ${usd(p.per_extra_seat_cents)} por técnico extra` : '';
+        const hist = (p.features && p.features.history_months) || 24;
+        return `<article class="plan ${p.id === feature ? 'plan--feature' : ''}">
+          <div class="plan__tag">${p.id === feature ? 'Más elegido' : ''}</div>
+          <div class="plan__name">${p.name}</div>
+          <div class="plan__price"><b>${usd(shown)}</b> <span>${per}</span></div>
+          <div class="plan__sub">${p.included_seats} técnicos de oficina incluidos</div>
+          <ul>
+            <li>${CHECK}<span>${p.included_seats} asientos de oficina</span></li>
+            <li>${CHECK}<span>Técnicos de campo ilimitados (sin cuenta)</span></li>
+            <li>${CHECK}<span>Puntero, dibujo, congelar, fotos y grabación</span></li>
+            <li>${CHECK}<span>Historial de soporte (${hist} meses)</span></li>
+            ${p.features && p.features.ai_reports ? `<li>${CHECK}<span>Reporte de servicio con IA</span></li>` : ''}
+            ${extra ? `<li>${CHECK}<span>${extra}</span></li>` : ''}
+          </ul>
+          <a class="btn ${p.id === feature ? 'btn--primary' : ''}" href="mailto:privacidad@fokoremote.com?subject=${encodeURIComponent('Demo FOKO — plan ' + p.name)}">Agendar demo</a>
+        </article>`;
+      }).join('');
+    }
+
+    document.getElementById('tMonth').addEventListener('click', () => setPeriod(false));
+    document.getElementById('tYear').addEventListener('click', () => setPeriod(true));
+    function setPeriod(a) {
+      annual = a;
+      document.getElementById('tMonth').setAttribute('aria-pressed', String(!a));
+      document.getElementById('tYear').setAttribute('aria-pressed', String(a));
+      render();
+    }
+
+    const { data, error } = await supabase.from('plans').select('*').eq('hidden', false).order('sort');
+    if (!error && data) { plans = data; }
+    render();
+  </script>
+</body>
+</html>

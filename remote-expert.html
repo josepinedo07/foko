@@ -690,10 +690,10 @@
     // ---- Marca de la empresa (Ajustes) ----
     function paintCompanyInSettings() {
       $('companyNameInput').value = company ? company.name : '';
-      $('companyNameInput').disabled = !company || myRole !== 'owner';
+      $('companyNameInput').disabled = !company || myRole !== 'org_admin';
       $('companyHint').textContent = !company
         ? 'No tienes empresa asociada.'
-        : myRole === 'owner'
+        : myRole === 'org_admin'
           ? 'Toca el recuadro para subir tu logo. Aparece en la consola, la invitación y el reporte.'
           : 'Solo el dueño de la empresa puede cambiar el nombre. Cualquiera puede subir el logo.';
       $('inviteCodeField').value = company ? company.invite_code : '';
@@ -722,7 +722,7 @@
     });
 
     $('companyNameInput').addEventListener('change', async () => {
-      if (!company || myRole !== 'owner') return;
+      if (!company || myRole !== 'org_admin') return;
       const name = $('companyNameInput').value.trim();
       if (!name || name === company.name) return;
       const { error } = await supabase.from('companies').update({ name }).eq('id', company.id);
