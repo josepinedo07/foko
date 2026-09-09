@@ -118,6 +118,7 @@ grant execute on function public.org_access_state() to authenticated;
 
 -- --- RLS: org_admin gestiona usuarios de su org; superadmin, todos --------
 drop policy if exists "owner updates own company" on public.companies;
+drop policy if exists "org_admin updates own company" on public.companies;
 create policy "org_admin updates own company" on public.companies
   for update using (id = public.my_company_id() and public.my_role() = 'org_admin');
 
