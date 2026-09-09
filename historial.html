@@ -77,6 +77,8 @@
       <span id="logo" aria-label="Foko"></span>
       <span id="companyBadge" class="company-badge" hidden></span>
       <span class="spacer"></span>
+      <a class="btn btn--ghost" href="team.html" id="lnkTeam" hidden>Equipo</a>
+      <a class="btn btn--ghost" href="billing.html" id="lnkBilling" hidden>Facturación</a>
       <a class="btn btn--ghost" href="remote-expert.html" id="btnSettings" aria-label="Ajustes (en la sala de soporte)" title="Ajustes">
         <svg class="icon icon--sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.4-2.3 1a7 7 0 0 0-1.7-1L14.5 2h-5l-.4 2.6a7 7 0 0 0-1.7 1l-2.3-1-2 3.4L3 11a7 7 0 0 0 0 2l-2 1.5 2 3.4 2.3-1a7 7 0 0 0 1.7 1l.4 2.6h5l.4-2.6a7 7 0 0 0 1.7-1l2.3 1 2-3.4-2-1.5a7 7 0 0 0 .1-1z"/></svg>
       </a>
@@ -159,6 +161,10 @@
     mountLogo($('logo'), { height: 26 });
     $('companyBadge').textContent = `· ${company.name}`;
     $('companyBadge').hidden = false;
+    if (state.profile?.role === 'org_admin') {
+      $('lnkTeam').hidden = false;
+      $('lnkBilling').hidden = false;
+    }
 
     $('btnLogout').addEventListener('click', async () => { await supabase.auth.signOut(); location.href = 'login.html'; });
 

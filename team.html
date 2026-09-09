@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FOKO · Equipo</title>
+  <link rel="icon" href="brand/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="brand/favicon-32.png" sizes="32x32" type="image/png">
+  <link rel="apple-touch-icon" href="brand/apple-touch-icon.png">
+  <link rel="manifest" href="site.webmanifest">
+  <meta name="theme-color" content="#0F1009">
+  <link rel="stylesheet" href="css/design-system.css">
+  <script src="js/errlog.js"></script>
+  <style>
+    body { min-height: 100%; }
+    .page { max-width: 880px; margin: 0 auto; padding: 0 var(--s-5) var(--s-16); }
+    .topbar { display: flex; align-items: center; gap: var(--s-3); padding: var(--s-4) 0; border-bottom: 1px solid var(--border); margin-bottom: var(--s-6); flex-wrap: wrap; }
+    .topbar .spacer { flex: 1; }
+    .nav-tabs { display: flex; gap: var(--s-1); }
+    .nav-tabs a { font-family: var(--font-mono); font-size: var(--fs-11); letter-spacing: var(--tracking-label); text-transform: uppercase; color: var(--text-dim); padding: var(--s-2) var(--s-3); border-radius: var(--r-cell); text-decoration: none; }
+    .nav-tabs a[aria-current] { background: var(--surface-2); color: var(--text); }
+
+    .seatbar { display: flex; align-items: center; gap: var(--s-3); margin-bottom: var(--s-5); font-family: var(--font-mono); font-size: var(--fs-13); }
+    .seatbar .track { flex: 1; max-width: 240px; height: 6px; background: var(--surface-2); border-radius: var(--r-full); overflow: hidden; }
+    .seatbar .fill { height: 100%; background: var(--accent); }
+    .seatbar .fill.full { background: var(--warn); }
+
+    .tablewrap { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--r); }
+    table { width: 100%; border-collapse: collapse; font-size: var(--fs-13); }
+    thead th { text-align: left; padding: var(--s-3); font-family: var(--font-mono); font-size: var(--fs-11); font-weight: 500; letter-spacing: var(--tracking-label); text-transform: uppercase; color: var(--text-dim); border-bottom: 1px solid var(--border); }
+    tbody td { padding: var(--s-3); border-bottom: 1px solid var(--border); vertical-align: middle; }
+    tbody tr:last-child td { border-bottom: 0; }
+    td.mono { font-family: var(--font-mono); }
+    .sub { color: var(--text-mute); }
+    .pill2 { font-family: var(--font-mono); font-size: var(--fs-11); text-transform: uppercase; border: 1px solid var(--border-strong); border-radius: var(--r-cell); padding: 1px 6px; color: var(--text-dim); }
+    .rowbtn { font-family: var(--font-mono); font-size: var(--fs-11); color: var(--text-dim); background: transparent; border: 1px solid var(--border-strong); border-radius: var(--r-cell); padding: 3px 8px; cursor: pointer; }
+    .rowbtn:hover { color: var(--text); border-color: var(--text-mute); }
+    .rowbtn.danger:hover { color: var(--on-critical); background: var(--critical); border-color: var(--critical); }
+
+    .invite { display: flex; gap: var(--s-2); margin-top: var(--s-4); flex-wrap: wrap; align-items: center; }
+    .invite .field { flex: 1; min-width: 180px; }
+    .upsell { border: 1px solid var(--warn); border-radius: var(--r); padding: var(--s-4); margin-top: var(--s-4); color: var(--text-dim); font-size: var(--fs-13); }
+    .upsell a { color: var(--accent-text); }
+
+    .state { padding: var(--s-8) 0; text-align: center; color: var(--text-dim); font-family: var(--font-mono); font-size: var(--fs-12); }
+  </style>
+</head>
+<body>
+  <div class="page" id="page" hidden>
+    <div class="topbar">
+      <span id="logo" aria-label="Foko"></span>
+      <span id="orgBadge" class="sub mono" style="font-size:var(--fs-12);"></span>
+      <span class="spacer"></span>
+      <nav class="nav-tabs">
+        <a href="historial.html">Historial</a>
+        <a href="team.html" aria-current="page">Equipo</a>
+        <a href="billing.html">Facturación</a>
+      </nav>
+      <a class="btn btn--ghost" href="remote-expert.html">Sala de soporte</a>
+    </div>
+
+    <h1 style="font-size:var(--fs-20); font-weight:600; margin-bottom:var(--s-4);">Equipo de oficina</h1>
+
+    <div class="seatbar">
+      <span id="seatText">—</span>
+      <div class="track"><div class="fill" id="seatFill" style="width:0"></div></div>
+    </div>
+
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Correo</th><th>Rol</th><th>Status</th><th>Últ. actividad</th><th></th></tr></thead>
+        <tbody id="usersBody"><tr><td colspan="5" class="state">Cargando…</td></tr></tbody>
+      </table>
+    </div>
+
+    <div id="inviteZone">
+      <div class="invite">
+        <input class="field" id="invEmail" type="email" placeholder="correo del técnico de oficina">
+        <select class="field" id="invRole" style="flex:0 0 auto; width:auto;">
+          <option value="expert">Técnico (expert)</option>
+          <option value="org_admin">Administrador</option>
+        </select>
+        <button class="btn btn--primary" id="invBtn">Invitar</button>
+      </div>
+      <div class="upsell" id="upsell" hidden></div>
+    </div>
+
+    <div id="pendingWrap" style="margin-top:var(--s-6);" hidden>
+      <h2 style="font-size:var(--fs-14); font-weight:600; margin-bottom:var(--s-2);">Invitaciones pendientes</h2>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Correo</th><th>Rol</th><th>Expira</th><th></th></tr></thead>
+          <tbody id="pendingBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="state" id="boot">Cargando…</div>
+
+  <script type="module">
+    import { supabase, requireSession } from './js/supabase-client.js';
+    import { mountLogo } from './js/logo.js';
+    import { toast } from './js/ui.js';
+
+    const $ = (id) => document.getElementById(id);
+    const esc = (t) => String(t ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    const dt = (s) => s ? new Date(s).toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: '2-digit' }) : '—';
+
+    const state = await requireSession('login.html');
+    if (!state) throw new Error('sin sesión');
+    if (state.isPlatformAdmin && !state.company) { location.href = 'admin.html'; throw new Error('admin'); }
+    if (!state.company) { $('boot').textContent = 'Tu cuenta no tiene organización.'; throw new Error('sin org'); }
+    if (state.profile?.role !== 'org_admin') { location.href = 'historial.html'; throw new Error('no org_admin'); }
+
+    $('boot').hidden = true; $('page').hidden = false;
+    mountLogo($('logo'), { height: 26 });
+    $('orgBadge').textContent = '· ' + state.company.name;
+    const token = state.session.access_token;
+
+    let team = null;
+    async function load() {
+      const { data, error } = await supabase.rpc('org_team');
+      if (error) { toast(error.message, 'critical', 5000); return; }
+      team = data;
+      const used = team.seats_used, lim = team.seat_limit;
+      $('seatText').textContent = `${used} de ${lim} asientos`;
+      const pct = Math.min(100, Math.round(used / Math.max(1, lim) * 100));
+      $('seatFill').style.width = pct + '%';
+      $('seatFill').classList.toggle('full', used >= lim);
+
+      $('usersBody').innerHTML = (team.users || []).map((u) => `
+        <tr>
+          <td class="mono">${esc(u.email)}</td>
+          <td>${u.user_id === state.session.user.id
+            ? '<span class="pill2">admin (tú)</span>'
+            : `<select class="field" data-user="${u.user_id}" data-act="role" style="width:auto;font-size:var(--fs-11);">
+                 <option value="expert"${u.role === 'expert' ? ' selected' : ''}>expert</option>
+                 <option value="org_admin"${u.role === 'org_admin' ? ' selected' : ''}>org_admin</option>
+               </select>`}</td>
+          <td><span class="pill2">${u.status}</span></td>
+          <td class="mono sub">${dt(u.last_active_at)}</td>
+          <td style="text-align:right;">${u.user_id === state.session.user.id ? '' :
+            `<button class="rowbtn ${u.status === 'active' ? 'danger' : ''}" data-user="${u.user_id}" data-act="${u.status === 'active' ? 'disable' : 'enable'}">${u.status === 'active' ? 'Deshabilitar' : 'Activar'}</button>`}</td>
+        </tr>`).join('');
+
+      const pend = team.invitations || [];
+      $('pendingWrap').hidden = !pend.length;
+      $('pendingBody').innerHTML = pend.map((i) => `
+        <tr><td class="mono">${esc(i.email)}</td><td class="mono">${i.role}</td><td class="mono">${dt(i.expires_at)}</td>
+        <td style="text-align:right;"><button class="rowbtn" data-resend="${esc(i.email)}" data-role="${i.role}">Reenviar</button></td></tr>`).join('');
+
+      const full = (used + pend.length) >= lim;
+      $('invEmail').disabled = full; $('invRole').disabled = full; $('invBtn').disabled = full;
+      $('upsell').hidden = !full;
+      $('upsell').innerHTML = `Llegaste al límite de <strong>${lim}</strong> asientos.
+        Para agregar más, <a href="billing.html">revisa tu plan</a> o escríbenos a
+        <a href="mailto:privacidad@fokoremote.com?subject=Más%20asientos">privacidad@fokoremote.com</a>.`;
+    }
+
+    $('usersBody').addEventListener('change', async (e) => {
+      const sel = e.target.closest('select[data-act="role"]'); if (!sel) return;
+      const { error } = await supabase.rpc('set_user_role', { p_user: sel.dataset.user, p_role: sel.value });
+      toast(error ? error.message : 'Rol actualizado', error ? 'critical' : 'ok', error ? 5000 : 1500);
+    });
+    $('usersBody').addEventListener('click', async (e) => {
+      const btn = e.target.closest('.rowbtn[data-act]'); if (!btn) return;
+      const status = btn.dataset.act === 'disable' ? 'disabled' : 'active';
+      const { error } = await supabase.rpc('set_user_status', { p_user: btn.dataset.user, p_status: status });
+      if (error) { toast(error.message, 'critical', 5000); return; }
+      load();
+    });
+
+    $('invBtn').addEventListener('click', () => sendInvite($('invEmail').value.trim(), $('invRole').value));
+    $('pendingBody').addEventListener('click', (e) => {
+      const b = e.target.closest('[data-resend]'); if (b) sendInvite(b.dataset.resend, b.dataset.role);
+    });
+
+    async function sendInvite(email, role) {
+      if (!email) return;
+      const { data, error } = await supabase.rpc('invite_user', { p_company: state.company.id, p_email: email, p_role: role });
+      if (error) { toast(error.message, 'critical', 6000); return; }
+      try {
+        const res = await fetch('/api/invite', {
+          method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ token: data.token, email }),
+        });
+        if (!res.ok) { const d = await res.json().catch(() => ({})); toast('Invitación creada, pero el correo falló: ' + (d.error || res.status), 'warn', 7000); }
+        else toast(`Invitación enviada a ${email}`, 'ok', 3000);
+      } catch (_) { toast('Invitación creada; el correo no salió.', 'warn', 5000); }
+      $('invEmail').value = '';
+      load();
+    }
+
+    load();
+  </script>
+</body>
+</html>
