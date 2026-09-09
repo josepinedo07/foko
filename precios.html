@@ -116,7 +116,7 @@
         <ul>
           <li>${CHECK}<span>Técnicos de oficina ilimitados</span></li>
           <li>${CHECK}<span>Puntero, dibujo, congelar, fotos y grabación</span></li>
-          <li>${CHECK}<span>Historial ${p.retention_days} días</span></li>
+          <li>${CHECK}<span>Historial ${p.retention_days ? p.retention_days + ' días' : '24 meses'}</span></li>
           <li>${CHECK}<span>Reporte de servicio con IA</span></li>
           ${feats}
         </ul>
@@ -155,8 +155,10 @@
       render();
     }
 
-    const { data } = await supabase.from('plans').select('*').eq('visible', true).order('sort');
-    plans = data || [];
+    // Tolera que la migración phase-plans-v2 no se haya corrido: si no hay
+    // columna `visible`, se filtra por `hidden` en el cliente.
+    const { data } = await supabase.from('plans').select('*').order('sort');
+    plans = (data || []).filter((p) => p.visible ?? !p.hidden);
     render();
   </script>
 </body>
