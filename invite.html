@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FOKO · Invitación</title>
+  <link rel="icon" href="brand/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="brand/favicon-32.png" sizes="32x32" type="image/png">
+  <link rel="apple-touch-icon" href="brand/apple-touch-icon.png">
+  <link rel="manifest" href="site.webmanifest">
+  <meta name="theme-color" content="#0F1009">
+  <link rel="stylesheet" href="css/design-system.css">
+  <script src="js/errlog.js"></script>
+  <style>
+    .wrap { min-height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: var(--s-8) var(--s-4); gap: var(--s-6); }
+    .mark { text-align: center; }
+    .card { width: 100%; max-width: 380px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: var(--s-6); }
+    .card h1 { font-size: var(--fs-20); font-weight: 600; }
+    .card p { color: var(--text-dim); font-size: var(--fs-14); margin-top: var(--s-3); line-height: 1.6; }
+    .card .stack { display: flex; flex-direction: column; gap: var(--s-3); margin-top: var(--s-5); }
+    .err { color: var(--critical); font-size: var(--fs-14); }
+    .mono { font-family: var(--font-mono); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="mark"><span id="logo" aria-label="Foko"></span></div>
+    <div class="card" id="card">
+      <h1 id="title">Procesando invitación…</h1>
+      <p id="msg" class="mono">Un momento.</p>
+      <div class="stack" id="actions" hidden></div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { supabase, getSessionAndProfile } from './js/supabase-client.js';
+    import { mountLogo } from './js/logo.js';
+
+    const $ = (id) => document.getElementById(id);
+    mountLogo($('logo'), { height: 44 });
+
+    const inviteToken = new URLSearchParams(location.search).get('token');
+    let done = false;
+
+    function fail(text, showLogin = true) {
+      $('title').textContent = 'No se pudo aceptar la invitación';
+      $('msg').className = 'err'; $('msg').textContent = text;
+      if (showLogin) {
+        $('actions').hidden = false;
+        $('actions').innerHTML = '<a class="btn" href="login.html">Ir a iniciar sesión</a>';
+      }
+    }
+
+    async function accept(session) {
+      if (done) return; done = true;
+      if (!inviteToken) return fail('El enlace no trae el código de invitación.');
+
+      const { data, error } = await supabase.rpc('accept_invitation', { p_token: inviteToken });
+      if (error) return fail(error.message);
+
+      $('title').textContent = 'Listo, ya eres parte del equipo';
+      $('msg').className = 'mono';
+      $('msg').textContent = 'Puedes ponerle una contraseña ahora o entrar directo (también puedes usar Google la próxima vez).';
+      $('actions').hidden = false;
+      $('actions').innerHTML = `
+        <input class="field" id="pw" type="password" placeholder="Contraseña (opcional, mín. 6)" minlength="6" autocomplete="new-password">
+        <button class="btn btn--primary btn--block" id="go">Entrar</button>`;
+      $('go').addEventListener('click', async () => {
+        $('go').disabled = true;
+        const pw = $('pw').value;
+        if (pw && pw.length >= 6) { try { await supabase.auth.updateUser({ password: pw }); } catch (_) {} }
+        const st = await getSessionAndProfile();
+        location.href = (st && st.isPlatformAdmin) ? 'admin.html' : 'historial.html';
+      });
+    }
+
+    supabase.auth.onAuthStateChange((_e, session) => { if (session) accept(session); });
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session) accept(session);
+    else setTimeout(async () => {
+      const { data: { session: s2 } } = await supabase.auth.getSession();
+      if (s2) accept(s2);
+      else fail('El enlace venció o ya se usó. Pídele a tu administrador que te reenvíe la invitación.');
+    }, 2500);
+  </script>
+</body>
+</html>
