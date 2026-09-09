@@ -188,8 +188,13 @@
       clearMsg();
     }
     tabs.forEach((t) => t.addEventListener('click', () => selectTab(t.dataset.tab)));
-    const wantedTab = new URLSearchParams(location.search).get('tab');
+    const qs = new URLSearchParams(location.search);
+    const wantedTab = qs.get('tab');
     if (wantedTab && panels[wantedTab]) selectTab(wantedTab);
+    if (qs.get('superseded') === '1') {
+      $('boot').hidden = true; $('card').hidden = false;
+      showErr('Se inició sesión con esta cuenta en otro dispositivo. Vuelve a entrar para usarla aquí.');
+    }
 
     function clearMsg() { $('err').style.display = 'none'; $('ok').style.display = 'none'; }
     function showErr(msg) { $('err').textContent = translate(msg); $('err').style.display = 'block'; $('ok').style.display = 'none'; }
