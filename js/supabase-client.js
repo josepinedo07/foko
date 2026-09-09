@@ -20,18 +20,23 @@ export async function getSessionAndProfile() {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) return null;
 
-  const [{ data: profile, error }, { data: isAdmin }] = await Promise.all([
+  const [{ data: profile, error }, { data: isAdmin }, { data: access }] = await Promise.all([
     supabase
       .from('profiles')
-      .select('role, full_name, companies ( id, name, logo_url, invite_code )')
+      .select('role, status, full_name, companies ( id, name, logo_url, invite_code, status )')
       .eq('user_id', session.user.id)
       .single(),
     supabase.rpc('is_platform_admin'),
+    supabase.rpc('org_access_state'),
   ]);
 
+  // marca de actividad para el panel de plataforma (no bloqueante)
+  supabase.rpc('touch_activity').then(() => {}, () => {});
+
   const isPlatformAdmin = !!isAdmin;
-  if (error || !profile) return { session, profile: null, company: null, isPlatformAdmin };
-  return { session, profile, company: profile.companies, isPlatformAdmin };
+  const accessState = access || 'ok';
+  if (error || !profile) return { session, profile: null, company: null, isPlatformAdmin, accessState };
+  return { session, profile, company: profile.companies, isPlatformAdmin, accessState };
 }
 
 /** Redirige a login.html si no hay sesión. Úsalo al cargar una página protegida. */

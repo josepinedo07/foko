@@ -71,11 +71,24 @@ export default async function handler(req, res) {
   try {
     const { data: profile } = await supabaseAdmin
       .from('profiles')
-      .select('company_id, companies ( name )')
+      .select('company_id, companies ( name, status, trial_ends_at, past_due_since )')
       .eq('user_id', user.id)
       .single();
     companyName = profile?.companies?.name || null;
     companyId = profile?.company_id || null;
+
+    // Enforcement: la org debe estar operativa (mismo criterio que org_access_state()).
+    const co = profile?.companies;
+    if (co) {
+      const now = Date.now();
+      const walled =
+        co.status === 'canceled' || co.status === 'paused' ||
+        (co.status === 'trialing' && co.trial_ends_at && new Date(co.trial_ends_at).getTime() < now) ||
+        (co.status === 'past_due' && co.past_due_since && new Date(co.past_due_since).getTime() < now - 7 * 864e5);
+      if (walled) {
+        return res.status(402).json({ error: 'La suscripción de tu organización está inactiva. Revisa Facturación.' });
+      }
+    }
   } catch (_) { /* sin empresa asociada; seguimos sin membrete en el texto */ }
 
   // Límite: 30 reportes por usuario por hora (protege el costo de la API).

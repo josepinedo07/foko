@@ -960,3 +960,21 @@ begin
   return result;
 end $$;
 grant execute on function public.admin_find_user(text) to authenticated;
+
+drop policy if exists "insert company sessions" on public.sessions;
+create policy "insert company sessions" on public.sessions
+  for insert with check (
+    company_id = public.my_company_id()
+    and created_by = auth.uid()
+    and public.org_access_state() = 'ok'
+  );
+
+drop policy if exists "insert company session media" on public.session_media;
+create policy "insert company session media" on public.session_media
+  for insert with check (
+    company_id = public.my_company_id()
+    and public.org_access_state() = 'ok'
+  );
+
+-- El reporte con IA también se corta si la org está fuera de servicio.
+-- (api/report.js además lo chequea en el servidor.)
