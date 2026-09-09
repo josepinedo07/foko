@@ -190,7 +190,7 @@
         </div>
         <div class="inline-add">
           <input class="field" id="omInviteEmail" type="email" placeholder="correo del nuevo usuario">
-          <select class="field" id="omInviteRole" style="width:auto;"><option value="expert">expert</option><option value="org_admin">org_admin</option></select>
+          <select class="field" id="omInviteRole" style="width:auto;"><option value="field_tech">field_tech</option><option value="expert">expert</option><option value="org_admin">org_admin</option></select>
           <button class="btn" id="omInvite">Invitar</button>
         </div>
       </div>
@@ -277,7 +277,7 @@
     async function loadPlans() {
       const { data } = await supabase.from('plans').select('*').order('sort');
       plans = data || [];
-      const opts = plans.map((p) => `<option value="${p.id}">${esc(p.name)}${p.hidden ? ' (oculto)' : ''}</option>`).join('');
+      const opts = plans.map((p) => `<option value="${p.id}">${esc(p.name)}${p.visible ? '' : ' (oculto)'}</option>`).join('');
       $('fPlan').innerHTML = '<option value="">Todos los planes</option>' + opts;
       $('omPlan').innerHTML = opts;
       $('noPlan').innerHTML = opts;
@@ -332,12 +332,13 @@
       $('omTrial').value = data.org.trial_ends_at ? data.org.trial_ends_at.slice(0, 10) : '';
       $('omBilling').value = data.org.billing_mode;
       $('omNotes').value = data.org.notes || '';
-      $('omSeatInfo').textContent = `${data.org.seats_used} de ${data.org.seat_limit} asientos`;
+      $('omSeatInfo').textContent = `${data.org.seats_used} de ${data.org.seat_limit} técnicos de campo`;
 
       $('omUsers').innerHTML = (data.users || []).map((u) => `
         <tr>
           <td class="mono">${esc(u.email)}</td>
           <td><select class="field" data-user="${u.user_id}" data-act="role" style="width:auto;font-size:var(--fs-11);">
+            <option value="field_tech"${u.role === 'field_tech' ? ' selected' : ''}>field_tech</option>
             <option value="expert"${u.role === 'expert' ? ' selected' : ''}>expert</option>
             <option value="org_admin"${u.role === 'org_admin' ? ' selected' : ''}>org_admin</option>
           </select></td>
