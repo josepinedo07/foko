@@ -58,6 +58,8 @@
         <dt>Status</dt><dd><span class="pill2" id="bStatus">—</span></dd>
         <dt>Asientos</dt><dd id="bSeats">—</dd>
         <dt>Modo de cobro</dt><dd id="bMode">—</dd>
+        <dt id="bPeriodLabel" hidden>Próxima renovación</dt><dd id="bPeriod" hidden>—</dd>
+        <dt>Retención grabaciones</dt><dd id="bRetention">—</dd>
         <dt>Estimado / mes</dt><dd id="bMrr">—</dd>
       </dl>
       <div class="trial-note" id="bTrial" hidden></div>
@@ -93,60 +95,71 @@
     const { data: b, error } = await supabase.rpc('org_billing');
     if (error) { toast(error.message, 'critical', 5000); throw error; }
 
+    const fdate = (s) => s ? new Date(s).toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' }) : '—';
+    const interval = b.billing_interval === 'year' ? 'year' : 'month';
+    const perLabel = interval === 'year' ? '/año' : '/mes';
+    const planAmount = b.plan ? (interval === 'year' ? b.plan.price_cents * 10 : b.plan.price_cents) : null;
+
     $('planName').textContent = b.plan ? b.plan.name : 'Sin plan asignado';
-    $('planPrice').innerHTML = b.plan ? `${usd(b.plan.price_cents)} <span>/mes base</span>` : '—';
+    $('planPrice').innerHTML = b.plan ? `${usd(planAmount)} <span>${perLabel}</span>` : '—';
     $('bStatus').textContent = b.status;
     $('bStatus').className = 'pill2';
     $('bSeats').textContent = `${b.seats_used} de ${b.seat_limit}`;
-    $('bMode').textContent = b.billing_mode === 'stripe' ? 'Stripe' : 'Manual';
+    $('bMode').textContent = b.billing_mode === 'gateway' ? 'Pasarela · prepago' : 'Manual (cuenta acompañada)';
+    $('bRetention').textContent = b.plan
+      ? `${b.plan.recording_retention_days || b.plan.retention_days || 30} días` : '—';
     $('bMrr').textContent = usd(b.mrr_cents);
 
-    if (b.status === 'trialing' && b.trial_ends_at) {
-      const days = Math.ceil((new Date(b.trial_ends_at) - Date.now()) / 86400000);
-      const el = $('bTrial'); el.hidden = false;
-      if (days > 0) { el.textContent = `Trial: quedan ${days} día${days === 1 ? '' : 's'} (termina el ${new Date(b.trial_ends_at).toLocaleDateString('es-MX')}).`; }
-      else { el.classList.add('warn'); el.textContent = `Tu trial terminó el ${new Date(b.trial_ends_at).toLocaleDateString('es-MX')}. Activa un plan para seguir usando FOKO.`; }
+    if (b.billing_mode === 'gateway' && b.current_period_end) {
+      $('bPeriodLabel').hidden = false; $('bPeriod').hidden = false;
+      $('bPeriod').textContent = fdate(b.current_period_end);
     }
 
-    if (b.billing_mode === 'stripe') {
-      $('bCta').innerHTML = `Gestiona tu plan, asientos y tarjeta en el
-        <a href="#" id="portal">portal de facturación</a>.`;
-      $('portal').addEventListener('click', async (e) => {
-        e.preventDefault();
-        try {
-          const res = await fetch('/api/billing-portal', {
-            method: 'POST', headers: { Authorization: `Bearer ${state.session.access_token}` },
-          });
-          const d = await res.json();
-          if (d.url) location.href = d.url; else toast(d.error || 'No disponible', 'critical', 5000);
-        } catch (_) { toast('El portal no está disponible todavía.', 'warn', 5000); }
-      });
-
-      // Si aún no hay suscripción activa, ofrecer checkout de los planes visibles.
-      if (b.status !== 'active') {
-        const { data: pl } = await supabase.from('plans').select('*').eq('visible', true).order('sort');
-        const box = document.createElement('div');
-        box.style.marginTop = 'var(--s-5)';
-        box.innerHTML = '<div class="label" style="margin-bottom:var(--s-2);">Activar un plan</div>' +
-          (pl || []).map((p) => `<button class="btn" style="margin:0 var(--s-2) var(--s-2) 0;" data-plan="${p.id}">${p.name} · $${Math.round(p.price_cents / 100)}/mes</button>`).join('');
-        box.addEventListener('click', async (e) => {
-          const btn = e.target.closest('[data-plan]'); if (!btn) return;
-          btn.disabled = true;
-          try {
-            const res = await fetch('/api/stripe-checkout', {
-              method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${state.session.access_token}` },
-              body: JSON.stringify({ plan_id: btn.dataset.plan, interval: 'month' }),
-            });
-            const d = await res.json();
-            if (d.url) location.href = d.url; else { toast(d.error || 'No disponible', 'critical', 5000); btn.disabled = false; }
-          } catch (_) { toast('Checkout no disponible.', 'warn', 5000); btn.disabled = false; }
-        });
-        $('bCta').after(box);
+    // --- Aviso de vencimiento (prepago) ---
+    if (b.billing_mode === 'gateway' && b.current_period_end) {
+      const days = Math.ceil((new Date(b.current_period_end) - Date.now()) / 86400000);
+      const el = $('bTrial'); el.hidden = false;
+      if (days > 3) {
+        el.textContent = `Tu plan está activo hasta el ${fdate(b.current_period_end)}.`;
+      } else if (days >= 0) {
+        el.classList.add('warn');
+        el.textContent = `Renueva antes del ${fdate(b.current_period_end)} (${days === 0 ? 'hoy' : `en ${days} día${days === 1 ? '' : 's'}`}) para no perder acceso.`;
+      } else {
+        el.classList.add('warn');
+        el.textContent = `Tu plan venció el ${fdate(b.current_period_end)}. Renueva para reactivar el servicio.`;
       }
+    } else if (b.status === 'trialing' && b.trial_ends_at) {
+      const days = Math.ceil((new Date(b.trial_ends_at) - Date.now()) / 86400000);
+      const el = $('bTrial'); el.hidden = false;
+      el.classList.toggle('warn', days <= 0);
+      el.textContent = days > 0
+        ? `Trial: quedan ${days} día${days === 1 ? '' : 's'} (termina el ${fdate(b.trial_ends_at)}).`
+        : `Tu trial terminó el ${fdate(b.trial_ends_at)}. Elige un plan para seguir.`;
+    }
+
+    // --- CTA ---
+    if (b.billing_mode === 'gateway') {
+      const planId = b.plan ? b.plan.id : '';
+      $('bCta').innerHTML = `
+        <a class="btn btn--primary" href="checkout.html?plan=${encodeURIComponent(planId)}&interval=${interval}">Renovar ahora</a>
+        <a class="btn btn--ghost" href="precios.html" style="margin-left:var(--s-2);">Cambiar de plan</a>
+        <div id="portalLine" style="margin-top:var(--s-3);"></div>`;
+      // ¿La pasarela tiene portal (tarjeta/cancelar)? Si no, instrucciones de renovación.
+      try {
+        const res = await fetch('/api/billing-portal', {
+          method: 'POST', headers: { Authorization: `Bearer ${state.session.access_token}` },
+        });
+        const d = await res.json();
+        if (d.url) {
+          $('portalLine').innerHTML = `Cambiar tarjeta o cancelar en el <a href="${d.url}">portal de pago</a>.`;
+        } else {
+          $('portalLine').textContent = 'Pago prepago: se renueva manualmente cada período con “Renovar ahora”. Sin cobros automáticos.';
+        }
+      } catch (_) {}
     } else {
-      $('bCta').innerHTML = `Para cambiar de plan o agregar asientos,
-        escríbenos a <a href="mailto:privacidad@fokoremote.com?subject=Cambio%20de%20plan%20%E2%80%94%20${encodeURIComponent(state.company.name)}">privacidad@fokoremote.com</a>.
-        Ver <a href="precios.html">planes</a>.`;
+      $('bCta').innerHTML = `Tu organización está en modo acompañado (sin cobro).
+        Para pasar a un plan de pago, ve a <a href="precios.html">planes</a> o
+        escríbenos a <a href="mailto:privacidad@fokoremote.com?subject=Plan%20%E2%80%94%20${encodeURIComponent(state.company.name)}">privacidad@fokoremote.com</a>.`;
     }
   </script>
 </body>

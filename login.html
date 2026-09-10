@@ -77,11 +77,10 @@
       </form>
 
       <form class="tabpanel" id="formCreate" hidden>
-        <input class="field" id="ccCompany" placeholder="Nombre de tu empresa" autocomplete="organization" required>
         <input class="field" type="email" id="ccEmail" placeholder="Correo" autocomplete="email" required>
         <input class="field" type="password" id="ccPassword" placeholder="Contraseña (mín. 6 caracteres)" autocomplete="new-password" minlength="6" required>
-        <button class="btn btn--primary btn--block" type="submit">Crear empresa</button>
-        <p class="hint">Quedas como dueño de la empresa. Al continuar aceptas las <a href="terminos.html" target="_blank">Condiciones</a> y la <a href="privacidad.html" target="_blank">Política de Privacidad</a>.</p>
+        <button class="btn btn--primary btn--block" type="submit">Crear cuenta y elegir plan</button>
+        <p class="hint">Creas tu cuenta y luego eliges un plan; tu organización se crea al confirmarse el pago. Al continuar aceptas las <a href="terminos.html" target="_blank">Condiciones</a> y la <a href="privacidad.html" target="_blank">Política de Privacidad</a>.</p>
       </form>
 
       <form class="tabpanel" id="formJoin" hidden>
@@ -102,14 +101,13 @@
       <p class="hint" id="finishWho" style="margin-bottom:var(--s-4);"></p>
 
       <div class="tabs" role="tablist" id="finishTabs">
-        <button class="tab" data-ft="create" role="tab" aria-pressed="true">Crear empresa</button>
+        <button class="tab" data-ft="create" role="tab" aria-pressed="true">Crear organización</button>
         <button class="tab" data-ft="join" role="tab" aria-pressed="false">Unirme con código</button>
       </div>
 
       <form class="tabpanel" id="finishCreate">
-        <input class="field" id="fcCompany" placeholder="Nombre de tu empresa" autocomplete="organization" required>
-        <button class="btn btn--primary btn--block" type="submit">Crear empresa</button>
-        <p class="hint">Quedas como dueño.</p>
+        <p class="hint" style="margin-bottom:var(--s-3);">Elige un plan para crear tu organización. La organización se activa cuando se confirma el pago.</p>
+        <a class="btn btn--primary btn--block" href="precios.html">Ver planes</a>
       </form>
       <form class="tabpanel" id="finishJoin" hidden>
         <input class="field" id="fjCode" placeholder="Código de invitación" style="text-transform:uppercase" autocomplete="off" required>
@@ -136,18 +134,23 @@
     const returningFromOAuth = /[?#&](code|access_token|error)=/.test(location.search + location.hash);
     if (returningFromOAuth) { $('card').hidden = true; $('boot').hidden = false; }
 
+    // ?next= : volver a una página concreta tras autenticarse (p.ej. checkout).
+    const nextParam = new URLSearchParams(location.search).get('next') || '';
+    const safeNext = /^[a-z0-9_-]+\.html(\?[^#]*)?$/i.test(nextParam) ? nextParam : '';
+
     let routed = false;
     function routeByState(state) {
       if (routed) return true;
       if (!state) return false;
       routed = true;
+      if (safeNext) { location.replace(safeNext); return true; }
       if (state.isPlatformAdmin) { location.replace('admin.html'); return true; }
       if (state.company) { location.replace('historial.html'); return true; }
       // Autenticado sin empresa: completar alta.
       $('card').hidden = true;
       $('boot').hidden = true;
       $('finishCard').hidden = false;
-      $('finishWho').textContent = `Sesión iniciada como ${state.session.user.email || 'tu cuenta'}. Crea tu empresa o únete a una.`;
+      $('finishWho').textContent = `Sesión iniciada como ${state.session.user.email || 'tu cuenta'}. Crea tu organización (con plan) o únete con un código.`;
       return true;
     }
 
@@ -246,10 +249,8 @@
         });
         if (error) throw error;
         if (!data.session) throw new Error('No se pudo iniciar sesión automáticamente. Intenta iniciar sesión.');
-        const { error: rpcErr } = await supabase.rpc('create_company_and_join', { company_name: $('ccCompany').value.trim() });
-        if (rpcErr) throw rpcErr;
-        showOk('Empresa creada. Entrando…');
-        location.href = 'historial.html';
+        showOk('Cuenta creada. Elige tu plan…');
+        location.href = safeNext || 'precios.html';
       } catch (err) {
         showErr(err.message);
       } finally {
@@ -290,15 +291,6 @@
     }));
     function fErr(msg) { $('fErr').textContent = translate(msg); $('fErr').style.display = 'block'; }
 
-    $('finishCreate').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      setBusy(e.target, true);
-      try {
-        const { error } = await supabase.rpc('create_company_and_join', { company_name: $('fcCompany').value.trim() });
-        if (error) throw error;
-        location.href = 'historial.html';
-      } catch (err) { fErr(err.message); setBusy(e.target, false); }
-    });
     $('finishJoin').addEventListener('submit', async (e) => {
       e.preventDefault();
       setBusy(e.target, true);

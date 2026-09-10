@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FOKO · Activando</title>
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="brand/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/design-system.css">
+  <script src="js/errlog.js"></script>
+  <style>
+    body { min-height: 100%; display: flex; align-items: center; justify-content: center; padding: var(--s-6); }
+    .box { max-width: 420px; width: 100%; text-align: center; }
+    #logo { display: inline-block; margin-bottom: var(--s-6); }
+    h1 { font-family: var(--font-display); font-weight: 700; letter-spacing: var(--tracking-display); font-size: var(--fs-20); margin-bottom: var(--s-2); }
+    p { color: var(--text-dim); font-size: var(--fs-14); line-height: 1.5; }
+    .dots { font-family: var(--font-mono); color: var(--accent-text); margin-top: var(--s-4); font-size: var(--fs-14); }
+    .btn { margin-top: var(--s-5); }
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <span id="logo" aria-label="Foko"></span>
+
+    <div id="working">
+      <h1>Activando tu cuenta…</h1>
+      <p>Estamos confirmando el pago con la pasarela. Esto suele tardar unos segundos.</p>
+      <div class="dots" id="dots">·</div>
+    </div>
+
+    <div id="done" hidden>
+      <h1>¡Listo!</h1>
+      <p>Tu organización está activa. Entrando…</p>
+    </div>
+
+    <div id="failed" hidden>
+      <h1>El pago no se completó</h1>
+      <p>No se realizó ningún cargo. Puedes intentarlo de nuevo.</p>
+      <a class="btn btn--primary" href="precios.html">Volver a planes</a>
+    </div>
+
+    <div id="slow" hidden>
+      <h1>Está tardando más de lo normal</h1>
+      <p>Si ya pagaste, tu cuenta se activará en breve. Puedes recargar esta página o revisar tu <a href="billing.html">facturación</a>.</p>
+      <a class="btn btn--ghost" href="billing.html">Ir a facturación</a>
+    </div>
+  </div>
+
+  <script type="module">
+    import { supabase } from './js/supabase-client.js';
+    import { mountLogo } from './js/logo.js';
+
+    const $ = (id) => document.getElementById(id);
+    mountLogo($('logo'), { height: 34, showDot: false });
+
+    const checkoutId = new URLSearchParams(location.search).get('checkout') || '';
+    const show = (id) => { for (const s of ['working', 'done', 'failed', 'slow']) $(s).hidden = s !== id; };
+
+    let n = 0;
+    $('dots').textContent = '·';
+    const dotTimer = setInterval(() => { n = (n + 1) % 4; $('dots').textContent = '·'.repeat(n + 1); }, 400);
+
+    if (!checkoutId) { clearInterval(dotTimer); show('slow'); }
+
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) { location.replace('login.html'); }
+
+    let tries = 0;
+    const MAX = 25; // ~40s
+    async function poll() {
+      tries++;
+      try {
+        const res = await fetch('/api/billing-status?checkout=' + encodeURIComponent(checkoutId), {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        });
+        const d = await res.json();
+        if (d.status === 'active') {
+          clearInterval(dotTimer); show('done');
+          setTimeout(() => location.replace('historial.html'), 1200);
+          return;
+        }
+        if (d.status === 'failed' || d.status === 'expired') {
+          clearInterval(dotTimer); show('failed');
+          return;
+        }
+      } catch (_) { /* reintenta */ }
+      if (tries >= MAX) { clearInterval(dotTimer); show('slow'); return; }
+      setTimeout(poll, 1600);
+    }
+    if (checkoutId) poll();
+  </script>
+</body>
+</html>

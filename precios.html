@@ -116,7 +116,7 @@
           <li>${CHECK}<span>Grabaciones se conservan ${retention} días</span></li>
           <li>${CHECK}<span>Una sesión activa por persona</span></li>
         </ul>
-        <a class="btn ${isFeature ? 'btn--primary' : ''}" href="${DEMO}">Agendar demo</a>
+        <a class="btn ${isFeature ? 'btn--primary' : ''}" href="checkout.html?plan=${encodeURIComponent(p.id)}&interval=${annual ? 'year' : 'month'}">Suscribirme</a>
       </article>`;
     }
 
