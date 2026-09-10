@@ -1,5 +1,6 @@
 {
   "crons": [
-    { "path": "/api/cleanup", "schedule": "0 4 * * *" }
+    { "path": "/api/cleanup", "schedule": "0 4 * * *" },
+    { "path": "/api/billing-cron", "schedule": "0 9 * * *" }
   ]
 }

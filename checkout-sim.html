@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FOKO · Pago (sandbox)</title>
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="brand/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/design-system.css">
+  <script src="js/errlog.js"></script>
+  <style>
+    body { min-height: 100%; display: flex; align-items: center; justify-content: center; padding: var(--s-6); }
+    .box { max-width: 420px; width: 100%; border: 1px solid var(--border); border-radius: var(--r); padding: var(--s-8); }
+    .tag { font-family: var(--font-mono); font-size: var(--fs-11); letter-spacing: var(--tracking-label); text-transform: uppercase; color: var(--warn); border: 1px solid var(--warn); border-radius: 2px; padding: 2px 8px; display: inline-block; }
+    h1 { font-family: var(--font-display); font-weight: 700; letter-spacing: var(--tracking-display); font-size: var(--fs-20); margin: var(--s-4) 0 var(--s-2); }
+    p { color: var(--text-dim); font-size: var(--fs-14); line-height: 1.5; }
+    .amount { font-family: var(--font-display); font-weight: 700; font-size: var(--fs-40); letter-spacing: var(--tracking-display); margin: var(--s-5) 0 var(--s-1); }
+    .amount span { font-family: var(--font-mono); font-size: var(--fs-12); color: var(--text-dim); font-weight: 400; }
+    .meta { font-family: var(--font-mono); font-size: var(--fs-11); color: var(--text-mute); text-transform: uppercase; letter-spacing: var(--tracking-label); }
+    .btn--block { width: 100%; margin-top: var(--s-4); }
+    .err { color: var(--warn); font-size: var(--fs-12); margin-top: var(--s-3); display: none; }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <span class="tag">Pago simulado · sandbox</span>
+    <h1 id="title">Confirmar pago</h1>
+    <p>Esta es una pasarela de pago <strong>de prueba</strong>. No se cobra ninguna tarjeta real. Aún no hay una pasarela real conectada.</p>
+    <div class="amount"><span id="cur">USD</span> <b id="amount">—</b></div>
+    <div class="meta" id="meta">—</div>
+
+    <button class="btn btn--primary btn--block" id="pay">Simular pago aprobado</button>
+    <button class="btn btn--ghost btn--block" id="fail">Simular pago rechazado</button>
+    <p class="err" id="err"></p>
+  </div>
+
+  <script type="module">
+    const $ = (id) => document.getElementById(id);
+    const token = new URLSearchParams(location.search).get('t') || '';
+
+    let claims = {};
+    try {
+      const body = token.split('.')[0];
+      claims = JSON.parse(atob(body.replace(/-/g, '+').replace(/_/g, '/')));
+    } catch (_) {
+      $('title').textContent = 'Enlace de pago inválido';
+      $('pay').disabled = true; $('fail').disabled = true;
+    }
+
+    const cents = Number(claims.amountCents || 0);
+    $('amount').textContent = (cents / 100).toLocaleString('en-US', { minimumFractionDigits: 2 });
+    $('cur').textContent = claims.currency || 'USD';
+    $('meta').textContent = `${(claims.planId || '').toUpperCase()} · ${claims.interval === 'year' ? 'anual' : 'mensual'}` +
+      (claims.orgName ? ` · ${claims.orgName}` : '');
+
+    async function send(outcome, btn) {
+      $('err').style.display = 'none';
+      $('pay').disabled = true; $('fail').disabled = true;
+      btn.textContent = 'Procesando…';
+      try {
+        const res = await fetch('/api/billing-webhook?provider=sim', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token, outcome }),
+        });
+        if (!res.ok) {
+          const d = await res.json().catch(() => ({}));
+          throw new Error(d.error || `Error ${res.status}`);
+        }
+        location.href = 'billing-success.html?checkout=' + encodeURIComponent(claims.checkoutId || '');
+      } catch (e) {
+        $('err').textContent = e.message;
+        $('err').style.display = 'block';
+        $('pay').disabled = false; $('fail').disabled = false;
+        $('pay').textContent = 'Simular pago aprobado';
+        $('fail').textContent = 'Simular pago rechazado';
+      }
+    }
+    $('pay').addEventListener('click', (e) => send('paid', e.currentTarget));
+    $('fail').addEventListener('click', (e) => send('failed', e.currentTarget));
+  </script>
+</body>
+</html>

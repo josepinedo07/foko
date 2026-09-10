@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FOKO · Checkout</title>
+  <meta name="description" content="Confirma tu plan de FOKO y continúa al pago.">
+  <link rel="icon" href="brand/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="brand/favicon-32.png" sizes="32x32" type="image/png">
+  <link rel="apple-touch-icon" href="brand/apple-touch-icon.png">
+  <link rel="manifest" href="site.webmanifest">
+  <meta name="theme-color" content="#0F1009">
+  <link rel="stylesheet" href="css/design-system.css">
+  <script src="js/errlog.js"></script>
+  <style>
+    body { min-height: 100%; }
+    .page { max-width: 520px; margin: 0 auto; padding: 0 var(--s-5) var(--s-16); }
+    .nav { display: flex; align-items: center; gap: var(--s-3); padding: var(--s-6) 0; }
+    .nav .spacer { flex: 1; }
+    h1 { font-family: var(--font-display); font-weight: 700; letter-spacing: var(--tracking-display); font-size: var(--fs-28); margin: var(--s-8) 0 var(--s-2); }
+    .lede { color: var(--text-dim); font-size: var(--fs-14); margin-bottom: var(--s-6); }
+    .card { border: 1px solid var(--border); border-radius: var(--r); padding: var(--s-6); }
+    .card--feature { border-color: var(--accent); }
+    .row { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s-3); }
+    .planName { font-size: var(--fs-16); font-weight: 600; }
+    .price b { font-family: var(--font-display); font-weight: 700; font-size: var(--fs-28); letter-spacing: var(--tracking-display); }
+    .price span { color: var(--text-dim); font-family: var(--font-mono); font-size: var(--fs-11); }
+    ul { list-style: none; margin: var(--s-4) 0 0; padding: var(--s-4) 0 0; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: var(--s-2); }
+    li { display: flex; gap: var(--s-2); color: var(--text-dim); font-size: var(--fs-12); line-height: 1.4; }
+    li svg { width: 13px; height: 13px; flex: none; margin-top: 3px; stroke: var(--accent); fill: none; stroke-width: 2.2; }
+    .toggle { display: inline-flex; gap: var(--s-1); padding: var(--s-1); border: 1px solid var(--border); border-radius: var(--r); margin-top: var(--s-5); }
+    .toggle button { background: transparent; border: 0; cursor: pointer; padding: var(--s-2) var(--s-3); border-radius: var(--r-cell); font-family: var(--font-mono); font-size: var(--fs-11); letter-spacing: var(--tracking-label); text-transform: uppercase; color: var(--text-dim); }
+    .toggle button[aria-pressed='true'] { background: var(--surface-2); color: var(--text); }
+    label.f { display: block; font-family: var(--font-mono); font-size: var(--fs-11); letter-spacing: var(--tracking-label); text-transform: uppercase; color: var(--text-dim); margin: var(--s-5) 0 var(--s-2); }
+    input.field { width: 100%; }
+    .btn--block { width: 100%; margin-top: var(--s-5); }
+    .fineprint { color: var(--text-mute); font-size: var(--fs-11); margin-top: var(--s-3); line-height: 1.5; }
+    .err { color: var(--warn); font-size: var(--fs-12); margin-top: var(--s-3); display: none; }
+    .state { padding: var(--s-10) 0; text-align: center; color: var(--text-dim); font-family: var(--font-mono); font-size: var(--fs-12); }
+  </style>
+</head>
+<body>
+  <div class="page" id="page" hidden>
+    <header class="nav">
+      <a href="index.html" id="navLogo" aria-label="Foko"></a>
+      <span class="spacer"></span>
+      <a class="btn btn--ghost" href="precios.html">Ver planes</a>
+    </header>
+
+    <h1 id="title">Confirma tu plan</h1>
+    <p class="lede" id="lede">Revisa el resumen y continúa al pago seguro.</p>
+
+    <div class="card card--feature">
+      <div class="row">
+        <span class="planName" id="planName">—</span>
+        <span class="price"><b id="planPrice">—</b> <span id="planPer">/mes</span></span>
+      </div>
+      <ul id="bullets"></ul>
+
+      <div class="toggle" role="group" aria-label="Periodo">
+        <button id="tMonth" aria-pressed="true">Mensual</button>
+        <button id="tYear" aria-pressed="false">Anual · 2 meses gratis</button>
+      </div>
+
+      <div id="orgBox">
+        <label class="f" for="orgName">Nombre de tu organización</label>
+        <input class="field" id="orgName" placeholder="Ej. Servicios Eléctricos del Centro" autocomplete="organization" maxlength="80">
+      </div>
+
+      <button class="btn btn--primary btn--block" id="go">Ir a pagar</button>
+      <p class="err" id="err"></p>
+      <p class="fineprint" id="fine">Al continuar aceptas las
+        <a href="terminos.html" target="_blank">Condiciones</a> y la
+        <a href="privacidad.html" target="_blank">Privacidad</a>. El pago se procesa
+        en una página segura de la pasarela. Tu organización se crea al confirmarse el pago.</p>
+    </div>
+  </div>
+
+  <div class="state" id="boot">Cargando…</div>
+
+  <script type="module">
+    import { supabase, getSessionAndProfile } from './js/supabase-client.js';
+    import { mountLogo } from './js/logo.js';
+
+    const $ = (id) => document.getElementById(id);
+    const CHECK = '<svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>';
+    const qs = new URLSearchParams(location.search);
+    const planId = qs.get('plan') || '';
+    let interval = qs.get('interval') === 'year' ? 'year' : 'month';
+
+    mountLogo($('navLogo'), { height: 40 });
+
+    // Requiere sesión. Si no hay, ir a login y volver aquí.
+    const state = await getSessionAndProfile();
+    if (!state) {
+      location.replace('login.html?next=' + encodeURIComponent(location.pathname + location.search));
+      throw new Error('sin sesión');
+    }
+
+    const { data: plan } = await supabase.from('plans').select('*').eq('id', planId).maybeSingle();
+    if (!plan) { $('boot').textContent = 'Ese plan no existe. Ve a /precios.'; throw new Error('plan'); }
+
+    // ¿Alta o cambio de plan?
+    const hasOrg = !!state.company;
+    const isAdmin = state.profile?.role === 'org_admin';
+    let mode = 'create';
+    if (hasOrg && isAdmin) mode = 'upgrade';
+    else if (hasOrg && !isAdmin) {
+      $('boot').textContent = 'Solo el administrador de tu organización puede cambiar el plan.';
+      throw new Error('no admin');
+    }
+
+    $('boot').hidden = true; $('page').hidden = false;
+
+    if (mode === 'upgrade') {
+      $('title').textContent = 'Cambiar de plan';
+      $('lede').textContent = `Tu organización “${state.company.name}” pasará a este plan al confirmarse el pago.`;
+      $('orgBox').hidden = true;
+      $('fine').innerHTML = 'Al continuar aceptas las <a href="terminos.html" target="_blank">Condiciones</a> y la <a href="privacidad.html" target="_blank">Privacidad</a>. El pago se procesa en una página segura de la pasarela.';
+    }
+
+    const retention = plan.recording_retention_days || plan.retention_days || 30;
+    $('planName').textContent = plan.name;
+    $('bullets').innerHTML = [
+      `${plan.included_seats} ${plan.included_seats === 1 ? 'experto (asiento)' : 'expertos (asientos)'}`,
+      'Técnicos de campo ilimitados y sin costo',
+      'Puntero, dibujo, congelar, fotos, grabación y reporte con IA',
+      `Grabaciones se conservan ${retention} días`,
+    ].map((t) => `<li>${CHECK}<span>${t}</span></li>`).join('');
+
+    function renderPrice() {
+      const cents = interval === 'year' ? plan.price_cents * 10 : plan.price_cents;
+      $('planPrice').textContent = '$' + Math.round(cents / 100).toLocaleString('en-US');
+      $('planPer').textContent = interval === 'year' ? '/año' : '/mes';
+      $('tMonth').setAttribute('aria-pressed', String(interval === 'month'));
+      $('tYear').setAttribute('aria-pressed', String(interval === 'year'));
+    }
+    $('tMonth').addEventListener('click', () => { interval = 'month'; renderPrice(); });
+    $('tYear').addEventListener('click', () => { interval = 'year'; renderPrice(); });
+    renderPrice();
+
+    $('go').addEventListener('click', async () => {
+      $('err').style.display = 'none';
+      const orgName = $('orgName').value.trim();
+      if (mode === 'create' && !orgName) {
+        $('err').textContent = 'Escribe el nombre de tu organización.';
+        $('err').style.display = 'block';
+        return;
+      }
+      $('go').disabled = true; $('go').textContent = 'Redirigiendo al pago…';
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const res = await fetch('/api/billing-checkout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+          body: JSON.stringify({ planId, interval, orgName }),
+        });
+        const d = await res.json();
+        if (!res.ok || !d.checkoutUrl) throw new Error(d.error || 'No se pudo iniciar el pago');
+        location.href = d.checkoutUrl;
+      } catch (e) {
+        $('err').textContent = e.message;
+        $('err').style.display = 'block';
+        $('go').disabled = false; $('go').textContent = 'Ir a pagar';
+      }
+    });
+  </script>
+</body>
+</html>
