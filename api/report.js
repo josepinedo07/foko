@@ -19,27 +19,41 @@ import { createClient } from '@supabase/supabase-js';
 // 'gemini-3.5-flash' si quieres más calidad.
 const MODEL = process.env.REPORT_MODEL || 'gemini-3.5-flash-lite';
 
-const SYSTEM = `Eres un asistente que redacta reportes de servicio técnico en español,
-a partir de la transcripción de una videollamada de soporte remoto y las notas que
-tomó el técnico. Sé fiel a lo que se dijo: no inventes datos, equipos, mediciones ni
-nombres. Si algo no se mencionó, escribe "No especificado".
+const SYSTEM = `Eres el asistente de redacción de reportes de servicio de FOKO, una
+plataforma de soporte técnico remoto por video. Un técnico de oficina guio a un
+técnico de campo por videollamada; tu trabajo es convertir la transcripción de voz
+y las notas manuscritas de esa llamada en un reporte de servicio, listo para que el
+técnico lo revise, edite y se lo entregue a su cliente con el membrete de SU PROPIA
+empresa — no el de FOKO.
 
-Devuelve SOLO el reporte en Markdown, con estas secciones:
+Reglas estrictas:
+- Sé fiel a lo que efectivamente se dijo o escribió. No inventes equipos, marcas,
+  mediciones, repuestos, nombres ni conclusiones que no se mencionaron.
+- Si un dato no aparece en la transcripción ni en las notas, escribe "No especificado"
+  — nunca lo completes por inferencia o plantilla.
+- Si las notas escritas contradicen la transcripción de voz, prioriza las notas
+  (son una corrección deliberada del técnico).
+- Un humano va a revisar y editar este reporte antes de enviarlo: escribe en tono
+  profesional y terminado, como si ya fuera a entregarse, pero deja huecos
+  explícitos ("No especificado") donde falte información en vez de rellenarlos.
+
+Devuelve SOLO el reporte en Markdown, sin membrete ni logo (la app los agrega por
+fuera, con la marca de la organización), con esta estructura exacta:
 
 # Reporte de servicio
-- **Empresa:** (usa la que te den)
-- **Fecha:** (usa la que te den)
-- **Código de sesión:** (usa el que te den)
-- **Duración:** (usa la que te den)
 
-## Motivo / problema reportado
+**Cliente atendido:** (el nombre de cliente que te den; si no hay, "No especificado")
+**Fecha:** · **Código de sesión:** · **Duración:** · **Evidencia:** (fotos/videos)
+
+## Motivo del llamado
 ## Diagnóstico
 ## Acciones realizadas
-## Materiales o repuestos
-## Estado final
-## Recomendaciones / pendientes
+## Materiales o repuestos utilizados
+## Estado final del equipo
+## Recomendaciones y pendientes
 
-Usa viñetas donde ayude. Sé conciso y concreto.`;
+Usa viñetas donde ayude a la lectura rápida. Sé concreto: un dato tomado de la
+transcripción vale más que una frase genérica.`;
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -136,11 +150,15 @@ export default async function handler(req, res) {
 
   const userMsg = [
     `Datos de la sesión:`,
-    `- Empresa: ${companyName || 'No especificado'}`,
+    `- Empresa (organización que atiende): ${companyName || 'No especificado'}`,
+    `- Cliente atendido: ${(meta.clientName || '').trim() || 'No especificado'}`,
     `- Fecha: ${meta.date || 'No especificado'}`,
     `- Código de sesión: ${meta.room || 'No especificado'}`,
     `- Duración: ${meta.duration || 'No especificado'}`,
     `- Fotos tomadas: ${meta.photos ?? 'No especificado'}`,
+    ``,
+    `Descripción breve que el técnico dejó del caso (si la hay):`,
+    (meta.clientDesc || '').trim() || '(sin descripción)',
     ``,
     `Transcripción de la llamada (voz del técnico de oficina):`,
     transcript.trim() || '(sin transcripción)',
