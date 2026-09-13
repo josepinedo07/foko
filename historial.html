@@ -243,11 +243,13 @@
       const photos = media.filter((m) => m.kind === 'photo');
       const videos = media.filter((m) => m.kind === 'video');
 
-      // Bucket privado → URLs firmadas temporales (1 h).
+      // Bucket privado → URLs firmadas temporales. 10 min: alcanza de sobra
+      // para ver/escuchar el detalle, y limita cuánto vale un enlace si se
+      // llegara a compartir o quedar pegado en algún lado por accidente.
       const paths = media.map((m) => m.storage_path).filter(Boolean);
       const signed = {};
       if (paths.length) {
-        const { data } = await supabase.storage.from('sessions').createSignedUrls(paths, 3600);
+        const { data } = await supabase.storage.from('sessions').createSignedUrls(paths, 600);
         (data || []).forEach((d) => { if (d && d.signedUrl) signed[d.path] = d.signedUrl; });
       }
       const urlFor = (m) => signed[m.storage_path] || m.url || '';
@@ -288,10 +290,21 @@
     $('dDelete').addEventListener('click', async () => {
       if (!window.confirm(`Eliminar la sesión de "${current.client_name || 'Sin cliente'}" y sus archivos. ¿Seguro?`)) return;
       const paths = (current.session_media || []).map((m) => m.storage_path).filter(Boolean);
-      if (paths.length) { try { await supabase.storage.from('sessions').remove(paths); } catch (_) {} }
+      let storageFailed = false;
+      if (paths.length) {
+        const { error: rmErr } = await supabase.storage.from('sessions').remove(paths);
+        storageFailed = !!rmErr;
+      }
       const delId = current.id, delClient = current.client_name;
       const { error } = await supabase.from('sessions').delete().eq('id', delId);
       if (error) { toast('No se pudo eliminar: ' + error.message, 'critical', 5000); return; }
+      // No dejar el posible fallo en silencio: si el archivo no se pudo borrar
+      // de Storage queda huérfano (fuera del registro, pero todavía en disco)
+      // — se anota para revisarlo, en vez de perderle el rastro.
+      if (storageFailed) {
+        logAudit('session.media_orphaned', 'session', delId, { paths });
+        toast('Se eliminó el registro, pero algunos archivos podrían no haberse borrado. Se anotó para revisión.', 'warn', 6000);
+      }
       logAudit('session.deleted', 'session', delId, { client: delClient || null });
       $('detailModal').classList.remove('open');
       toast('Sesión eliminada', 'ok', 1500);
