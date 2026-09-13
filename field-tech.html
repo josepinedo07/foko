@@ -102,6 +102,7 @@
       <span class="bars" data-hud="bars" data-level="0"><i></i><i></i><i></i><i></i></span>
       <span data-hud="lat">— MS</span>
       <span id="companyName" class="mono text-dim" style="font-size:var(--fs-11);" hidden></span>
+      <span class="pill pill--rec" id="recPill" hidden><span class="dot dot--rec"></span>GRABANDO</span>
       <span class="spacer"></span>
       <span data-hud="res">—</span>
       <button class="hud-end" id="btnEnd" type="button" hidden>Finalizar</button>
@@ -239,6 +240,7 @@
       sessionStart = null;
       setLive('offline');
       $('screenshare').classList.remove('on');
+      $('recPill').hidden = true;
       $('outSheet').hidden = true;
       $('dock').hidden = true;
       $('btnEnd').hidden = true;
@@ -393,6 +395,7 @@
             return;
           }
           if (msg.type === 'screen') { if (!msg.active) $('screenshare').classList.remove('on'); return; }
+          if (msg.type === 'rec') { $('recPill').hidden = !msg.on; return; }
           if (msg.type === 'freeze') { $('freezeTag').classList.toggle('on', !!msg.dataUrl); }
           const pointing = $('viewer').classList;
           if ((msg.type === 'cursor' && !msg.hidden) || msg.type === 'live') pointing.add('viewer--pointing');

@@ -607,6 +607,7 @@
       $('btnRecord').classList.add('is-rec');
       $('btnRecord').textContent = 'Detener';
       $('recPill').hidden = false;
+      webrtc.send({ type: 'rec', on: true });
     }
 
     function stopRec() {
@@ -614,6 +615,7 @@
       $('btnRecord').classList.remove('is-rec');
       $('btnRecord').textContent = 'Grabar';
       $('recPill').hidden = true;
+      webrtc.send({ type: 'rec', on: false });
     }
 
     function pickMime() {
