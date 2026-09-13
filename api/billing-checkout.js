@@ -10,7 +10,12 @@
  * y devuelve { checkoutUrl, checkoutId }. El frontend hace window.location = checkoutUrl.
  * La activación NO ocurre aquí: la confirma el webhook.
  *
- * Env: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, BILLING_PROVIDER, BILLING_WEBHOOK_SECRET.
+ * Apagada por defecto mientras la alta es manual/por venta directa (evita que
+ * alguien active una organización real "pagando" con el gateway simulado).
+ * Enciéndela con BILLING_SELFSERVE_ENABLED=1 cuando haya una pasarela real.
+ *
+ * Env: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, BILLING_PROVIDER, BILLING_WEBHOOK_SECRET,
+ *      BILLING_SELFSERVE_ENABLED.
  */
 
 import { createClient } from '@supabase/supabase-js';
@@ -18,6 +23,9 @@ import { getGateway, amountFor } from './_billing/gateway.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Método no permitido' });
+  if (!['1', 'true', 'yes'].includes(String(process.env.BILLING_SELFSERVE_ENABLED).toLowerCase())) {
+    return res.status(404).json({ error: 'El alta en línea no está disponible todavía. Escríbenos a ventas@fokoremote.com.' });
+  }
   if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
     return res.status(500).json({ error: 'Falta configuración del servidor' });
   }
