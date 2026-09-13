@@ -67,12 +67,14 @@
     }
     .field-row { display: flex; gap: var(--s-2); }
 
-    #reportOut {
+    #reportOut, #reportPreview {
       background: var(--bg); border: 1px solid var(--border-strong); border-radius: var(--r-cell);
-      padding: var(--s-4); font-size: var(--fs-14); line-height: 1.6; max-height: 55vh; overflow-y: auto; white-space: pre-wrap;
+      padding: var(--s-4); font-size: var(--fs-14); line-height: 1.6; height: 55vh; overflow-y: auto;
     }
-    #reportOut h1 { font-size: var(--fs-20); margin: 0 0 var(--s-2); }
-    #reportOut h2 { font-size: var(--fs-16); margin: var(--s-4) 0 var(--s-1); color: var(--accent-text); }
+    #reportOut { width: 100%; resize: vertical; font-family: var(--font-mono); font-size: var(--fs-12); color: var(--text); white-space: pre-wrap; }
+    #reportPreview { white-space: pre-wrap; }
+    #reportPreview h1 { font-size: var(--fs-20); margin: 0 0 var(--s-2); }
+    #reportPreview h2 { font-size: var(--fs-16); margin: var(--s-4) 0 var(--s-1); color: var(--accent-text); }
     .settings-row { margin-bottom: var(--s-4); }
     .settings-row .label { display: block; margin-bottom: var(--s-1); }
     .check { display: flex; gap: var(--s-2); align-items: flex-start; }
@@ -302,11 +304,16 @@
           <svg class="icon icon--sm" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>
         </button>
       </div>
-      <div id="reportOut">—</div>
-      <div class="field-row" style="margin-top:var(--s-4); justify-content:flex-end;">
-        <button class="btn" id="btnReportCopy">Copiar</button>
-        <button class="btn" id="btnReportDownload">Descargar .md</button>
-        <button class="btn" id="btnReportPrint">Imprimir</button>
+      <textarea id="reportOut" spellcheck="false"></textarea>
+      <div id="reportPreview" hidden></div>
+      <p class="text-mute" style="font-size:var(--fs-11); margin-top:var(--s-2);">Es un borrador de la IA a partir de lo hablado en la llamada — revísalo y edítalo antes de enviarlo.</p>
+      <div class="field-row" style="margin-top:var(--s-3); justify-content:space-between;">
+        <button class="btn btn--ghost" id="btnReportToggle">Vista previa</button>
+        <div class="field-row">
+          <button class="btn" id="btnReportCopy">Copiar</button>
+          <button class="btn" id="btnReportDownload">Descargar .md</button>
+          <button class="btn" id="btnReportPrint">Imprimir</button>
+        </div>
       </div>
     </div>
   </div>
@@ -869,9 +876,13 @@
           endpoint: REPORT_ENDPOINT,
           accessToken: fresh.access_token,
           notes: $('notesBox').value,
-          meta: { date: new Date().toLocaleString('es-MX'), room: roomCode, duration: sessionDuration(), photos: photoCount },
+          meta: {
+            date: new Date().toLocaleString('es-MX'), room: roomCode, duration: sessionDuration(), photos: photoCount,
+            clientName: $('endClient').value.trim(), clientDesc: $('endDesc').value.trim(),
+          },
         });
-        $('reportOut').innerHTML = renderMd(lastReport);
+        $('reportOut').value = lastReport;
+        setReportPreview(false);
         renderBrandBar('report');
         $('reportModal').classList.add('open');
       } catch (e) {
@@ -881,8 +892,8 @@
       }
     });
 
+    const esc = (t) => String(t ?? '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
     function renderMd(md) {
-      const esc = (t) => t.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
       return esc(md)
         .replace(/^### (.*)$/gm, '<h3>$1</h3>')
         .replace(/^## (.*)$/gm, '<h2>$1</h2>')
@@ -890,17 +901,54 @@
         .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
         .replace(/^[-*] (.*)$/gm, '• $1');
     }
+
+    // El reporte de la IA es un borrador editable: #reportOut es un textarea
+    // con el markdown en crudo; "Vista previa" solo lo renderiza para leer,
+    // nunca es la fuente — lo que se copia/descarga/imprime siempre sale del
+    // textarea, con lo que el técnico haya cambiado.
+    let showingPreview = false;
+    function setReportPreview(show) {
+      showingPreview = show;
+      if (show) $('reportPreview').innerHTML = renderMd($('reportOut').value);
+      $('reportOut').hidden = show;
+      $('reportPreview').hidden = !show;
+      $('btnReportToggle').textContent = show ? 'Editar' : 'Vista previa';
+    }
+    $('btnReportToggle').addEventListener('click', () => setReportPreview(!showingPreview));
+
+    // Membrete de exportación: la marca de LA ORGANIZACIÓN, no la de FOKO.
+    function reportLetterhead() {
+      if (!company) return '';
+      const parts = [];
+      if (company.logo_url) parts.push(`![${company.name || 'Logo'}](${company.logo_url})`);
+      parts.push(`# ${company.name || 'Reporte de servicio'}`);
+      return parts.join('\n\n') + '\n\n---\n\n';
+    }
+    function currentReportText() { return $('reportOut').value; }
+
     $('btnReportClose').addEventListener('click', () => $('reportModal').classList.remove('open'));
     $('btnReportCopy').addEventListener('click', async () => {
-      try { await navigator.clipboard.writeText(lastReport); toast('Reporte copiado', 'ok', 1600); } catch (_) {}
+      try { await navigator.clipboard.writeText(reportLetterhead() + currentReportText()); toast('Reporte copiado', 'ok', 1600); } catch (_) {}
     });
     $('btnReportDownload').addEventListener('click', () => {
-      downloadUrl(URL.createObjectURL(new Blob([lastReport], { type: 'text/markdown' })), `reporte-${roomCode}-${stamp()}.md`);
+      const full = reportLetterhead() + currentReportText();
+      downloadUrl(URL.createObjectURL(new Blob([full], { type: 'text/markdown' })), `reporte-${roomCode}-${stamp()}.md`);
     });
     $('btnReportPrint').addEventListener('click', () => {
       const w = window.open('', '_blank');
-      w.document.write('<pre style="font:14px/1.6 ui-monospace,monospace;white-space:pre-wrap;padding:32px;max-width:720px;margin:auto">' +
-        lastReport.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c])) + '</pre>');
+      const logoImg = company?.logo_url
+        ? `<img src="${esc(company.logo_url)}" alt="${esc(company.name || '')}" style="max-height:56px;max-width:220px;object-fit:contain;margin-bottom:12px;">` : '';
+      const orgName = company?.name ? `<div style="font-weight:700;font-size:20px;">${esc(company.name)}</div>` : '';
+      w.document.write(`<html><head><title>Reporte${company?.name ? ' — ' + esc(company.name) : ''}</title><style>
+        body { font-family: Arial, Helvetica, sans-serif; color: #14150F; max-width: 720px; margin: 40px auto; padding: 0 20px; line-height: 1.6; }
+        .letterhead { border-bottom: 2px solid #C6FF00; padding-bottom: 16px; margin-bottom: 24px; }
+        h1 { font-size: 20px; } h2 { font-size: 16px; margin-top: 24px; color: #14150F; } h3 { font-size: 14px; }
+        .foot { margin-top: 40px; font-size: 11px; color: #8A8F7E; border-top: 1px solid #E5E5E0; padding-top: 10px; }
+      </style></head><body>
+        <div class="letterhead">${logoImg}${orgName}</div>
+        ${renderMd(currentReportText())}
+        <div class="foot">Generado con FOKO · fokoremote.com</div>
+      </body></html>`);
       w.document.close(); w.focus(); w.print();
     });
 
