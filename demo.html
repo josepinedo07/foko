@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FOKO · Demo</title>
+  <meta name="description" content="Guía a tu técnico de campo como si estuvieras ahí. Videollamada en vivo, puntero, dibujo, congelado, fotos y reporte con IA. Agenda una demo.">
+  <link rel="icon" href="brand/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="brand/favicon-32.png" sizes="32x32" type="image/png">
+  <link rel="apple-touch-icon" href="brand/apple-touch-icon.png">
+  <link rel="manifest" href="site.webmanifest">
+  <meta name="theme-color" content="#0F1009">
+  <link rel="stylesheet" href="css/design-system.css">
+  <script src="js/errlog.js"></script>
+  <style>
+    body { overflow-x: hidden; }
+    .wrap { max-width: 1120px; margin: 0 auto; padding: 0 var(--s-6); }
+
+    .nav { display: flex; align-items: center; gap: var(--s-5); padding: var(--s-5) 0; border-bottom: 1px solid var(--border); }
+    .nav .spacer { flex: 1; }
+
+    .band { border-top: 1px solid var(--border); }
+    .band__inner { max-width: 1120px; margin: 0 auto; padding: var(--s-16) var(--s-6); }
+    .eyebrow { font-family: var(--font-mono); font-size: var(--fs-11); letter-spacing: var(--tracking-label); text-transform: uppercase; color: var(--accent-text); }
+    .band h2 { font-family: var(--font-display); font-weight: 700; letter-spacing: var(--tracking-display); font-size: clamp(24px, 3.4vw, var(--fs-40)); line-height: 1.15; margin-top: var(--s-3); max-width: 20ch; }
+
+    .hero { padding: clamp(var(--s-12), 9vw, var(--s-16)) 0 var(--s-12); text-align: center; }
+    .hero__label { display: inline-flex; align-items: center; gap: var(--s-2); font-family: var(--font-mono); font-size: var(--fs-11); letter-spacing: var(--tracking-label); text-transform: uppercase; color: var(--text-dim); }
+    .hero__label::before { content: ''; width: 6px; height: 6px; border-radius: var(--r-full); background: var(--accent); }
+    .headline { font-family: var(--font-display); font-weight: 700; letter-spacing: var(--tracking-display); font-size: clamp(32px, 5.6vw, 54px); line-height: 1.12; margin: var(--s-4) auto var(--s-5); max-width: 19ch; }
+    .headline em { font-style: normal; color: var(--accent-text); }
+    .sub { color: var(--text-dim); font-size: var(--fs-16); max-width: 52ch; margin: 0 auto var(--s-8); }
+    .hero__cta { display: flex; gap: var(--s-3); justify-content: center; flex-wrap: wrap; margin-bottom: var(--s-6); }
+    .hero__cta .btn { min-width: 200px; padding: var(--s-4) var(--s-6); }
+    .hero__trust { font-family: var(--font-mono); font-size: var(--fs-11); letter-spacing: 0.03em; color: var(--text-mute); }
+
+    .steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s-4); margin-top: var(--s-8); counter-reset: step; }
+    .step { border: 1px solid var(--border); border-radius: var(--r); padding: var(--s-6); }
+    .step::before { counter-increment: step; content: counter(step); display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; margin-bottom: var(--s-4); border: 1px solid var(--accent); border-radius: var(--r-cell); color: var(--accent-text); font-family: var(--font-mono); font-weight: 500; font-size: var(--fs-14); }
+    .step h3 { font-size: var(--fs-16); font-weight: 600; margin-bottom: var(--s-1); }
+    .step p { color: var(--text-dim); font-size: var(--fs-14); }
+
+    .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: var(--r); overflow: hidden; margin-top: var(--s-8); }
+    .card { background: var(--surface); padding: var(--s-5); }
+    .card svg { width: 22px; height: 22px; stroke: var(--text-dim); fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+    .card h3 { font-size: var(--fs-14); font-weight: 600; margin: var(--s-3) 0 var(--s-1); }
+    .card p { color: var(--text-dim); font-size: var(--fs-14); line-height: 1.5; }
+    @media (max-width: 860px) { .cards { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 520px) { .cards { grid-template-columns: 1fr; } }
+
+    .grid-ind { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: var(--r); overflow: hidden; margin-top: var(--s-8); }
+    .ind { background: var(--surface); padding: var(--s-4) var(--s-5); font-size: var(--fs-14); color: var(--text-dim); display: flex; align-items: center; gap: var(--s-2); }
+    .ind::before { content: ''; width: 5px; height: 5px; border-radius: var(--r-full); background: var(--text-mute); flex: none; }
+    @media (max-width: 860px) { .grid-ind { grid-template-columns: 1fr 1fr; } }
+
+    .ctaband { text-align: center; }
+    .ctaband h2 { margin: 0 auto var(--s-4); max-width: 24ch; }
+    .ctaband p { color: var(--text-dim); font-size: var(--fs-16); max-width: 48ch; margin: 0 auto var(--s-6); }
+    .ctaband__row { display: flex; gap: var(--s-3); justify-content: center; flex-wrap: wrap; }
+    .ctaband__row .btn { min-width: 200px; padding: var(--s-4) var(--s-6); }
+
+    .foot { border-top: 1px solid var(--border); }
+    .foot__inner { max-width: 1120px; margin: 0 auto; padding: var(--s-10) var(--s-6); display: flex; justify-content: space-between; align-items: center; gap: var(--s-4); flex-wrap: wrap; }
+    .foot p { color: var(--text-mute); font-size: var(--fs-12); }
+
+    @media (max-width: 720px) { .steps { grid-template-columns: 1fr; } .grid-ind { grid-template-columns: 1fr 1fr; } }
+  </style>
+</head>
+<body>
+  <header class="nav wrap">
+    <a href="index.html" id="navLogo" aria-label="Foko"></a>
+    <span class="spacer"></span>
+    <a class="btn btn--ghost" href="login.html">Iniciar sesión</a>
+  </header>
+
+  <section class="hero wrap">
+    <span class="hero__label">Para equipos con técnicos en campo</span>
+    <h1 class="headline">Guía a tu técnico de campo <em>como si estuvieras ahí</em></h1>
+    <p class="sub">Tu experto ve en vivo lo que ve el técnico, señala y dibuja sobre la imagen, congela el cuadro y cierra con un reporte de servicio — sin que nadie instale nada en su teléfono.</p>
+    <div class="hero__cta">
+      <a class="btn btn--primary" href="mailto:ventas@fokoremote.com?subject=Agendar%20demo%20FOKO">Agendar una demo</a>
+    </div>
+    <p class="hero__trust">Cifrado punto a punto · Datos aislados por organización · Onboarding acompañado</p>
+  </section>
+
+  <section class="band">
+    <div class="band__inner">
+      <span class="eyebrow">Cómo funciona</span>
+      <h2>Tres pasos, ninguna instalación</h2>
+      <div class="steps">
+        <div class="step">
+          <h3>Comparte el enlace</h3>
+          <p>El técnico de campo abre un link o escanea un código desde su navegador — nada que descargar ni instalar.</p>
+        </div>
+        <div class="step">
+          <h3>Guía en vivo</h3>
+          <p>El experto de oficina ve la cámara del técnico, señala un punto, dibuja sobre la imagen y congela el cuadro para explicar con precisión.</p>
+        </div>
+        <div class="step">
+          <h3>Cierra con reporte</h3>
+          <p>Fotos, notas del caso y un reporte de servicio redactado con IA a partir de lo hablado — listo para editar y entregar con tu marca.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band">
+    <div class="band__inner">
+      <span class="eyebrow">Capacidades</span>
+      <h2>Hecho para resolver en la primera llamada</h2>
+      <div class="cards">
+        <div class="card">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+          <h3>Puntero y dibujo</h3>
+          <p>Señala, dibuja flechas y círculos directo sobre la imagen en vivo del técnico.</p>
+        </div>
+        <div class="card">
+          <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6v6H9z"/></svg>
+          <h3>Congelar y fotografiar</h3>
+          <p>Congela el cuadro para explicar con calma, y guarda fotos como evidencia del servicio.</p>
+        </div>
+        <div class="card">
+          <svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+          <h3>Notas internas</h3>
+          <p>Notas de sesión y de coaching, separadas del reporte que ve el cliente.</p>
+        </div>
+        <div class="card">
+          <svg viewBox="0 0 24 24"><path d="M4 20c3-1 4-3 6-8s4-8 8-8c2 0 2 3-1 5s-6 3-9 8"/></svg>
+          <h3>Reporte con IA</h3>
+          <p>A partir de la transcripción y las notas — editable, con tu logo y tu marca.</p>
+        </div>
+        <div class="card">
+          <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          <h3>Técnicos de campo ilimitados</h3>
+          <p>Pagas por experto, no por cuántos técnicos comparten cámara.</p>
+        </div>
+        <div class="card">
+          <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          <h3>Aislado por organización</h3>
+          <p>Cada empresa ve solo sus propias sesiones, fotos y grabaciones.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band">
+    <div class="band__inner">
+      <span class="eyebrow">Para quién</span>
+      <h2>Cualquier operación con técnicos dispersos</h2>
+      <div class="grid-ind">
+        <div class="ind">Mantenimiento industrial</div>
+        <div class="ind">Refrigeración y HVAC</div>
+        <div class="ind">Ascensores y elevadores</div>
+        <div class="ind">Telecom e ISP</div>
+        <div class="ind">Equipos médicos</div>
+        <div class="ind">Retail multi-sede</div>
+        <div class="ind">Servicios petroleros</div>
+        <div class="ind">Utilities</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band">
+    <div class="band__inner ctaband">
+      <span class="eyebrow">¿Hablamos?</span>
+      <h2>15 minutos para ver FOKO con tu propio caso</h2>
+      <p>Sin compromiso. Te mostramos la app con un escenario parecido al de tu operación y resolvemos dudas de plan y onboarding.</p>
+      <div class="ctaband__row">
+        <a class="btn btn--primary" href="mailto:ventas@fokoremote.com?subject=Agendar%20demo%20FOKO">Agendar una demo</a>
+        <a class="btn" href="precios.html">Ver planes</a>
+      </div>
+    </div>
+  </section>
+
+  <footer class="foot">
+    <div class="foot__inner">
+      <span id="footLogo" aria-label="Foko"></span>
+      <p>Grupo Chambeo, C.A. (RIF J-50797988-1) · <a href="privacidad.html" style="color:var(--text-mute);">Privacidad</a> · <a href="terminos.html" style="color:var(--text-mute);">Condiciones</a></p>
+    </div>
+  </footer>
+
+  <script type="module">
+    import { mountLogo } from './js/logo.js';
+    mountLogo(document.getElementById('navLogo'), { height: 40 });
+    mountLogo(document.getElementById('footLogo'), { height: 26, showDot: false });
+  </script>
+</body>
+</html>
