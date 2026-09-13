@@ -13,7 +13,7 @@
  * Recorrido NAT: STUN + TURN opcional (js/rtc-config.js).
  */
 
-import { ICE_SERVERS } from './rtc-config.js';
+import { getIceServers } from './rtc-config.js';
 
 export class WebRTCManager {
   constructor(options = {}) {
@@ -49,10 +49,11 @@ export class WebRTCManager {
 
     // El experto reclama el código de sala como su ID. El campo usa un ID random.
     const peerId = this.role === 'expert' ? this.roomCode : undefined;
+    const iceServers = await getIceServers();
 
     this.peer = new Peer(peerId, {
       debug: 1,
-      config: { iceServers: ICE_SERVERS },
+      config: { iceServers },
     });
 
     this.peer.on('open', (id) => {
