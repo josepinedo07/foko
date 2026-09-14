@@ -89,7 +89,7 @@
     mountLogo(document.getElementById('footLogo'), { height: 30, showDot: false });
 
     const CHECK = '<svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>';
-    const DEMO = 'mailto:ventas@fokoremote.com?subject=Agendar%20demo%20FOKO';
+    const DEMO = 'contacto.html?plan=enterprise&source=precios';
     let annual = false;
     let plans = [];
 
@@ -116,7 +116,7 @@
           <li>${CHECK}<span>Grabaciones se conservan ${retention} días</span></li>
           <li>${CHECK}<span>Una sesión activa por persona</span></li>
         </ul>
-        <a class="btn ${isFeature ? 'btn--primary' : ''}" href="mailto:ventas@fokoremote.com?subject=${encodeURIComponent('Plan ' + p.name + ' — FOKO')}">Contáctanos</a>
+        <a class="btn ${isFeature ? 'btn--primary' : ''}" href="contacto.html?plan=${encodeURIComponent(p.id)}&source=precios">Contáctanos</a>
       </article>`;
     }
 

@@ -125,6 +125,16 @@
     </section>
 
     <section>
+      <div class="sec-head"><h2>Leads</h2><span class="label" id="leadsPending"></span></div>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Cuándo</th><th>Nombre</th><th>Empresa</th><th>Correo</th><th>Teléfono</th><th>Plan</th><th>Mensaje</th><th>Origen</th><th>Contactado</th></tr></thead>
+          <tbody id="leadsBody"><tr><td colspan="9" class="state">Cargando…</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section>
       <div class="sec-head"><h2>Actividad global</h2></div>
       <div class="tablewrap">
         <table>
@@ -294,7 +304,7 @@
       $('kMrr').textContent = usd(orgs.reduce((a, o) => a + (o.mrr_cents || 0), 0));
       $('kTrial').textContent = orgs.filter((o) => o.status === 'trialing').length;
       renderOrgs();
-      loadAudit(); loadErrors();
+      loadAudit(); loadErrors(); loadLeads();
     }
 
     function renderOrgs() {
@@ -492,6 +502,34 @@
         <td class="mono">${esc((e.user_id || '').slice(0, 8)) || '—'}</td></tr>`).join('')
         : '<tr><td colspan="4" class="state">Sin errores.</td></tr>';
     }
+
+    async function loadLeads() {
+      const { data, error } = await supabase.rpc('admin_leads', { p_limit: 200 });
+      if (error) { $('leadsBody').innerHTML = `<tr><td colspan="9" class="state">${esc(error.message)}</td></tr>`; return; }
+      const rows = data || [];
+      $('leadsPending').textContent = rows.filter((l) => !l.contacted).length + ' sin contactar';
+      $('leadsBody').innerHTML = rows.length ? rows.map((l) => `
+        <tr data-id="${l.id}">
+          <td class="mono">${dtm(l.created_at)}</td>
+          <td>${esc(l.name)}</td>
+          <td>${esc(l.company) || '—'}</td>
+          <td class="mono"><a href="mailto:${esc(l.email)}">${esc(l.email)}</a></td>
+          <td class="mono">${esc(l.phone) || '—'}</td>
+          <td>${esc(l.plan_interest) || '—'}</td>
+          <td><span class="sub">${esc((l.message || '').slice(0, 140))}</span></td>
+          <td class="mono">${esc(l.source) || '—'}</td>
+          <td><button class="rowbtn" data-lead-toggle="${l.id}" data-on="${l.contacted}">${l.contacted ? 'Sí — desmarcar' : 'Marcar contactado'}</button></td>
+        </tr>`).join('')
+        : '<tr><td colspan="9" class="state">Sin leads todavía.</td></tr>';
+    }
+    $('leadsBody').addEventListener('click', async (e) => {
+      const b = e.target.closest('[data-lead-toggle]'); if (!b) return;
+      b.disabled = true;
+      const nowOn = b.dataset.on !== 'true';
+      const { error } = await supabase.rpc('admin_set_lead_contacted', { p_id: b.dataset.leadToggle, p_contacted: nowOn });
+      if (error) { toast(error.message, 'critical', 5000); b.disabled = false; return; }
+      loadLeads();
+    });
 
     $('btnRefresh').addEventListener('click', load);
     $('btnLogout').addEventListener('click', async () => { await supabase.auth.signOut(); location.href = 'login.html'; });

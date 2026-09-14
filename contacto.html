@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FOKO · Contáctanos</title>
+  <meta name="description" content="Cuéntanos sobre tu operación y te contactamos para agendar una demo de FOKO.">
+  <link rel="icon" href="brand/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="brand/favicon-32.png" sizes="32x32" type="image/png">
+  <link rel="apple-touch-icon" href="brand/apple-touch-icon.png">
+  <link rel="manifest" href="site.webmanifest">
+  <meta name="theme-color" content="#0F1009">
+  <link rel="stylesheet" href="css/design-system.css">
+  <script src="js/errlog.js"></script>
+  <style>
+    body { min-height: 100%; }
+    .page { max-width: 520px; margin: 0 auto; padding: 0 var(--s-5) var(--s-16); }
+    .nav { display: flex; align-items: center; gap: var(--s-3); padding: var(--s-6) 0; }
+    .nav .spacer { flex: 1; }
+    h1 { font-family: var(--font-display); font-weight: 700; letter-spacing: var(--tracking-display); font-size: var(--fs-28); margin: var(--s-8) 0 var(--s-2); }
+    .lede { color: var(--text-dim); font-size: var(--fs-14); margin-bottom: var(--s-6); }
+    .card { border: 1px solid var(--border); border-radius: var(--r); padding: var(--s-6); }
+    label.f { display: block; font-family: var(--font-mono); font-size: var(--fs-11); letter-spacing: var(--tracking-label); text-transform: uppercase; color: var(--text-dim); margin: var(--s-4) 0 var(--s-2); }
+    label.f:first-child { margin-top: 0; }
+    .field, textarea.field, select.field { width: 100%; }
+    textarea.field { resize: vertical; min-height: 88px; }
+    .hp { position: absolute; left: -9999px; }
+    .btn--block { width: 100%; margin-top: var(--s-6); }
+    .err { color: var(--warn); font-size: var(--fs-12); margin-top: var(--s-3); display: none; }
+    .fineprint { color: var(--text-mute); font-size: var(--fs-11); margin-top: var(--s-4); line-height: 1.5; }
+    .done { text-align: center; padding: var(--s-8) 0; }
+    .done h2 { font-family: var(--font-display); font-weight: 700; font-size: var(--fs-20); margin-bottom: var(--s-2); }
+    .done p { color: var(--text-dim); font-size: var(--fs-14); max-width: 40ch; margin: 0 auto; }
+    .done a { color: var(--accent-text); }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="nav">
+      <a href="index.html" id="navLogo" aria-label="Foko"></a>
+      <span class="spacer"></span>
+      <a class="btn btn--ghost" href="precios.html">Ver planes</a>
+    </header>
+
+    <div id="formView">
+      <h1>Hablemos</h1>
+      <p class="lede">Cuéntanos de tu operación y te contactamos para agendar una demo — sin compromiso.</p>
+
+      <form class="card" id="leadForm">
+        <input class="hp" type="text" id="website" name="website" tabindex="-1" autocomplete="off">
+
+        <label class="f" for="fName">Nombre</label>
+        <input class="field" id="fName" required maxlength="200" autocomplete="name">
+
+        <label class="f" for="fCompany">Empresa</label>
+        <input class="field" id="fCompany" maxlength="200" autocomplete="organization">
+
+        <label class="f" for="fEmail">Correo</label>
+        <input class="field" type="email" id="fEmail" required autocomplete="email">
+
+        <label class="f" for="fPhone">Teléfono / WhatsApp (opcional)</label>
+        <input class="field" id="fPhone" maxlength="40" autocomplete="tel">
+
+        <label class="f" for="fPlan">Plan de interés</label>
+        <select class="field" id="fPlan">
+          <option value="">No estoy seguro / quiero orientación</option>
+          <option value="individual">Individual</option>
+          <option value="equipo">Equipo</option>
+          <option value="enterprise">Enterprise (más de 3 asientos)</option>
+        </select>
+
+        <label class="f" for="fMsg">Cuéntanos de tu operación (opcional)</label>
+        <textarea class="field" id="fMsg" maxlength="2000" placeholder="Cuántos técnicos en campo, qué tipo de equipos, dónde operan…"></textarea>
+
+        <button class="btn btn--primary btn--block" type="submit" id="btnSend">Enviar</button>
+        <p class="err" id="err"></p>
+        <p class="fineprint">Al enviar aceptas que te contactemos sobre FOKO. Ver <a href="privacidad.html" target="_blank">Privacidad</a>. Si prefieres, escríbenos directo a <a href="mailto:ventas@fokoremote.com">ventas@fokoremote.com</a>.</p>
+      </form>
+    </div>
+
+    <div id="doneView" class="done" hidden>
+      <span id="doneLogo" aria-label="Foko" style="display:inline-block; margin-bottom:var(--s-5);"></span>
+      <h2>Listo, ya lo tenemos</h2>
+      <p>Te contactamos pronto a tu correo. Si es urgente, escríbenos directo a <a href="mailto:ventas@fokoremote.com">ventas@fokoremote.com</a>.</p>
+    </div>
+  </div>
+
+  <script type="module">
+    import { mountLogo } from './js/logo.js';
+
+    const $ = (id) => document.getElementById(id);
+    mountLogo($('navLogo'), { height: 40 });
+
+    const qs = new URLSearchParams(location.search);
+    const plan = qs.get('plan');
+    const source = qs.get('source') || document.referrer.replace(/^https?:\/\/[^/]+\//, '').replace(/\.html.*$/, '') || 'contacto';
+    if (plan && $('fPlan').querySelector(`option[value="${plan}"]`)) $('fPlan').value = plan;
+
+    $('leadForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      $('err').style.display = 'none';
+      $('btnSend').disabled = true; $('btnSend').textContent = 'Enviando…';
+      try {
+        const res = await fetch('/api/lead', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: $('fName').value.trim(),
+            company: $('fCompany').value.trim(),
+            email: $('fEmail').value.trim(),
+            phone: $('fPhone').value.trim(),
+            plan: $('fPlan').value,
+            message: $('fMsg').value.trim(),
+            source,
+            website: $('website').value, // honeypot
+          }),
+        });
+        const d = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(d.error || 'No se pudo enviar. Intenta de nuevo.');
+        $('formView').hidden = true;
+        $('doneView').hidden = false;
+        mountLogo($('doneLogo'), { height: 34, showDot: false });
+      } catch (e2) {
+        $('err').textContent = e2.message;
+        $('err').style.display = 'block';
+        $('btnSend').disabled = false; $('btnSend').textContent = 'Enviar';
+      }
+    });
+  </script>
+</body>
+</html>
