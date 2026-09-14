@@ -12,6 +12,7 @@
   <meta name="theme-color" content="#0F1009">
   <link rel="stylesheet" href="css/design-system.css">
   <script src="js/errlog.js"></script>
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
   <style>
     body { min-height: 100%; }
     .page { max-width: 520px; margin: 0 auto; padding: 0 var(--s-5) var(--s-16); }
@@ -72,6 +73,8 @@
         <label class="f" for="fMsg">Cuéntanos de tu operación (opcional)</label>
         <textarea class="field" id="fMsg" maxlength="2000" placeholder="Cuántos técnicos en campo, qué tipo de equipos, dónde operan…"></textarea>
 
+        <div class="cf-turnstile" id="turnstile" data-sitekey="0x4AAAAAAEzyzYE6jZLcnAkT" style="margin-top:var(--s-5);"></div>
+
         <button class="btn btn--primary btn--block" type="submit" id="btnSend">Enviar</button>
         <p class="err" id="err"></p>
         <p class="fineprint">Al enviar aceptas que te contactemos sobre FOKO. Ver <a href="privacidad.html" target="_blank">Privacidad</a>. Si prefieres, escríbenos directo a <a href="mailto:ventas@fokoremote.com">ventas@fokoremote.com</a>.</p>
@@ -99,6 +102,14 @@
     $('leadForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       $('err').style.display = 'none';
+
+      const turnstileToken = window.turnstile ? window.turnstile.getResponse() : '';
+      if (window.turnstile && !turnstileToken) {
+        $('err').textContent = 'Marca la verificación antes de enviar.';
+        $('err').style.display = 'block';
+        return;
+      }
+
       $('btnSend').disabled = true; $('btnSend').textContent = 'Enviando…';
       try {
         const res = await fetch('/api/lead', {
@@ -113,6 +124,7 @@
             message: $('fMsg').value.trim(),
             source,
             website: $('website').value, // honeypot
+            turnstileToken,
           }),
         });
         const d = await res.json().catch(() => ({}));
@@ -124,6 +136,7 @@
         $('err').textContent = e2.message;
         $('err').style.display = 'block';
         $('btnSend').disabled = false; $('btnSend').textContent = 'Enviar';
+        if (window.turnstile) window.turnstile.reset();
       }
     });
   </script>
