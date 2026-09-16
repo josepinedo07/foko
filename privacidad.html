@@ -227,11 +227,13 @@
           <thead><tr><th>Proveedor</th><th>Función</th><th>Datos que maneja</th></tr></thead>
           <tbody>
             <tr><td>Supabase</td><td>Base de datos, autenticación y almacenamiento de archivos.</td><td>Datos de cuenta, empresa, sesiones; fotos y videos guardados.</td></tr>
-            <tr><td>Vercel</td><td>Alojamiento del sitio y de la función que genera el reporte.</td><td>Datos técnicos de la petición; contenido enviado a la función de reporte en tránsito.</td></tr>
-            <tr><td>Google</td><td>Inicio de sesión con Google (opcional); reconocimiento de voz del navegador Chrome; generación del reporte (Gemini API).</td><td>Correo/nombre/foto de perfil (si usas Google); audio de la voz a transcribir; transcripción y notas para el reporte.</td></tr>
+            <tr><td>Vercel</td><td>Alojamiento del sitio y de las funciones del servidor (reporte, facturación, leads, consentimiento).</td><td>Datos técnicos de la petición; contenido enviado a esas funciones en tránsito.</td></tr>
+            <tr><td>Google (Workspace y APIs)</td><td>Inicio de sesión con Google (opcional); recepción de correo del dominio de FOKO; reconocimiento de voz del navegador Chrome; generación del reporte (Gemini API).</td><td>Correo/nombre/foto de perfil (si usas Google); correos recibidos por el dominio; audio de la voz a transcribir; transcripción y notas para el reporte.</td></tr>
+            <tr><td>Resend</td><td>Envío de los correos transaccionales del sitio (confirmaciones, avisos de contacto).</td><td>Nombre, correo y el contenido del mensaje que envías por el formulario de contacto.</td></tr>
+            <tr><td>Cloudflare (Turnstile)</td><td>Verificación anti-bots en el formulario de contacto.</td><td>Dirección IP y señales técnicas del navegador; no incluye contenido del formulario.</td></tr>
             <tr><td>Broker de señalización PeerJS</td><td>Intercambio de los mensajes iniciales para establecer la llamada punto a punto.</td><td>Identificadores de sala y de par; dirección IP.</td></tr>
-            <tr><td>Servidores STUN/TURN (Google; OpenRelay / Metered)</td><td>Recorrido de red y, si la conexión directa falla, retransmisión cifrada del audio y video.</td><td>Dirección IP; flujo de audio/video cifrado durante la llamada (no se almacena).</td></tr>
-            <tr><td>GitHub Pages</td><td>Espejo estático del sitio (sin la función de reporte).</td><td>Datos técnicos de la petición.</td></tr>
+            <tr><td>Servidores STUN/TURN (Google; Metered.ca, cuenta propia de FOKO)</td><td>Recorrido de red y, si la conexión directa falla, retransmisión cifrada del audio y video.</td><td>Dirección IP; flujo de audio/video cifrado durante la llamada (no se almacena).</td></tr>
+            <tr><td>GitHub Pages</td><td>Espejo estático del sitio (sin las funciones del servidor).</td><td>Datos técnicos de la petición.</td></tr>
           </tbody>
         </table>
         </div>
@@ -241,9 +243,10 @@
 
       <section id="transferencias">
         <h2><span class="n">09</span>Transferencias internacionales</h2>
-        <p>Algunos de los proveedores anteriores procesan datos en servidores ubicados <strong>fuera de tu país</strong>,
-          principalmente en <strong>Estados Unidos</strong> <span class="ph">[verificar la región exacta configurada en Supabase y Vercel]</span>.
-          Al usar FOKO, y en particular al aceptar los avisos de cámara/grabación y de asistente de IA, consientes esa
+        <p>Algunos de los proveedores anteriores procesan datos en servidores ubicados <strong>fuera de tu país</strong>: el
+          alojamiento del sitio y sus funciones (Vercel) corre en Estados Unidos (este); el envío de correo (Resend) corre en
+          Brasil; la base de datos, la autenticación y el almacenamiento de archivos (Supabase) corren en Estados Unidos
+          (oeste). Al usar FOKO, y en particular al aceptar los avisos de cámara/grabación y de asistente de IA, consientes esa
           transferencia internacional, que se realiza con proveedores que ofrecen garantías contractuales de protección
           equivalentes a las exigidas por la normativa aplicable.</p>
         <p>Si la legislación de tu país exige una base adicional para la transferencia internacional (autorización del titular,
@@ -332,8 +335,13 @@
           por el lugar de residencia del titular, conforme a las normas locales de protección de datos, entre ellas:</p>
         <ul>
           <li><strong>Venezuela:</strong> Constitución de la República Bolivariana de Venezuela, artículos 28 (habeas data) y 60
-            (protección del honor, vida privada, intimidad y propia imagen); Ley de Infogobierno; y demás normativa sobre datos y
-            comunicaciones.</li>
+            (protección del honor, vida privada, intimidad y propia imagen), con la interpretación que ha dado el Tribunal Supremo
+            de Justicia a ese derecho; Ley Especial contra los Delitos Informáticos; Ley sobre Mensajes de Datos y Firmas
+            Electrónicas (aplicable al consentimiento y registros electrónicos de esta política); y la Ley de Infogobierno en lo
+            que corresponda a comunicaciones con entes públicos. <strong>Venezuela no cuenta, a la fecha de esta versión, con una
+            ley general de protección de datos personales para el sector privado</strong> — a falta de esa ley, FOKO se rige por
+            los artículos constitucionales citados, la normativa sectorial aplicable y los compromisos que asume en esta misma
+            política.</li>
           <li><strong>Colombia:</strong> Ley 1581 de 2012 y Decreto 1377 de 2013 (régimen general de protección de datos y política de tratamiento).</li>
           <li><strong>Brasil:</strong> Lei Geral de Proteção de Dados (Lei n.º 13.709/2018 — LGPD).</li>
           <li><strong>Argentina:</strong> Ley 25.326 de Protección de los Datos Personales y su reglamentación.</li>

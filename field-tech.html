@@ -371,6 +371,13 @@
       const room = ($('codeInput').value || initialRoom).trim().toUpperCase();
       if (!room) { showErr('Escribe el código de sesión.'); return; }
 
+      // Evidencia del consentimiento: no bloquea la conexión si falla — el
+      // checkbox ya es la barrera real, esto solo deja el registro.
+      fetch('/api/consent', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ roomCode: room }),
+      }).catch(() => {});
+
       webrtc = new WebRTCManager({
         role: 'field',
         roomCode: room,
