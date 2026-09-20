@@ -74,6 +74,14 @@
         <input class="field" type="email" id="siEmail" placeholder="Correo" autocomplete="email" required>
         <input class="field" type="password" id="siPassword" placeholder="Contraseña" autocomplete="current-password" required>
         <button class="btn btn--primary btn--block" type="submit">Entrar</button>
+        <button class="btn btn--ghost btn--block" type="button" id="btnForgot" style="margin-top:var(--s-1);">¿Olvidaste tu contraseña?</button>
+      </form>
+
+      <form class="tabpanel" id="formForgot" hidden>
+        <p class="hint" style="margin-bottom:var(--s-1);">Te mandamos un enlace a tu correo para poner una contraseña nueva.</p>
+        <input class="field" type="email" id="fgEmail" placeholder="Correo" autocomplete="email" required>
+        <button class="btn btn--primary btn--block" type="submit">Enviar enlace</button>
+        <button class="btn btn--ghost btn--block" type="button" id="btnForgotBack">Volver a iniciar sesión</button>
       </form>
 
       <form class="tabpanel" id="formCreate" hidden>
@@ -231,6 +239,36 @@
         if (!routeByState(await getSessionAndProfile())) {
           showErr('Tu cuenta no tiene una empresa todavía.');
         }
+      } catch (err) {
+        showErr(err.message);
+      } finally {
+        setBusy(e.target, false);
+      }
+    });
+
+    // ---- Olvidé mi contraseña ----
+    $('btnForgot').addEventListener('click', () => {
+      clearMsg();
+      $('fgEmail').value = $('siEmail').value.trim();
+      $('formSignin').hidden = true;
+      $('formForgot').hidden = false;
+    });
+    $('btnForgotBack').addEventListener('click', () => {
+      clearMsg();
+      $('formForgot').hidden = true;
+      $('formSignin').hidden = false;
+    });
+    $('formForgot').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      clearMsg();
+      setBusy(e.target, true);
+      try {
+        const { error } = await supabase.auth.resetPasswordForEmail($('fgEmail').value.trim(), {
+          redirectTo: location.origin + '/restablecer.html',
+        });
+        if (error) throw error;
+        showOk('Si ese correo tiene una cuenta, te llegó un enlace para poner una contraseña nueva.');
+        e.target.reset();
       } catch (err) {
         showErr(err.message);
       } finally {

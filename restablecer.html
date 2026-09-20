@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FOKO · Nueva contraseña</title>
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="brand/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="brand/favicon-32.png" sizes="32x32" type="image/png">
+  <link rel="apple-touch-icon" href="brand/apple-touch-icon.png">
+  <link rel="manifest" href="site.webmanifest">
+  <meta name="theme-color" content="#0F1009">
+  <link rel="stylesheet" href="css/design-system.css">
+  <script src="js/errlog.js"></script>
+  <style>
+    .wrap {
+      min-height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: var(--s-8) var(--s-4); gap: var(--s-6);
+    }
+    .mark { text-align: center; }
+    .mark p { color: var(--text-dim); font-size: var(--fs-14); margin-top: var(--s-2); }
+    .card { width: 100%; max-width: 380px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: var(--s-5); display: flex; flex-direction: column; gap: var(--s-3); }
+    .hint { color: var(--text-mute); font-size: var(--fs-12); }
+    .err { color: var(--critical); font-size: var(--fs-12); display: none; }
+    .ok { color: var(--ok); font-size: var(--fs-12); display: none; }
+    .state { text-align: center; color: var(--text-dim); font-family: var(--font-mono); font-size: var(--fs-12); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="mark">
+      <span id="logo" aria-label="Foko"></span>
+      <p>Pon una contraseña nueva.</p>
+    </div>
+
+    <div class="card" id="card" hidden>
+      <input class="field" type="password" id="pw1" placeholder="Contraseña nueva (mín. 6 caracteres)" autocomplete="new-password" minlength="6" required>
+      <input class="field" type="password" id="pw2" placeholder="Repite la contraseña" autocomplete="new-password" minlength="6" required>
+      <button class="btn btn--primary btn--block" id="btnSave">Guardar y entrar</button>
+      <p class="err" id="err"></p>
+      <p class="ok" id="ok"></p>
+    </div>
+
+    <p class="state" id="boot">Verificando el enlace…</p>
+    <p class="state" id="expired" hidden>Este enlace ya venció o no es válido. <a href="login.html">Pide uno nuevo</a>.</p>
+  </div>
+
+  <script type="module">
+    import { supabase } from './js/supabase-client.js';
+    import { mountLogo } from './js/logo.js';
+
+    const $ = (id) => document.getElementById(id);
+    mountLogo($('logo'), { height: 48 });
+
+    function showErr(m) { $('err').textContent = m; $('err').style.display = 'block'; $('ok').style.display = 'none'; }
+    function showOk(m) { $('ok').textContent = m; $('ok').style.display = 'block'; $('err').style.display = 'none'; }
+
+    // El enlace de recuperación trae el token en el fragmento de la URL;
+    // supabase-js lo detecta solo y dispara PASSWORD_RECOVERY con la sesión
+    // ya activa — solo entonces mostramos el formulario.
+    let ready = false;
+    function reveal() {
+      if (ready) return;
+      ready = true;
+      $('boot').hidden = true;
+      $('card').hidden = false;
+    }
+
+    supabase.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY') reveal();
+    });
+    // Si ya había una sesión de recuperación activa al recargar la página.
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) reveal();
+    });
+    setTimeout(() => {
+      if (!ready) { $('boot').hidden = true; $('expired').hidden = false; }
+    }, 4000);
+
+    $('btnSave').addEventListener('click', async () => {
+      $('err').style.display = 'none';
+      const pw1 = $('pw1').value, pw2 = $('pw2').value;
+      if (pw1.length < 6) { showErr('La contraseña debe tener al menos 6 caracteres.'); return; }
+      if (pw1 !== pw2) { showErr('Las contraseñas no coinciden.'); return; }
+      $('btnSave').disabled = true; $('btnSave').textContent = 'Guardando…';
+      try {
+        const { error } = await supabase.auth.updateUser({ password: pw1 });
+        if (error) throw error;
+        showOk('Contraseña actualizada. Entrando…');
+        setTimeout(() => { location.href = 'historial.html'; }, 1200);
+      } catch (e) {
+        showErr(e.message);
+        $('btnSave').disabled = false; $('btnSave').textContent = 'Guardar y entrar';
+      }
+    });
+  </script>
+</body>
+</html>
