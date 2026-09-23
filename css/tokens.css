@@ -5,7 +5,11 @@
    lo que se está señalando". Nunca se usa como decoración.
    ============================================================================ */
 
-@import url('https://fonts.googleapis.com/css2?family=Caveat:wght@500;600;700&family=Instrument+Sans:wght@400;500;600&family=Archivo:wght@700&family=JetBrains+Mono:wght@400;500&display=swap');
+/* Las fuentes se cargan por <link> en el <head> de cada página (ver
+   partials/fonts), NUNCA por @import aquí — un @import dentro de un CSS
+   importado a su vez por design-system.css encadena 3 round-trips en serie
+   antes de poder pedir el primer archivo de fuente, lo que atrasa el LCP y
+   causa FOUT en cada carga. */
 
 :root {
   /* -- Acento: único color señal ------------------------------------------- */
