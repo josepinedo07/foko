@@ -10,8 +10,11 @@
   <link rel="apple-touch-icon" href="brand/apple-touch-icon.png">
   <link rel="manifest" href="site.webmanifest">
   <meta name="theme-color" content="#0F1009">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600;700&family=Instrument+Sans:wght@400;500;600&family=Archivo:wght@700&family=JetBrains+Mono:wght@400;500&display=swap">
   <link rel="stylesheet" href="css/design-system.css">
-  <script src="js/errlog.js"></script>
+  <script src="js/errlog.js" defer></script>
   <style>
     body { overflow-x: hidden; }
     .wrap { max-width: 1120px; margin: 0 auto; padding: 0 var(--s-6); }
@@ -160,7 +163,10 @@
     <div class="mockshell">
       <div class="mockstage">
         <div class="mock-empty" aria-hidden="true"></div>
-        <img class="mock-photo" src="brand/hero-panel.jpg" alt="Consola de oficina viendo la cámara del técnico de campo">
+        <picture>
+          <source srcset="brand/hero-panel.webp" type="image/webp">
+          <img class="mock-photo" src="brand/hero-panel.jpg" alt="Consola de oficina viendo la cámara del técnico de campo" width="975" height="1300" fetchpriority="high" decoding="async">
+        </picture>
         <div class="mock-brackets" aria-hidden="true"><i></i></div>
         <div class="mock-hud">
           <span class="pill pill--live"><span class="dot dot--live"></span>LIVE</span>
@@ -173,7 +179,10 @@
         <span class="mock-mark__tag">-A7B1 · RELÉ SEGURIDAD</span>
         <div class="mock-share">
           <div class="mock-share__head">Compartiendo · diagrama</div>
-          <img src="brand/hero-diagram.jpg" alt="Diagrama eléctrico compartido en la sesión">
+          <picture>
+            <source srcset="brand/hero-diagram.webp" type="image/webp">
+            <img src="brand/hero-diagram.jpg" alt="Diagrama eléctrico compartido en la sesión" width="440" height="281" loading="lazy" decoding="async">
+          </picture>
         </div>
       </div>
       <div class="mockcaption">
