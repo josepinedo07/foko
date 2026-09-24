@@ -15,6 +15,10 @@
 
 import { getIceServers } from './rtc-config.js';
 
+// 720p: 1080p corrompe la captura (franja verde + rayas) en algunos Samsung con
+// Chrome reciente, y además pesa el doble por datos móviles/TURN.
+const CAPTURE_SIZE = { width: { ideal: 1280 }, height: { ideal: 720 } };
+
 export class WebRTCManager {
   constructor(options = {}) {
     this.role = options.role || 'expert';
@@ -156,15 +160,15 @@ export class WebRTCManager {
     try {
       this.localStream = await navigator.mediaDevices.getUserMedia({
         video: savedId
-          ? { deviceId: { exact: savedId }, width: { ideal: 1920 }, height: { ideal: 1080 } }
-          : { facingMode: { ideal: this.facingMode }, width: { ideal: 1920 }, height: { ideal: 1080 } },
+          ? { deviceId: { exact: savedId }, ...CAPTURE_SIZE }
+          : { facingMode: { ideal: this.facingMode }, ...CAPTURE_SIZE },
         audio: { echoCancellation: true, noiseSuppression: true },
       });
     } catch (_) {
       // El deviceId guardado ya no existe en este teléfono/navegador — reintenta sin él.
       localStorage.removeItem('foko_cam_device');
       this.localStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: this.facingMode }, width: { ideal: 1920 }, height: { ideal: 1080 } },
+        video: { facingMode: { ideal: this.facingMode }, ...CAPTURE_SIZE },
         audio: { echoCancellation: true, noiseSuppression: true },
       });
     }
@@ -202,7 +206,7 @@ export class WebRTCManager {
       if (this.localStream) this.localStream.getTracks().forEach((t) => t.stop());
       try {
         this.localStream = await navigator.mediaDevices.getUserMedia({
-          video: { deviceId: { exact: next.deviceId }, width: { ideal: 1920 }, height: { ideal: 1080 } },
+          video: { deviceId: { exact: next.deviceId }, ...CAPTURE_SIZE },
           audio: { echoCancellation: true, noiseSuppression: true },
         });
         localStorage.setItem('foko_cam_device', next.deviceId);
