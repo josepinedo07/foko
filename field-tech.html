@@ -61,7 +61,17 @@
       background: linear-gradient(var(--bg), transparent);
       pointer-events: none;
     }
+    .fieldhud { padding-right: calc(var(--s-3) + env(safe-area-inset-right)); }
+    .fieldhud > * { flex: none; white-space: nowrap; }
     .fieldhud .spacer { flex: 1; }
+    .fieldhud #companyName { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+    @media (max-width: 480px) {
+      .fieldhud { gap: var(--s-2); }
+      .fieldhud [data-hud="res"] { display: none; }
+    }
+    @media (max-width: 380px) {
+      .fieldhud #companyName, .fieldhud .rec-label { display: none; }
+    }
     .fieldhud [data-hud="lat"].is-warn { color: var(--warn); }
     .fieldhud [data-hud="lat"].is-critical { color: var(--critical); }
 
@@ -105,7 +115,7 @@
       <span class="bars" data-hud="bars" data-level="0"><i></i><i></i><i></i><i></i></span>
       <span data-hud="lat">— MS</span>
       <span id="companyName" class="mono text-dim" style="font-size:var(--fs-11);" hidden></span>
-      <span class="pill pill--rec" id="recPill" hidden><span class="dot dot--rec"></span>GRABANDO</span>
+      <span class="pill pill--rec" id="recPill" hidden aria-label="Grabando"><span class="dot dot--rec"></span><span class="rec-label">GRABANDO</span></span>
       <span class="spacer"></span>
       <span data-hud="res">—</span>
       <button class="hud-end" id="btnEnd" type="button" hidden>Finalizar</button>
