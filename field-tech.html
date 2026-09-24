@@ -182,7 +182,7 @@
 
   <script type="module">
     import { ARCanvas } from './js/ar-canvas.js';
-    import { WebRTCManager } from './js/webrtc-manager.js';
+    import { WebRTCManager } from './js/webrtc-manager.js?v=20260924';
     import { Hud, toast, runSystemsCheck } from './js/ui.js';
     import { mountLogo } from './js/logo.js';
     import { SESSION_MAX_MS, SESSION_WARN_MS, SESSION_MAX_MINUTES } from './js/limits.js';
@@ -426,7 +426,7 @@
         showErr('No se pudo abrir la cámara.');
         return;
       }
-      webrtc.ensureCleanCapture(feed, onCameraAdjusted);
+      webrtc.ensureCleanCapture?.(feed, onCameraAdjusted);
       await webrtc.initPeer();
       hud.start();
       $('gate').hidden = true;
@@ -455,7 +455,7 @@
     $('btnFlip').addEventListener('click', async () => {
       try {
         feed.srcObject = await webrtc.switchCamera();
-        webrtc.ensureCleanCapture(feed, onCameraAdjusted);
+        webrtc.ensureCleanCapture?.(feed, onCameraAdjusted);
       } catch (_) {}
     });
 
