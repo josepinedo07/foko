@@ -15,9 +15,36 @@
 
 import { getIceServers } from './rtc-config.js';
 
-// 720p: 1080p corrompe la captura (franja verde + rayas) en algunos Samsung con
-// Chrome reciente, y además pesa el doble por datos móviles/TURN.
-const CAPTURE_SIZE = { width: { ideal: 1280 }, height: { ideal: 720 } };
+// Escalones de captura: se baja al siguiente solo si ensureCleanCapture() detecta
+// cuadros corruptos. null = sin pedir tamaño (lo que el teléfono prefiera).
+const CAPTURE_LADDER = [{ w: 1280, h: 720 }, { w: 640, h: 480 }, null];
+const RUNG_KEY = 'foko:camRung';
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+let probe = null;
+// Firma de la corrupción: columnas casi completas de verde puro saturado.
+function looksCorrupted(videoEl) {
+  const W = 48;
+  const H = Math.max(8, Math.round(W * (videoEl.videoHeight / videoEl.videoWidth || 1)));
+  probe = probe || document.createElement('canvas');
+  probe.width = W; probe.height = H;
+  const ctx = probe.getContext('2d', { willReadFrequently: true });
+  try { ctx.drawImage(videoEl, 0, 0, W, H); } catch (_) { return false; }
+  const px = ctx.getImageData(0, 0, W, H).data;
+  let run = 0;
+  for (let x = 0; x < W; x++) {
+    let green = 0;
+    for (let y = 0; y < H; y++) {
+      const i = (y * W + x) * 4;
+      const r = px[i], g = px[i + 1], b = px[i + 2];
+      if (g > 110 && g > r * 2 && g > b * 2) green++;
+    }
+    run = green / H > 0.85 ? run + 1 : 0;
+    if (run >= 3) return true;
+  }
+  return false;
+}
 
 export class WebRTCManager {
   constructor(options = {}) {
@@ -41,6 +68,11 @@ export class WebRTCManager {
     this.remotePeerId = null;
     this.torchOn = false;
     this._micEnabled = true;
+    this._rung = 0;
+    try {
+      localStorage.removeItem('foko_cam_device');
+      this._rung = Math.min(CAPTURE_LADDER.length - 1, parseInt(localStorage.getItem(RUNG_KEY), 10) || 0);
+    } catch (_) {}
   }
 
   // ---- Ciclo de vida --------------------------------------------------------
@@ -154,80 +186,63 @@ export class WebRTCManager {
 
   // ---- Cámara del campo ----------------------------------------------------
 
+  _videoConstraints() {
+    const size = CAPTURE_LADDER[this._rung];
+    return size
+      ? { facingMode: { ideal: this.facingMode }, width: { ideal: size.w }, height: { ideal: size.h } }
+      : { facingMode: { ideal: this.facingMode } };
+  }
+
   async startCamera() {
     if (this.localStream) this.localStream.getTracks().forEach((t) => t.stop());
-    const savedId = localStorage.getItem('foko_cam_device');
-    try {
-      this.localStream = await navigator.mediaDevices.getUserMedia({
-        video: savedId
-          ? { deviceId: { exact: savedId }, ...CAPTURE_SIZE }
-          : { facingMode: { ideal: this.facingMode }, ...CAPTURE_SIZE },
-        audio: { echoCancellation: true, noiseSuppression: true },
-      });
-    } catch (_) {
-      // El deviceId guardado ya no existe en este teléfono/navegador — reintenta sin él.
-      localStorage.removeItem('foko_cam_device');
-      this.localStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: this.facingMode }, ...CAPTURE_SIZE },
-        audio: { echoCancellation: true, noiseSuppression: true },
-      });
-    }
-    if (!this._cameraDevices) await this._refreshCameraDevices();
+    this.localStream = await navigator.mediaDevices.getUserMedia({
+      video: this._videoConstraints(),
+      audio: { echoCancellation: true, noiseSuppression: true },
+    });
     const audio = this.localStream.getAudioTracks()[0];
     if (audio) audio.enabled = this._micEnabled;
     this._replaceOutgoingTracks();
     return this.localStream;
   }
 
-  async _refreshCameraDevices() {
-    try {
-      const devices = await navigator.mediaDevices.enumerateDevices();
-      this._cameraDevices = devices.filter((d) => d.kind === 'videoinput');
-    } catch (_) {
-      this._cameraDevices = [];
-    }
-  }
-
-  /**
-   * Algunos Android con varias cámaras traseras (macro, profundidad/ToF, etc.)
-   * eligen mal el sensor con solo facingMode — sale verdoso, tipo visión nocturna.
-   * Este botón cicla entre TODAS las cámaras físicas del teléfono (no solo
-   * frontal/trasera) para que el técnico pueda buscar a mano la correcta, y la
-   * recuerda (localStorage) para que no vuelva a pasar en la próxima sesión.
-   */
   async switchCamera() {
-    await this._refreshCameraDevices();
-    const devices = this._cameraDevices || [];
-    if (devices.length > 1) {
-      const track = this.localStream && this.localStream.getVideoTracks()[0];
-      const currentId = track && track.getSettings && track.getSettings().deviceId;
-      const idx = devices.findIndex((d) => d.deviceId === currentId);
-      const next = devices[(idx + 1) % devices.length];
-      if (this.localStream) this.localStream.getTracks().forEach((t) => t.stop());
-      try {
-        this.localStream = await navigator.mediaDevices.getUserMedia({
-          video: { deviceId: { exact: next.deviceId }, ...CAPTURE_SIZE },
-          audio: { echoCancellation: true, noiseSuppression: true },
-        });
-        localStorage.setItem('foko_cam_device', next.deviceId);
-        const audio = this.localStream.getAudioTracks()[0];
-        if (audio) audio.enabled = this._micEnabled;
-        this._replaceOutgoingTracks();
-        return this.localStream;
-      } catch (_) {
-        localStorage.removeItem('foko_cam_device');
-      }
-    }
-    // Sin varias cámaras detectadas (o falló la elegida): alterna frontal/trasera.
     this.facingMode = this.facingMode === 'environment' ? 'user' : 'environment';
-    localStorage.removeItem('foko_cam_device');
     return this.startCamera();
   }
 
-  /** Olvida la cámara guardada y vuelve a la trasera por defecto (para el botón de ajustes). */
-  resetCameraChoice() {
-    localStorage.removeItem('foko_cam_device');
-    this.facingMode = 'environment';
+  /**
+   * Algunos teléfonos (visto en Samsung con Chrome reciente) entregan cuadros
+   * corruptos a ciertas resoluciones: franja verde sólida + rayas verticales.
+   * Revisa unos cuadros del video local y, si ve la franja, baja un escalón de
+   * resolución y reinicia la cámara, sin que el técnico tenga que hacer nada.
+   * El escalón que funcionó queda guardado para ese teléfono.
+   */
+  async ensureCleanCapture(videoEl, onRestart) {
+    const token = (this._checkToken = (this._checkToken || 0) + 1);
+    while (true) {
+      if (!(await this._waitForFrames(videoEl)) || token !== this._checkToken) return;
+      let bad = 0;
+      for (let i = 0; i < 3; i++) {
+        await sleep(350);
+        if (token !== this._checkToken) return;
+        if (looksCorrupted(videoEl)) bad++;
+      }
+      if (bad < 2 || this._rung >= CAPTURE_LADDER.length - 1) return;
+      this._rung++;
+      try { localStorage.setItem(RUNG_KEY, String(this._rung)); } catch (_) {}
+      try {
+        videoEl.srcObject = await this.startCamera();
+        if (onRestart) onRestart(this._rung);
+      } catch (_) { return; }
+    }
+  }
+
+  async _waitForFrames(videoEl) {
+    for (let i = 0; i < 40; i++) {
+      if (videoEl.videoWidth > 0 && videoEl.readyState >= 2) { await sleep(600); return true; }
+      await sleep(100);
+    }
+    return false;
   }
 
   _replaceOutgoingTracks() {
@@ -293,6 +308,7 @@ export class WebRTCManager {
   }
 
   destroy() {
+    this._checkToken = (this._checkToken || 0) + 1;
     [this.localStream, this.screenStream].forEach((s) => s && s.getTracks().forEach((t) => t.stop()));
     if (this.peer) this.peer.destroy();
   }
