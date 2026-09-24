@@ -131,7 +131,7 @@
         <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
         <span>Señalar</span>
       </button>
-      <button class="fab" id="btnFlip" aria-label="Voltear cámara">
+      <button class="fab" id="btnFlip" aria-label="Cambiar cámara">
         <svg class="icon" viewBox="0 0 24 24"><path d="M4 8a8 8 0 0 1 13-2M20 16A8 8 0 0 1 7 18"/><path d="M17 3v3h-3M7 21v-3h3"/></svg>
       </button>
       <button class="fab" id="btnTorch" aria-pressed="false" aria-label="Linterna">
@@ -450,7 +450,10 @@
     });
 
     $('btnFlip').addEventListener('click', async () => {
-      try { feed.srcObject = await webrtc.switchCamera(); } catch (_) {}
+      try {
+        feed.srcObject = await webrtc.switchCamera();
+        toast('Si la imagen se ve rara (verdosa, sin color), sigue tocando este botón — algunos teléfonos tienen varias cámaras traseras.', 'info', 5000);
+      } catch (_) {}
     });
 
     $('btnTorch').addEventListener('click', async () => {

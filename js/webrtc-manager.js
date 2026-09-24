@@ -152,19 +152,78 @@ export class WebRTCManager {
 
   async startCamera() {
     if (this.localStream) this.localStream.getTracks().forEach((t) => t.stop());
-    this.localStream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: { ideal: this.facingMode }, width: { ideal: 1920 }, height: { ideal: 1080 } },
-      audio: { echoCancellation: true, noiseSuppression: true },
-    });
+    const savedId = localStorage.getItem('foko_cam_device');
+    try {
+      this.localStream = await navigator.mediaDevices.getUserMedia({
+        video: savedId
+          ? { deviceId: { exact: savedId }, width: { ideal: 1920 }, height: { ideal: 1080 } }
+          : { facingMode: { ideal: this.facingMode }, width: { ideal: 1920 }, height: { ideal: 1080 } },
+        audio: { echoCancellation: true, noiseSuppression: true },
+      });
+    } catch (_) {
+      // El deviceId guardado ya no existe en este teléfono/navegador — reintenta sin él.
+      localStorage.removeItem('foko_cam_device');
+      this.localStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: this.facingMode }, width: { ideal: 1920 }, height: { ideal: 1080 } },
+        audio: { echoCancellation: true, noiseSuppression: true },
+      });
+    }
+    if (!this._cameraDevices) await this._refreshCameraDevices();
     const audio = this.localStream.getAudioTracks()[0];
     if (audio) audio.enabled = this._micEnabled;
     this._replaceOutgoingTracks();
     return this.localStream;
   }
 
+  async _refreshCameraDevices() {
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      this._cameraDevices = devices.filter((d) => d.kind === 'videoinput');
+    } catch (_) {
+      this._cameraDevices = [];
+    }
+  }
+
+  /**
+   * Algunos Android con varias cámaras traseras (macro, profundidad/ToF, etc.)
+   * eligen mal el sensor con solo facingMode — sale verdoso, tipo visión nocturna.
+   * Este botón cicla entre TODAS las cámaras físicas del teléfono (no solo
+   * frontal/trasera) para que el técnico pueda buscar a mano la correcta, y la
+   * recuerda (localStorage) para que no vuelva a pasar en la próxima sesión.
+   */
   async switchCamera() {
+    await this._refreshCameraDevices();
+    const devices = this._cameraDevices || [];
+    if (devices.length > 1) {
+      const track = this.localStream && this.localStream.getVideoTracks()[0];
+      const currentId = track && track.getSettings && track.getSettings().deviceId;
+      const idx = devices.findIndex((d) => d.deviceId === currentId);
+      const next = devices[(idx + 1) % devices.length];
+      if (this.localStream) this.localStream.getTracks().forEach((t) => t.stop());
+      try {
+        this.localStream = await navigator.mediaDevices.getUserMedia({
+          video: { deviceId: { exact: next.deviceId }, width: { ideal: 1920 }, height: { ideal: 1080 } },
+          audio: { echoCancellation: true, noiseSuppression: true },
+        });
+        localStorage.setItem('foko_cam_device', next.deviceId);
+        const audio = this.localStream.getAudioTracks()[0];
+        if (audio) audio.enabled = this._micEnabled;
+        this._replaceOutgoingTracks();
+        return this.localStream;
+      } catch (_) {
+        localStorage.removeItem('foko_cam_device');
+      }
+    }
+    // Sin varias cámaras detectadas (o falló la elegida): alterna frontal/trasera.
     this.facingMode = this.facingMode === 'environment' ? 'user' : 'environment';
+    localStorage.removeItem('foko_cam_device');
     return this.startCamera();
+  }
+
+  /** Olvida la cámara guardada y vuelve a la trasera por defecto (para el botón de ajustes). */
+  resetCameraChoice() {
+    localStorage.removeItem('foko_cam_device');
+    this.facingMode = 'environment';
   }
 
   _replaceOutgoingTracks() {
