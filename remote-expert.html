@@ -512,9 +512,32 @@
       }, ROOM_IDLE_MINUTES * 60 * 1000);
     }
 
+    // Si el micrófono no arranca (permiso bloqueado/denegado), antes seguía
+    // la llamada en silencio y el técnico de campo nunca te oía, sin ningún
+    // aviso. Ahora se marca claro y se puede reintentar sin recargar.
+    let micReady = false;
+    async function tryStartMic() {
+      try {
+        await webrtc.startMic();
+        micReady = true;
+        $('btnMic').classList.remove('btn--danger');
+        $('btnMic').textContent = micOn ? 'Silenciar mic' : 'Activar mic';
+        webrtc._replaceOutgoingTracks(); // por si la llamada ya estaba activa
+        return true;
+      } catch (_) {
+        micReady = false;
+        $('btnMic').classList.add('btn--danger');
+        $('btnMic').textContent = 'Reintentar mic';
+        return false;
+      }
+    }
+
     async function start() {
       await detectLanHost();
-      try { await webrtc.startMic(); } catch (_) {}
+      const ok = await tryStartMic();
+      if (!ok) {
+        toast('No se pudo activar tu micrófono — el técnico de campo no te va a escuchar. Revisa el permiso del navegador y dale a "Reintentar mic".', 'critical', 12000);
+      }
       await webrtc.initPeer();
       refreshInvite();
       armRoomIdle();
@@ -643,7 +666,8 @@
       $('btnScreen').textContent = 'Compartir pantalla';
     }
 
-    $('btnMic').addEventListener('click', () => {
+    $('btnMic').addEventListener('click', async () => {
+      if (!micReady) { await tryStartMic(); return; }
       micOn = !micOn;
       webrtc.setMicEnabled(micOn);
       $('btnMic').setAttribute('aria-pressed', String(!micOn));
