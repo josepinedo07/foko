@@ -899,11 +899,11 @@ begin
     'seats_used', public.seats_used(v_company),
     'my_role', public.my_role(),
     'users', coalesce((select jsonb_agg(row_to_json(u) order by u.created_at) from (
-      select p.user_id, au.email, p.full_name, p.role, p.status, p.last_active_at
+      select p.user_id, au.email, p.full_name, p.role, p.status, p.last_active_at, p.created_at
       from public.profiles p join auth.users au on au.id = p.user_id
       where p.company_id = v_company) u), '[]'::jsonb),
     'invitations', coalesce((select jsonb_agg(row_to_json(i) order by i.created_at desc) from (
-      select token, email, role, expires_at, accepted_at
+      select token, email, role, expires_at, accepted_at, created_at
       from public.invitations where company_id = v_company and accepted_at is null) i), '[]'::jsonb)
   ) into result;
   return result;
