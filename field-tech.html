@@ -192,7 +192,7 @@
 
   <script type="module">
     import { ARCanvas } from './js/ar-canvas.js';
-    import { WebRTCManager } from './js/webrtc-manager.js?v=20260924';
+    import { WebRTCManager } from './js/webrtc-manager.js?v=20260924b';
     import { Hud, toast, runSystemsCheck } from './js/ui.js';
     import { mountLogo } from './js/logo.js';
     import { SESSION_MAX_MS, SESSION_WARN_MS, SESSION_MAX_MINUTES } from './js/limits.js';
@@ -249,6 +249,7 @@
       try { feed.srcObject = null; } catch (_) {}
       micOn = true;
       $('btnMic').setAttribute('aria-pressed', 'false');
+      $('btnTorch').setAttribute('aria-pressed', 'false');
       $('micIcon').innerHTML = '<path d="M12 3a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3z"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>';
       sessionStart = null;
       setLive('offline');
@@ -460,19 +461,36 @@
         : '<path d="M12 3a3 3 0 0 1 3 3v5M9 9v3a3 3 0 0 0 5 2.2"/><path d="M5 11a7 7 0 0 0 11.3 5.5M12 18v3"/><path d="M4 4l16 16"/>';
     });
 
-    function onCameraAdjusted() { toast('Cámara ajustada para este teléfono', 'info', 2500); }
+    function onCameraAdjusted() { syncTorch(); toast('Cámara ajustada para este teléfono', 'info', 2500); }
 
     $('btnFlip').addEventListener('click', async () => {
       try {
         feed.srcObject = await webrtc.switchCamera();
         webrtc.ensureCleanCapture?.(feed, onCameraAdjusted);
       } catch (_) {}
+      syncTorch();
     });
 
+    function syncTorch() {
+      $('btnTorch').setAttribute('aria-pressed', String(!!(webrtc && webrtc.torchOn)));
+    }
+    let torchBusy = false;
     $('btnTorch').addEventListener('click', async () => {
-      const on = await webrtc.toggleTorch();
-      $('btnTorch').setAttribute('aria-pressed', String(on));
-      if (!on) toast('Este teléfono no permite la linterna por web', 'info');
+      if (!webrtc || torchBusy) return;
+      torchBusy = true;
+      try {
+        const ok = await webrtc.toggleTorch();
+        // Pudo cambiarse a otra cámara trasera (la que tiene flash).
+        if (webrtc.localStream && feed.srcObject !== webrtc.localStream) feed.srcObject = webrtc.localStream;
+        if (!ok) {
+          toast(webrtc.facingMode === 'user'
+            ? 'La cámara frontal no tiene linterna — voltea a la trasera'
+            : 'Este teléfono no permite encender la linterna desde el navegador', 'info');
+        }
+      } finally {
+        torchBusy = false;
+        syncTorch();
+      }
     });
 
     $('btnCloseScreen').addEventListener('click', () => $('screenshare').classList.remove('on'));

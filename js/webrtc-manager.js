@@ -19,6 +19,9 @@ import { getIceServers } from './rtc-config.js';
 // cuadros corruptos. null = sin pedir tamaño (lo que el teléfono prefiera).
 const CAPTURE_LADDER = [{ w: 1280, h: 720 }, { w: 640, h: 480 }, null];
 const RUNG_KEY = 'foko:camRung';
+const REAR_KEY = 'foko:rearCam';
+
+const hasTorch = (track) => !!(track && track.getCapabilities && track.getCapabilities().torch);
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -186,22 +189,37 @@ export class WebRTCManager {
 
   // ---- Cámara del campo ----------------------------------------------------
 
-  _videoConstraints() {
+  _videoConstraints(useSavedRear = true) {
     const size = CAPTURE_LADDER[this._rung];
-    return size
-      ? { facingMode: { ideal: this.facingMode }, width: { ideal: size.w }, height: { ideal: size.h } }
-      : { facingMode: { ideal: this.facingMode } };
+    const sizeC = size ? { width: { ideal: size.w }, height: { ideal: size.h } } : {};
+    let rearId = null;
+    try { rearId = useSavedRear && this.facingMode === 'environment' && localStorage.getItem(REAR_KEY); } catch (_) {}
+    return rearId
+      ? { deviceId: { exact: rearId }, ...sizeC }
+      : { facingMode: { ideal: this.facingMode }, ...sizeC };
   }
 
   async startCamera() {
     if (this.localStream) this.localStream.getTracks().forEach((t) => t.stop());
-    this.localStream = await navigator.mediaDevices.getUserMedia({
-      video: this._videoConstraints(),
-      audio: { echoCancellation: true, noiseSuppression: true },
-    });
+    const audioC = { echoCancellation: true, noiseSuppression: true };
+    try {
+      this.localStream = await navigator.mediaDevices.getUserMedia({ video: this._videoConstraints(), audio: audioC });
+    } catch (e) {
+      // La trasera con flash guardada ya no existe (otro teléfono, permisos): sin ella.
+      try { localStorage.removeItem(REAR_KEY); } catch (_) {}
+      this.localStream = await navigator.mediaDevices.getUserMedia({ video: this._videoConstraints(false), audio: audioC });
+    }
     const audio = this.localStream.getAudioTracks()[0];
     if (audio) audio.enabled = this._micEnabled;
     this._replaceOutgoingTracks();
+    // Reiniciar la cámara apaga la linterna; si estaba encendida, la vuelve a prender.
+    if (this.torchOn) {
+      const track = this.localStream.getVideoTracks()[0];
+      try {
+        if (!hasTorch(track)) throw new Error('sin linterna');
+        await track.applyConstraints({ advanced: [{ torch: true }] });
+      } catch (_) { this.torchOn = false; }
+    }
     return this.localStream;
   }
 
@@ -255,17 +273,57 @@ export class WebRTCManager {
     });
   }
 
+  /** Devuelve true si logró dejar la linterna en el estado pedido. */
   async toggleTorch() {
-    const track = this.localStream && this.localStream.getVideoTracks()[0];
-    if (!track || !track.getCapabilities) return false;
-    if (!track.getCapabilities().torch) return false;
-    this.torchOn = !this.torchOn;
+    const want = !this.torchOn;
+    let track = this.localStream && this.localStream.getVideoTracks()[0];
+    if (!track) return false;
+    if (want && !hasTorch(track) && this.facingMode === 'environment') {
+      track = (await this._switchToTorchCamera()) || (this.localStream && this.localStream.getVideoTracks()[0]);
+      if (!track) return false;
+    }
+    if (want && !hasTorch(track)) return false;
     try {
-      await track.applyConstraints({ advanced: [{ torch: this.torchOn }] });
-      return this.torchOn;
+      await track.applyConstraints({ advanced: [{ torch: want }] });
     } catch (_) {
       return false;
     }
+    this.torchOn = want;
+    return true;
+  }
+
+  /**
+   * En teléfonos con varias cámaras traseras, facingMode puede abrir una sin
+   * flash (ultra gran angular, tele). Prueba las otras traseras y se queda con
+   * la primera que tenga linterna; la recuerda para las próximas llamadas.
+   * Android no deja abrir dos cámaras a la vez, así que el video parpadea.
+   */
+  async _switchToTorchCamera() {
+    let devices = [];
+    try { devices = (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === 'videoinput'); } catch (_) {}
+    const current = this.localStream.getVideoTracks()[0];
+    const currentId = current && current.getSettings && current.getSettings().deviceId;
+    const rear = devices.filter((d) => d.deviceId && d.deviceId !== currentId && !/front|frontal|user|selfie/i.test(d.label));
+    if (!rear.length) return null;
+
+    const size = CAPTURE_LADDER[this._rung];
+    const sizeC = size ? { width: { ideal: size.w }, height: { ideal: size.h } } : {};
+    if (current) current.stop();
+    for (const d of rear) {
+      let probe = null;
+      try {
+        probe = (await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: d.deviceId }, ...sizeC } })).getVideoTracks()[0];
+      } catch (_) { continue; }
+      if (hasTorch(probe)) {
+        try { localStorage.setItem(REAR_KEY, d.deviceId); } catch (_) {}
+        this.localStream = new MediaStream([probe, ...this.localStream.getAudioTracks()]);
+        this._replaceOutgoingTracks();
+        return probe;
+      }
+      probe.stop();
+    }
+    await this.startCamera();
+    return null;
   }
 
   setMicEnabled(enabled) {
