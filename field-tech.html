@@ -192,7 +192,7 @@
 
   <script type="module">
     import { ARCanvas } from './js/ar-canvas.js';
-    import { WebRTCManager } from './js/webrtc-manager.js?v=20260924b';
+    import { WebRTCManager } from './js/webrtc-manager.js?v=20260928';
     import { Hud, toast, runSystemsCheck } from './js/ui.js';
     import { mountLogo } from './js/logo.js';
     import { SESSION_MAX_MS, SESSION_WARN_MS, SESSION_MAX_MINUTES } from './js/limits.js';
@@ -233,9 +233,38 @@
     }
     setLive('offline');
 
+    // ---- Reconexión automática ----
+    // Si el enlace se cae (el experto recargó su consola o se fue la señal),
+    // el teléfono vuelve a entrar solo a la misma sala durante unos minutos.
+    const RECONNECT_FOR_MS = 5 * 60 * 1000;
+    let reconnecting = false, reconnectUntil = 0, reconnectTimer = null;
+    function scheduleAttempt(ms) { clearTimeout(reconnectTimer); reconnectTimer = setTimeout(attemptReconnect, ms); }
+    function attemptReconnect() {
+      if (!reconnecting || !webrtc) return;
+      if (Date.now() > reconnectUntil) {
+        stopReconnect();
+        setLive('offline');
+        toast('No se pudo reconectar. Pide al experto un enlace nuevo o toca Finalizar.', 'critical', 10000);
+        return;
+      }
+      webrtc.reconnect();
+      scheduleAttempt(10000);   // si no hubo respuesta, se reintenta
+    }
+    function startReconnect() {
+      if (reconnecting || !webrtc) return;
+      reconnecting = true;
+      reconnectUntil = Date.now() + RECONNECT_FOR_MS;
+      setLive('waiting');
+      $('liveText').textContent = 'RECONECTANDO';
+      toast('Se perdió el enlace con el experto — reconectando…', 'warn', 4000);
+      scheduleAttempt(1500);
+    }
+    function stopReconnect() { reconnecting = false; clearTimeout(reconnectTimer); reconnectTimer = null; }
+
     // ---- Fin de llamada: cierra cámara, micrófono y audio del experto ----
     let endArmTimer = null;
     function teardownCall() {
+      stopReconnect();
       clearSessionTimers();
       try { hud.stop(); } catch (_) {}
       try {
@@ -415,6 +444,11 @@
             }
             return;
           }
+          if (msg.type === 'end') {
+            teardownCall();
+            toast('El experto finalizó la llamada', 'info', 6000);
+            return;
+          }
           if (msg.type === 'screen') { if (!msg.active) $('screenshare').classList.remove('on'); return; }
           if (msg.type === 'rec') { $('recPill').hidden = !msg.on; return; }
           if (msg.type === 'freeze') { $('freezeTag').classList.toggle('on', !!msg.dataUrl); }
@@ -424,10 +458,20 @@
           ar.handleRemote(msg);
         },
         onStatus: (s) => {
-          if (s.state === 'connected') { setLive('connected'); if (!sessionStart) { sessionStart = Date.now(); armSessionLimit(); } toast('Enlace establecido', 'ok'); }
-          else if (s.state === 'waiting') setLive('waiting');
-          else if (s.state === 'disconnected') { setLive('offline'); toast('El experto se desconectó', 'warn'); }
-          else if (s.state === 'error') { setLive('offline'); showErr(s.message || 'Error de conexión'); }
+          if (s.state === 'connected') {
+            const wasReconnecting = reconnecting;
+            stopReconnect();
+            setLive('connected');
+            if (!sessionStart) { sessionStart = Date.now(); armSessionLimit(); }
+            toast(wasReconnecting ? 'Reconectado' : 'Enlace establecido', 'ok');
+          }
+          else if (s.state === 'waiting') { if (!reconnecting) setLive('waiting'); }
+          else if (s.state === 'disconnected') { if (sessionStart) startReconnect(); else setLive('offline'); }
+          else if (s.state === 'error') {
+            // Mientras reconecta, "no hay sesión activa" solo significa que la consola aún no vuelve.
+            if (reconnecting) { scheduleAttempt(3000); return; }
+            setLive('offline'); showErr(s.message || 'Error de conexión');
+          }
         },
       });
 

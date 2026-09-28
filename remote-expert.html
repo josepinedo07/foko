@@ -348,13 +348,14 @@
   <script src="js/vendor/qrcode.min.js"></script>
   <script type="module">
     import { ARCanvas } from './js/ar-canvas.js';
-    import { WebRTCManager } from './js/webrtc-manager.js?v=20260924b';
+    import { WebRTCManager } from './js/webrtc-manager.js?v=20260928';
     import { NotesAssistant, TRANSCRIPTION_SUPPORTED } from './js/notes-assistant.js';
     import { Hud, toast } from './js/ui.js';
     import { mountLogo } from './js/logo.js';
     import { supabase, requireSession } from './js/supabase-client.js';
     import { enforceAccess } from './js/gate.js';
     import { guardSession } from './js/session-guard.js';
+    import { loadActive, saveActive, clearActive, putMedia, listMedia } from './js/session-resume.js';
     import { SESSION_MAX_MS, SESSION_WARN_MS, SESSION_MAX_MINUTES, MAX_REPORT_CHARS, MAX_PHOTOS_PER_SESSION, ROOM_IDLE_MINUTES } from './js/limits.js';
     import { logAudit } from './js/audit.js';
 
@@ -386,7 +387,13 @@
       (crypto || window.crypto).getRandomValues(b);
       return 'FK-' + Array.from(b, (x) => x.toString(16).padStart(2, '0')).join('').toUpperCase();
     }
-    let roomCode = (params.get('room') || newCode()).toUpperCase();
+    // Llamada en curso guardada (recarga o pestaña cerrada sin finalizar): se retoma.
+    const uid = session.user.id;
+    const saved = loadActive(uid, { maxSessionMs: SESSION_MAX_MS, idleMs: ROOM_IDLE_MINUTES * 60 * 1000 });
+    const resumed = saved && (!params.get('room') || params.get('room').toUpperCase() === saved.code) ? saved : null;
+    if (!resumed) clearActive();
+    let roomCode = (params.get('room') || (resumed && resumed.code) || newCode()).toUpperCase();
+    let idRetries = 0;
 
     const feed = $('feed');
     const statusEl = $('status');
@@ -468,7 +475,7 @@
         $('placeholder').hidden = true;
         $('toolbar').hidden = false;
         $('actions').hidden = false;
-        if (!sessionStart) { sessionStart = Date.now(); armSessionLimit(); }
+        if (!sessionStart) { sessionStart = Date.now(); armSessionLimit(); saveActive(uid, { startedAt: sessionStart }); }
         hud.start();
       },
       onData: (msg) => { if (msg.type !== 'hello') ar.handleRemote(msg); },
@@ -480,6 +487,7 @@
           statusEl.className = CONN.ok; statusEl.textContent = 'Conectado';
           $('inviteStatus').className = CONN.ok; $('inviteStatus').textContent = 'Técnico conectado';
         } else if (s.state === 'waiting') {
+          idRetries = 0;
           statusEl.className = CONN.warn; statusEl.textContent = 'Sesión ' + roomCode + ' · esperando';
         } else if (s.state === 'disconnected') {
           connected = false;
@@ -487,7 +495,16 @@
           toast('El técnico de campo se desconectó', 'warn');
         } else if (s.state === 'error') {
           if (s.message && s.message.includes('ya está en uso')) {
-            roomCode = newCode(); webrtc.roomCode = roomCode; webrtc.destroy();
+            webrtc.destroy();
+            // Tras recargar, el servidor de señalización tarda unos segundos en
+            // soltar el código anterior: se reintenta el MISMO antes de cambiarlo.
+            if (idRetries++ < 6) {
+              statusEl.className = CONN.warn; statusEl.textContent = 'Recuperando la sesión ' + roomCode + '…';
+              setTimeout(start, 2000); return;
+            }
+            idRetries = 0;
+            roomCode = newCode(); webrtc.roomCode = roomCode;
+            if (sessionStart) toast('No se pudo recuperar el código anterior. Envía el enlace nuevo al técnico.', 'warn', 9000);
             setTimeout(start, 300); return;
           }
           statusEl.className = CONN.crit; statusEl.textContent = s.message || 'Error';
@@ -533,6 +550,7 @@
     }
 
     async function start() {
+      saveActive(uid, { code: roomCode });
       await detectLanHost();
       const ok = await tryStartMic();
       if (!ok) {
@@ -576,6 +594,7 @@
         const name = `foto-${roomCode}-${stamp()}.jpg`;
         downloadUrl(url, name);
         captured.photos.push({ blob, name });
+        putMedia('photo', name, blob);
         const img = document.createElement('img');
         img.src = url; img.title = name;
         img.addEventListener('click', () => window.open(url, '_blank'));
@@ -627,6 +646,7 @@
         const name = `grabacion-${roomCode}-${stamp()}.webm`;
         downloadUrl(URL.createObjectURL(blob), name);
         captured.videos.push({ blob, name });
+        putMedia('video', name, blob);
         rec = null;
       };
       rec.start();
@@ -984,15 +1004,21 @@
     // ---- Corte por tiempo (límite de sesión) ----
     let sessionTimers = [];
     function armSessionLimit() {
-      sessionTimers.push(setTimeout(() => {
-        toast(`La sesión se cerrará en ${SESSION_MAX_MINUTES - SESSION_WARN_MS / 60000} min (límite de ${SESSION_MAX_MINUTES})`, 'warn', 9000);
-      }, SESSION_WARN_MS));
+      // Cuenta desde el inicio real de la llamada (también al retomarla tras recargar).
+      const elapsed = sessionStart ? Date.now() - sessionStart : 0;
+      if (elapsed < SESSION_WARN_MS) {
+        sessionTimers.push(setTimeout(() => {
+          toast(`La sesión se cerrará en ${SESSION_MAX_MINUTES - SESSION_WARN_MS / 60000} min (límite de ${SESSION_MAX_MINUTES})`, 'warn', 9000);
+        }, SESSION_WARN_MS - elapsed));
+      }
       sessionTimers.push(setTimeout(async () => {
         toast(`Sesión finalizada: límite de ${SESSION_MAX_MINUTES} minutos`, 'critical', 12000);
         if (rec) { stopRec(); await new Promise((r) => setTimeout(r, 700)); }
+        try { webrtc.send({ type: 'end' }); } catch (_) {}
+        await new Promise((r) => setTimeout(r, 300));
         try { hud.stop(); webrtc.destroy(); } catch (_) {}
         openEndModal(true);
-      }, SESSION_MAX_MS));
+      }, Math.max(0, SESSION_MAX_MS - elapsed)));
     }
 
     // ---- Cierre de sesión: guardar en el historial ----
@@ -1014,7 +1040,12 @@
       leaveToHistory();
     });
 
-    function leaveToHistory() {
+    let leaving = false;
+    async function leaveToHistory() {
+      leaving = true;
+      // Avisa al teléfono que la llamada terminó a propósito (para que no intente reconectar).
+      try { webrtc.send({ type: 'end' }); } catch (_) {}
+      await Promise.all([clearActive(), new Promise((r) => setTimeout(r, 300))]);
       try { hud.stop(); notes.stopTranscription(); webrtc.destroy(); } catch (_) {}
       location.href = 'historial.html';
     }
@@ -1080,8 +1111,38 @@
       }
     });
 
+    // ---- Retomar tras recarga ----
+    let notesSaveTimer = null;
+    const saveNotes = () => { if (!leaving) saveActive(uid, { notes: $('notesBox').value }); };
+    $('notesBox').addEventListener('input', () => { clearTimeout(notesSaveTimer); notesSaveTimer = setTimeout(saveNotes, 800); });
+
+    async function restoreSession() {
+      if (!resumed) return;
+      if (resumed.notes && !$('notesBox').value) $('notesBox').value = resumed.notes;
+      if (resumed.startedAt) { sessionStart = resumed.startedAt; armSessionLimit(); }
+      const media = await listMedia();
+      for (const m of media) {
+        if (m.kind === 'video') { captured.videos.push({ blob: m.blob, name: m.name }); continue; }
+        captured.photos.push({ blob: m.blob, name: m.name });
+        const url = URL.createObjectURL(m.blob);
+        const img = document.createElement('img');
+        img.src = url; img.title = m.name;
+        img.addEventListener('click', () => window.open(url, '_blank'));
+        $('shots').prepend(img);
+        photoCount++;
+      }
+      if (resumed.startedAt) {
+        const extra = media.length ? ` con ${captured.photos.length} foto(s) y ${captured.videos.length} video(s)` : '';
+        toast(`Sesión ${roomCode} retomada${extra}. El técnico se reconecta solo.`, 'ok', 7000);
+      }
+    }
+    restoreSession();
+
     applyCfg();
-    window.addEventListener('beforeunload', () => { hud.stop(); notes.stopTranscription(); webrtc.destroy(); });
+    window.addEventListener('beforeunload', () => {
+      clearTimeout(notesSaveTimer); saveNotes();
+      hud.stop(); notes.stopTranscription(); webrtc.destroy();
+    });
   </script>
 </body>
 </html>

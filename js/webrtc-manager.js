@@ -81,6 +81,7 @@ export class WebRTCManager {
   // ---- Ciclo de vida --------------------------------------------------------
 
   async initPeer() {
+    this._destroyed = false;
     if (typeof Peer === 'undefined') {
       this.onStatus({ state: 'error', message: 'No se pudo cargar PeerJS (¿sin internet?).' });
       return;
@@ -113,16 +114,21 @@ export class WebRTCManager {
     this.peer.on('call', (call) => {
       const kind = call.metadata && call.metadata.kind;
       if (this.role === 'expert' && kind === 'camera') {
-        if (this.cameraCall && this.remotePeerId && call.peer !== this.remotePeerId) {
+        // Solo se rechaza si hay OTRO técnico con la llamada activa. Si el
+        // anterior ya se cayó, el que vuelve (con un ID nuevo) debe entrar,
+        // aunque su llamada llegue antes que su canal de datos.
+        if (this.cameraCall && this.cameraCall.open && call.peer !== this.remotePeerId) {
           try { call.close(); } catch (_) {}
           return;
         }
+        if (this.cameraCall && this.cameraCall !== call) { try { this.cameraCall.close(); } catch (_) {} }
         // Responder con nuestro micrófono para que el campo nos oiga.
         call.answer(this.localStream || undefined);
         this.cameraCall = call;
         this.remotePeerId = call.peer;
         call.on('stream', (stream) => this.onRemoteStream(stream));
-        call.on('close', () => this.onStatus({ state: 'disconnected' }));
+        call.on('close', () => this._callLost(call));
+        this._watchCall(call);
       } else if (this.role === 'field' && kind === 'screen') {
         call.answer();
         this.screenCall = call;
@@ -153,8 +159,11 @@ export class WebRTCManager {
     const conn = this.peer.connect(this.roomCode, { reliable: true });
     this._setupDataConn(conn);
     if (this.localStream) {
-      this.cameraCall = this.peer.call(this.roomCode, this.localStream, { metadata: { kind: 'camera' } });
-      this.cameraCall.on('stream', (stream) => this.onRemoteStream(stream));
+      const call = this.peer.call(this.roomCode, this.localStream, { metadata: { kind: 'camera' } });
+      this.cameraCall = call;
+      call.on('stream', (stream) => this.onRemoteStream(stream));
+      call.on('close', () => this._callLost(call));
+      this._watchCall(call);
     }
   }
 
@@ -168,7 +177,51 @@ export class WebRTCManager {
       this.send({ type: 'hello', role: this.role, ...(this.helloExtra || {}) });
     });
     conn.on('data', (data) => this.onData(data));
-    conn.on('close', () => this.onStatus({ state: 'disconnected' }));
+    // Un canal viejo que se cierra después de reconectar no es una desconexión.
+    conn.on('close', () => { if (conn === this.dataConn && !this._destroyed) this.onStatus({ state: 'disconnected' }); });
+  }
+
+  // PeerJS no avisa cuando el otro lado desaparece sin cerrar (pestaña matada,
+  // señal perdida): se vigila el estado real de la conexión de la llamada.
+  _watchCall(call) {
+    clearInterval(this._watchTimer);
+    let badSince = 0;
+    this._watchTimer = setInterval(() => {
+      const pc = call.peerConnection;
+      if (call !== this.cameraCall) { clearInterval(this._watchTimer); return; }
+      if (!pc) return;
+      const st = pc.connectionState || pc.iceConnectionState;
+      if (st === 'failed' || st === 'closed') { this._callLost(call); return; }
+      if (st === 'disconnected') {
+        badSince = badSince || Date.now();
+        if (Date.now() - badSince > 5000) this._callLost(call);
+      } else badSince = 0;
+    }, 1000);
+  }
+
+  _callLost(call) {
+    if (call !== this.cameraCall || call._lost || this._destroyed) return;
+    call._lost = true;
+    clearInterval(this._watchTimer);
+    this.onStatus({ state: 'disconnected' });
+  }
+
+  /** Campo: vuelve a enlazarse a la misma sala (el experto recargó o se cayó la red). */
+  reconnect() {
+    if (this.role !== 'field' || this._destroyed) return;
+    const oldConn = this.dataConn, oldCall = this.cameraCall;
+    // Tras un corte largo PeerJS puede destruir el peer: se crea uno nuevo.
+    if (!this.peer || this.peer.destroyed) {
+      this.dataConn = null; this.cameraCall = null;
+      this.initPeer();
+      return;
+    }
+    this.dataConn = null; this.cameraCall = null;
+    try { oldConn && oldConn.close(); } catch (_) {}
+    try { oldCall && oldCall.close(); } catch (_) {}
+    // Sin señalización, reconnect() dispara 'open' otra vez y eso llama a _connectToExpert.
+    if (this.peer.disconnected) { try { this.peer.reconnect(); } catch (_) {} return; }
+    this._connectToExpert();
   }
 
   send(payload) {
@@ -366,6 +419,8 @@ export class WebRTCManager {
   }
 
   destroy() {
+    this._destroyed = true;
+    clearInterval(this._watchTimer);
     this._checkToken = (this._checkToken || 0) + 1;
     [this.localStream, this.screenStream].forEach((s) => s && s.getTracks().forEach((t) => t.stop()));
     if (this.peer) this.peer.destroy();
