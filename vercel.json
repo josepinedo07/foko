@@ -42,7 +42,7 @@
   "rewrites": [
     {
       "source": "/llamar",
-      "destination": "/field-tech.html"
+      "destination": "/field-tech"
     }
   ]
 }
