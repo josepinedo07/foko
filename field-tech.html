@@ -192,7 +192,8 @@
 
   <script type="module">
     import { ARCanvas } from './js/ar-canvas.js';
-    import { WebRTCManager } from './js/webrtc-manager.js?v=20260928';
+    import { WebRTCManager } from './js/webrtc-manager.js?v=20260929';
+    import { keepAwake } from './js/wake-lock.js';
     import { Hud, toast, runSystemsCheck } from './js/ui.js';
     import { mountLogo } from './js/logo.js';
     import { SESSION_MAX_MS, SESSION_WARN_MS, SESSION_MAX_MINUTES } from './js/limits.js';
@@ -265,6 +266,7 @@
     let endArmTimer = null;
     function teardownCall() {
       stopReconnect();
+      keepAwake(false);
       clearSessionTimers();
       try { hud.stop(); } catch (_) {}
       try {
@@ -483,6 +485,7 @@
       }
       webrtc.ensureCleanCapture?.(feed, onCameraAdjusted);
       await webrtc.initPeer();
+      keepAwake(true);
       hud.start();
       $('gate').hidden = true;
       $('dock').hidden = false;

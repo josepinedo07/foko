@@ -17,7 +17,11 @@
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <style>
     body { overflow: hidden; }
-    .app { display: flex; flex-direction: column; height: 100vh; }
+    .app { display: flex; flex-direction: column; height: 100vh; height: 100dvh; }
+    #ar { touch-action: none; }
+
+    /* Íconos y etiquetas cortas: solo en teléfono (el escritorio queda igual) */
+    .act-ico, .top-ico, .lbl-short, #btnTools { display: none; }
 
     /* Fila 1: identidad + acciones */
     .topbar {
@@ -101,6 +105,71 @@
       overflow: hidden; color: var(--text-mute);
     }
     .logo-upload img { width: 100%; height: 100%; object-fit: contain; }
+
+    /* ======================================================================
+       Teléfono: el técnico de oficina atiende sin PC. Video primero,
+       acciones en una barra inferior de íconos, dibujo plegable,
+       notas como hoja que sube desde abajo.
+       ====================================================================== */
+    @media (max-width: 760px), (pointer: coarse) and (max-height: 520px) {
+      .topbar { gap: var(--s-2); padding: calc(var(--s-2) + env(safe-area-inset-top)) var(--s-2) var(--s-2); }
+      #companyBadge { display: none !important; }
+      #status { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .topbar .btn { padding: var(--s-2) var(--s-3); }
+      #btnHistory, #btnNotes { width: 36px; padding: 0; }
+      #btnHistory .lbl, #btnNotes .lbl, .lbl-long { display: none; }
+      .top-ico { display: block; }
+      .lbl-short { display: inline; }
+
+      .hud { gap: var(--s-3); padding: var(--s-1) var(--s-2); }
+      .hud [data-hud="res"], .hud [data-hud="fps"] { display: none; }
+
+      /* La barra va DEBAJO del video, no encima */
+      .stage { display: flex; flex-direction: column; }
+      .stage > .viewer { flex: 1; height: auto; min-height: 0; }
+      #actions {
+        position: relative; left: auto; bottom: auto; transform: none;
+        justify-content: space-around; gap: 2px;
+        padding: var(--s-1) var(--s-1) calc(var(--s-1) + env(safe-area-inset-bottom));
+        border-radius: 0; border-width: 1px 0 0; box-shadow: none;
+      }
+      #actions .btn {
+        flex: 1 1 0; min-width: 0; min-height: 54px; flex-direction: column; gap: 3px;
+        padding: var(--s-1) 2px; background: transparent; border-color: transparent;
+        font-size: var(--fs-11); line-height: 1.1; white-space: normal; text-align: center;
+      }
+      #actions .btn[aria-pressed='true'] { background: var(--accent-wash); border-color: var(--accent); }
+      #actions .btn.is-rec { background: var(--critical); border-color: var(--critical); }
+      #actions .act-ico { display: block; }
+      #actions #btnTools { display: inline-flex; }
+      #shots { display: none; }
+
+      /* Herramientas de dibujo: tira horizontal que se abre con "Dibujar" */
+      #toolbar {
+        display: none; top: var(--s-2); left: var(--s-2); right: var(--s-2);
+        flex-direction: row; flex-wrap: wrap; align-items: center; row-gap: var(--s-1);
+      }
+      .stage.tools-open #toolbar { display: flex; }
+      #toolbar .tool { flex: none; }
+
+      .placeholder { padding: var(--s-4); }
+
+      .panel {
+        top: auto; left: 0; width: 100%; max-width: none; height: 80dvh;
+        border-left: 0; border-top: 1px solid var(--border-strong); border-radius: var(--r) var(--r) 0 0;
+        transform: translateY(100%); padding-bottom: env(safe-area-inset-bottom);
+      }
+      .panel.open { transform: translateY(0); }
+
+      .modal { padding: var(--s-2); }
+      .modal__card { padding: var(--s-4); max-height: 94dvh; }
+      .modal .field-row { flex-wrap: wrap; }
+      #reportOut, #reportPreview { height: 45dvh; }
+    }
+    /* Teléfono acostado: la altura es oro — fuera la franja de métricas */
+    @media (pointer: coarse) and (max-height: 520px) {
+      .hud { display: none; }
+    }
   </style>
 </head>
 <body>
@@ -110,12 +179,12 @@
       <span id="companyBadge" class="company-badge" hidden></span>
       <span id="status" class="conn">iniciando</span>
       <span class="spacer"></span>
-      <a class="btn btn--ghost" href="historial.html" id="btnHistory">Historial</a>
-      <button class="btn btn--ghost" id="btnNotes" hidden>Notas</button>
+      <a class="btn btn--ghost" href="historial.html" id="btnHistory" aria-label="Historial"><svg class="icon icon--sm top-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span class="lbl">Historial</span></a>
+      <button class="btn btn--ghost" id="btnNotes" aria-label="Notas" hidden><svg class="icon icon--sm top-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h10l4 4v14H5z"/><path d="M9 12h6M9 16h6"/></svg><span class="lbl">Notas</span></button>
       <button class="btn btn--ghost btn-icon" id="btnSettings" aria-label="Ajustes">
         <svg class="icon icon--sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.4-2.3 1a7 7 0 0 0-1.7-1L14.5 2h-5l-.4 2.6a7 7 0 0 0-1.7 1l-2.3-1-2 3.4L3 11a7 7 0 0 0 0 2l-2 1.5 2 3.4 2.3-1a7 7 0 0 0 1.7 1l.4 2.6h5l.4-2.6a7 7 0 0 0 1.7-1l2.3 1 2-3.4-2-1.5a7 7 0 0 0 .1-1z"/></svg>
       </button>
-      <button class="btn btn--primary" id="btnInvite">Invitar a campo</button>
+      <button class="btn btn--primary" id="btnInvite"><span class="lbl-long">Invitar a campo</span><span class="lbl-short">Invitar</span></button>
       <button class="btn btn--danger" id="btnEnd">Finalizar</button>
     </div>
 
@@ -176,11 +245,12 @@
       </div>
 
       <div class="tray tray--dock" id="actions" hidden>
-        <button class="btn" id="btnFreeze" aria-pressed="false">Congelar</button>
-        <button class="btn" id="btnPhoto">Foto</button>
-        <button class="btn" id="btnRecord">Grabar</button>
-        <button class="btn" id="btnScreen" aria-pressed="false">Compartir pantalla</button>
-        <button class="btn" id="btnMic" aria-pressed="false">Silenciar mic</button>
+        <button class="btn" id="btnFreeze" aria-pressed="false"><svg class="icon act-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6v12M15 6v12"/></svg><span class="act__lbl">Congelar</span></button>
+        <button class="btn" id="btnPhoto"><svg class="icon act-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg><span class="act__lbl">Foto</span></button>
+        <button class="btn" id="btnRecord"><svg class="icon act-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="6"/></svg><span class="act__lbl">Grabar</span></button>
+        <button class="btn" id="btnScreen" aria-pressed="false"><svg class="icon act-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="1"/><path d="M8 20h8M12 16v4"/></svg><span class="act__lbl">Compartir pantalla</span></button>
+        <button class="btn" id="btnMic" aria-pressed="false"><svg class="icon act-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3z"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg><span class="act__lbl">Silenciar mic</span></button>
+        <button class="btn" id="btnTools" aria-pressed="false"><svg class="icon act-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg><span class="act__lbl">Dibujar</span></button>
         <div class="shots" id="shots"></div>
       </div>
     </div>
@@ -348,7 +418,7 @@
   <script src="js/vendor/qrcode.min.js"></script>
   <script type="module">
     import { ARCanvas } from './js/ar-canvas.js';
-    import { WebRTCManager } from './js/webrtc-manager.js?v=20260928';
+    import { WebRTCManager } from './js/webrtc-manager.js?v=20260929';
     import { NotesAssistant, TRANSCRIPTION_SUPPORTED } from './js/notes-assistant.js';
     import { Hud, toast } from './js/ui.js';
     import { mountLogo } from './js/logo.js';
@@ -356,6 +426,7 @@
     import { enforceAccess } from './js/gate.js';
     import { guardSession } from './js/session-guard.js';
     import { loadActive, saveActive, clearActive, putMedia, listMedia } from './js/session-resume.js';
+    import { keepAwake } from './js/wake-lock.js';
     import { SESSION_MAX_MS, SESSION_WARN_MS, SESSION_MAX_MINUTES, MAX_REPORT_CHARS, MAX_PHOTOS_PER_SESSION, ROOM_IDLE_MINUTES } from './js/limits.js';
     import { logAudit } from './js/audit.js';
 
@@ -397,6 +468,16 @@
 
     const feed = $('feed');
     const statusEl = $('status');
+    // Los botones de acción llevan ícono + etiqueta: cambiar solo la etiqueta.
+    const setLbl = (id, text) => { $(id).querySelector('.act__lbl').textContent = text; };
+
+    // Los navegadores de teléfono no pueden compartir pantalla.
+    if (!(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia)) $('btnScreen').hidden = true;
+
+    $('btnTools').addEventListener('click', () => {
+      const open = $('stage').classList.toggle('tools-open');
+      $('btnTools').setAttribute('aria-pressed', String(open));
+    });
     let connected = false, frozen = false, screenOn = false, micOn = true;
     let lanHost = null, photoCount = 0, sessionStart = null;
 
@@ -476,6 +557,7 @@
         $('toolbar').hidden = false;
         $('actions').hidden = false;
         if (!sessionStart) { sessionStart = Date.now(); armSessionLimit(); saveActive(uid, { startedAt: sessionStart }); }
+        keepAwake(true);
         hud.start();
       },
       onData: (msg) => { if (msg.type !== 'hello') ar.handleRemote(msg); },
@@ -538,13 +620,13 @@
         await webrtc.startMic();
         micReady = true;
         $('btnMic').classList.remove('btn--danger');
-        $('btnMic').textContent = micOn ? 'Silenciar mic' : 'Activar mic';
+        setLbl('btnMic', micOn ? 'Silenciar mic' : 'Activar mic');
         webrtc._replaceOutgoingTracks(); // por si la llamada ya estaba activa
         return true;
       } catch (_) {
         micReady = false;
         $('btnMic').classList.add('btn--danger');
-        $('btnMic').textContent = 'Reintentar mic';
+        setLbl('btnMic', 'Reintentar mic');
         return false;
       }
     }
@@ -567,7 +649,7 @@
       if (!frozen && !feed.videoWidth) return;
       frozen = !frozen;
       $('btnFreeze').setAttribute('aria-pressed', String(frozen));
-      $('btnFreeze').textContent = frozen ? 'Reanudar' : 'Congelar';
+      setLbl('btnFreeze', frozen ? 'Reanudar' : 'Congelar');
       $('freezeTag').hidden = !frozen;
       if (frozen) {
         const shot = ar.composite(feed).toDataURL('image/jpeg', 0.85);
@@ -651,7 +733,7 @@
       };
       rec.start();
       $('btnRecord').classList.add('is-rec');
-      $('btnRecord').textContent = 'Detener';
+      setLbl('btnRecord', 'Detener');
       $('recPill').hidden = false;
       webrtc.send({ type: 'rec', on: true });
     }
@@ -659,7 +741,7 @@
     function stopRec() {
       rec && rec.state !== 'inactive' && rec.stop();
       $('btnRecord').classList.remove('is-rec');
-      $('btnRecord').textContent = 'Grabar';
+      setLbl('btnRecord', 'Grabar');
       $('recPill').hidden = true;
       webrtc.send({ type: 'rec', on: false });
     }
@@ -677,13 +759,13 @@
         await webrtc.startScreenShare();
         screenOn = true;
         $('btnScreen').setAttribute('aria-pressed', 'true');
-        $('btnScreen').textContent = 'Dejar de compartir';
+        setLbl('btnScreen', 'Dejar de compartir');
       } catch (_) {}
     });
     function screenDone() {
       screenOn = false;
       $('btnScreen').setAttribute('aria-pressed', 'false');
-      $('btnScreen').textContent = 'Compartir pantalla';
+      setLbl('btnScreen', 'Compartir pantalla');
     }
 
     $('btnMic').addEventListener('click', async () => {
@@ -691,7 +773,7 @@
       micOn = !micOn;
       webrtc.setMicEnabled(micOn);
       $('btnMic').setAttribute('aria-pressed', String(!micOn));
-      $('btnMic').textContent = micOn ? 'Silenciar mic' : 'Activar mic';
+      setLbl('btnMic', micOn ? 'Silenciar mic' : 'Activar mic');
     });
 
     // ---- Invitar / QR ----
@@ -1045,6 +1127,7 @@
       leaving = true;
       // Avisa al teléfono que la llamada terminó a propósito (para que no intente reconectar).
       try { webrtc.send({ type: 'end' }); } catch (_) {}
+      keepAwake(false);
       await Promise.all([clearActive(), new Promise((r) => setTimeout(r, 300))]);
       try { hud.stop(); notes.stopTranscription(); webrtc.destroy(); } catch (_) {}
       location.href = 'historial.html';
