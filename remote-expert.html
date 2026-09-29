@@ -209,8 +209,8 @@
       </div>
 
       <div class="placeholder" id="placeholder">
-        <h2>Esperando al técnico de campo</h2>
-        <p>Comparte el enlace o el QR. En cuanto abra la cámara aparece aquí.</p>
+        <h2 id="phTitle">Esperando al técnico de campo</h2>
+        <p id="phText">Comparte el enlace o el QR. En cuanto abra la cámara aparece aquí.</p>
         <button class="btn btn--primary" id="btnInvite2">Ver enlace y QR</button>
       </div>
 
@@ -279,7 +279,10 @@
           <p class="label" style="margin-top:var(--s-2);">Escanear</p>
         </div>
       </div>
-      <div style="text-align:right; margin-top:var(--s-5);"><button class="btn btn--primary" id="btnDone">Listo</button></div>
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:var(--s-3); flex-wrap:wrap; margin-top:var(--s-5);">
+        <a href="enlaces.html" class="text-dim" style="font-size:var(--fs-12);">¿Necesitas un enlace que dure días? Crear enlace de llamada →</a>
+        <button class="btn btn--primary" id="btnDone">Listo</button>
+      </div>
     </div>
   </div>
 
@@ -418,7 +421,7 @@
   <script src="js/vendor/qrcode.min.js"></script>
   <script type="module">
     import { ARCanvas } from './js/ar-canvas.js';
-    import { WebRTCManager } from './js/webrtc-manager.js?v=20260929';
+    import { WebRTCManager } from './js/webrtc-manager.js?v=20260930';
     import { NotesAssistant, TRANSCRIPTION_SUPPORTED } from './js/notes-assistant.js';
     import { Hud, toast } from './js/ui.js';
     import { mountLogo } from './js/logo.js';
@@ -427,6 +430,7 @@
     import { guardSession } from './js/session-guard.js';
     import { loadActive, saveActive, clearActive, putMedia, listMedia } from './js/session-resume.js';
     import { keepAwake } from './js/wake-lock.js';
+    import { startCallListener } from './js/incoming-call.js';
     import { SESSION_MAX_MS, SESSION_WARN_MS, SESSION_MAX_MINUTES, MAX_REPORT_CHARS, MAX_PHOTOS_PER_SESSION, ROOM_IDLE_MINUTES } from './js/limits.js';
     import { logAudit } from './js/audit.js';
 
@@ -441,9 +445,15 @@
     if (authState && !enforceAccess(authState)) throw new Error('acceso suspendido');
     if (!authState) throw new Error('Redirigiendo a login…');
     const { session } = authState;
-    guardSession(session);
+    // Esperar a que esta sesión quede como la vigente: si no, RLS (session_is_current)
+    // oculta los datos de la primera carga tras iniciar sesión.
+    await guardSession(session);
     let company = authState.company;   // { id, name, logo_url, invite_code } | null
     const myRole = authState.profile ? authState.profile.role : null;
+
+    // Llegó aquí contestando una llamada por enlace.
+    const callerName = params.get('caller');
+    const callLabel = params.get('label') || '';
 
     if (company) {
       $('companyBadge').textContent = `· ${company.name}`;
@@ -1107,7 +1117,7 @@
     const endModal = $('endModal');
     function openEndModal(forced) {
       if (rec && !forced) { toast('Detén la grabación antes de finalizar', 'warn'); return; }
-      $('endClient').value = '';
+      $('endClient').value = callLabel;
       // Prellena con las notas si el técnico las escribió durante la llamada.
       $('endDesc').value = ($('notesBox') && $('notesBox').value.trim()) || '';
       $('endSummary').textContent =
@@ -1220,6 +1230,12 @@
       }
     }
     restoreSession();
+
+    if (callerName) {
+      $('phTitle').textContent = `${callerName} se está conectando…`;
+      $('phText').textContent = callLabel ? `Llamada por el enlace «${callLabel}». Su cámara aparece aquí en unos segundos.` : 'Su cámara aparece aquí en unos segundos.';
+    }
+    startCallListener({ supabase, company, role: myRole, userId: uid, isBusy: () => connected });
 
     applyCfg();
     window.addEventListener('beforeunload', () => {

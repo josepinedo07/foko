@@ -86,7 +86,9 @@
     const state = await requireSession('login.html');
     if (state && !enforceAccess(state, { allowBilling: true })) throw new Error('acceso suspendido');
     if (!state) throw new Error('sin sesión');
-    guardSession(state.session);
+    // Esperar a que esta sesión quede como la vigente: si no, RLS (session_is_current)
+    // oculta los datos de la primera carga tras iniciar sesión.
+    await guardSession(state.session);
     if (state.isPlatformAdmin && !state.company) { location.href = 'admin.html'; throw new Error('admin'); }
     if (!state.company) { $('boot').textContent = 'Tu cuenta no tiene organización.'; throw new Error('sin org'); }
     if (state.profile?.role !== 'org_admin') { location.href = 'historial.html'; throw new Error('no org_admin'); }

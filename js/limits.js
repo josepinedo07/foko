@@ -23,3 +23,9 @@ export const ROOM_IDLE_MINUTES = 10;
 
 export const SESSION_MAX_MS = SESSION_MAX_MINUTES * 60 * 1000;
 export const SESSION_WARN_MS = SESSION_WARN_MINUTES * 60 * 1000;
+
+/** Cuánto suena una llamada entrante antes de darse por perdida (= _ring_window() en SQL). */
+export const RING_SECONDS = 60;
+
+/** Duraciones que se ofrecen al crear un enlace de llamada (el SQL permite hasta 7). */
+export const CALL_LINK_DAY_OPTIONS = [4, 3, 1];

@@ -97,7 +97,22 @@
     .gate__mark { text-align: center; }
     .gate__mark p { color: var(--text-dim); font-size: var(--fs-12); margin-top: var(--s-3); max-width: 30ch; }
     .gate .field { text-transform: uppercase; text-align: center; max-width: 220px; }
-    #gateErr { color: var(--critical); font-family: var(--font-mono); font-size: var(--fs-12); display: none; }
+    #gateErr { color: var(--critical); font-family: var(--font-mono); font-size: var(--fs-12); display: none; text-align: center; max-width: 340px; }
+
+    /* Llamar por enlace (?c=token) */
+    .callbox { width: 100%; max-width: 340px; display: flex; flex-direction: column; gap: var(--s-3); }
+    .callbox__brand { display: flex; align-items: center; gap: var(--s-3); padding: var(--s-3); border: 1px solid var(--border); border-radius: var(--r); background: var(--surface); }
+    .callbox__brand img { width: 40px; height: 40px; object-fit: contain; border-radius: var(--r-cell); background: var(--qr-bg); flex: none; }
+    .callbox__brand div { display: flex; flex-direction: column; min-width: 0; }
+    .callbox__brand strong { font-size: var(--fs-16); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .callbox__sub { color: var(--text-dim); font-size: var(--fs-12); }
+    .ringbox { display: flex; flex-direction: column; align-items: center; gap: var(--s-4); text-align: center; }
+    .ringbox__icon { width: 88px; height: 88px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: var(--accent); color: var(--on-accent); animation: ringpulse 1.2s ease-in-out infinite; }
+    .ringbox__icon .icon { width: 36px; height: 36px; }
+    @keyframes ringpulse { 0%, 100% { box-shadow: 0 0 0 0 var(--accent-wash); } 50% { box-shadow: 0 0 0 18px transparent; } }
+    @media (prefers-reduced-motion: reduce) { .ringbox__icon { animation: none; } }
+    #ringText { font-size: var(--fs-16); font-weight: 600; }
+    #ringSub { color: var(--text-dim); font-size: var(--fs-12); font-family: var(--font-mono); }
   </style>
 </head>
 <body>
@@ -160,7 +175,7 @@
     <div class="gate" id="gate">
       <div class="gate__mark">
         <span id="logo" aria-label="Foko"></span>
-        <p>Vas a compartir la cámara de tu teléfono con el técnico de oficina.</p>
+        <p id="gateLead">Vas a compartir la cámara de tu teléfono con el técnico de oficina.</p>
       </div>
 
       <div class="syscheck" id="syscheck">
@@ -180,6 +195,21 @@
 
       <input class="field" id="codeInput" placeholder="FK-XXXXXX" maxlength="16" autocomplete="off" aria-label="Código de sesión">
 
+      <div class="callbox" id="callBox" hidden>
+        <div class="callbox__brand">
+          <img id="callLogo" alt="" hidden>
+          <div><span class="label">Llamar a</span><strong id="callCompany">—</strong><span class="callbox__sub" id="callLabel"></span></div>
+        </div>
+        <input class="field" id="callerName" maxlength="60" placeholder="Tu nombre" autocomplete="name" aria-label="Tu nombre">
+      </div>
+
+      <div class="ringbox" id="ringBox" hidden>
+        <div class="ringbox__icon"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/></svg></div>
+        <p id="ringText">Llamando…</p>
+        <p id="ringSub"></p>
+        <button class="btn btn--danger" id="btnCancelCall">Colgar</button>
+      </div>
+
       <label class="consent" id="consentRow">
         <input type="checkbox" id="consent">
         <span>Acepto compartir mi <strong>cámara y micrófono</strong> con el técnico de oficina y entiendo que la sesión <strong>puede ser grabada y almacenada</strong> por la empresa de soporte. Ver la <a href="privacidad.html" target="_blank" rel="noopener">Política de Privacidad</a>.</span>
@@ -192,11 +222,12 @@
 
   <script type="module">
     import { ARCanvas } from './js/ar-canvas.js';
-    import { WebRTCManager } from './js/webrtc-manager.js?v=20260929';
+    import { WebRTCManager } from './js/webrtc-manager.js?v=20260930';
     import { keepAwake } from './js/wake-lock.js';
     import { Hud, toast, runSystemsCheck } from './js/ui.js';
     import { mountLogo } from './js/logo.js';
     import { SESSION_MAX_MS, SESSION_WARN_MS, SESSION_MAX_MINUTES } from './js/limits.js';
+    import { playRingback } from './js/tones.js';
 
     const $ = (id) => document.getElementById(id);
     const params = new URLSearchParams(location.search);
@@ -209,6 +240,32 @@
     const initialRoom = (params.get('room') || '').toUpperCase();
     $('codeInput').value = initialRoom;
     if (initialRoom) $('codeInput').hidden = true;
+
+    const callToken = params.get('c');
+    const callMode = !!callToken;
+    let callInfo = null, callInfoLoaded = false, callReq = null, pollTimer = null, stopRingback = null, sb = null;
+    let SUPABASE_URL = '', SUPABASE_ANON_KEY = '';
+    if (callMode) {
+      $('codeInput').hidden = true;
+      $('gateLead').textContent = 'Vas a llamar por video al equipo de soporte y compartir la cámara de tu teléfono.';
+      try { $('callerName').value = localStorage.getItem('foko:callerName') || ''; } catch (_) {}
+      (async () => {
+        const mod = await import('./js/supabase-client.js');
+        sb = mod.supabase; SUPABASE_URL = mod.SUPABASE_URL; SUPABASE_ANON_KEY = mod.SUPABASE_ANON_KEY;
+        const { data, error } = await sb.rpc('call_link_info', { p_token: callToken });
+        callInfoLoaded = true;
+        if (error || !data || !data.ok) {
+          showErr(error ? 'No se pudo verificar el enlace. Revisa tu conexión y recarga.' : linkErrText(data && data.reason));
+        } else {
+          callInfo = data;
+          $('callCompany').textContent = data.company.name;
+          $('callLabel').textContent = data.label || '';
+          if (data.company.logoUrl) { $('callLogo').src = data.company.logoUrl; $('callLogo').hidden = false; }
+          $('callBox').hidden = false;
+        }
+        refreshConnectBtn();
+      })();
+    }
 
     const ar = new ARCanvas($('ar'), {
       interactive: true,
@@ -267,6 +324,7 @@
     function teardownCall() {
       stopReconnect();
       keepAwake(false);
+      if (callMode) setCallStage('form');
       clearSessionTimers();
       try { hud.stop(); } catch (_) {}
       try {
@@ -399,19 +457,23 @@
 
     function refreshConnectBtn() {
       const btn = $('btnConnect');
-      const ready = preflightOk && $('consent').checked;
+      const linkBad = callMode && !callInfo;
+      const ready = preflightOk && $('consent').checked && !linkBad;
       btn.disabled = !ready;
-      btn.textContent = !preflightOk ? 'Revisa los permisos'
+      btn.textContent = linkBad ? (callInfoLoaded ? 'Enlace no disponible' : 'Verificando…')
+        : !preflightOk ? 'Revisa los permisos'
         : !$('consent').checked ? 'Acepta para continuar'
-        : 'Conectar';
+        : callMode ? 'Llamar' : 'Conectar';
     }
     $('consent').addEventListener('change', refreshConnectBtn);
 
-    $('btnConnect').addEventListener('click', connect);
+    $('btnConnect').addEventListener('click', () => (callMode ? placeCall() : connect()));
     $('codeInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') connect(); });
 
+    let joinUntil = 0, joinRetryTimer = null;
     async function connect() {
       if (!preflightOk) return;
+      joinUntil = Date.now() + 45000;
       if (!$('consent').checked) { showErr('Marca la casilla de consentimiento para continuar.'); return; }
       const room = ($('codeInput').value || initialRoom).trim().toUpperCase();
       if (!room) { showErr('Escribe el código de sesión.'); return; }
@@ -472,6 +534,13 @@
           else if (s.state === 'error') {
             // Mientras reconecta, "no hay sesión activa" solo significa que la consola aún no vuelve.
             if (reconnecting) { scheduleAttempt(3000); return; }
+            // Al entrar, la consola del experto puede tardar unos segundos en abrir la sala
+            // (p. ej. recién contestó una llamada por enlace): se reintenta un rato.
+            if (!sessionStart && Date.now() < joinUntil && /sesión activa/.test(s.message || '')) {
+              setLive('waiting');
+              if (!joinRetryTimer) joinRetryTimer = setTimeout(() => { joinRetryTimer = null; webrtc && webrtc.reconnect(); }, 2000);
+              return;
+            }
             setLive('offline'); showErr(s.message || 'Error de conexión');
           }
         },
@@ -493,6 +562,84 @@
     }
 
     function showErr(m) { const el = $('gateErr'); el.textContent = m; el.style.display = 'block'; }
+
+    // ---- Llamar por enlace (?c=token): suena en la oficina hasta que alguien contesta ----
+    function setCallStage(stage) {
+      const ringing = stage === 'ringing';
+      $('ringBox').hidden = !ringing;
+      $('syscheck').hidden = ringing;
+      $('callBox').hidden = ringing || !callInfo;
+      $('consentRow').hidden = ringing;
+      $('btnConnect').hidden = ringing;
+      $('btnCancelCall').hidden = false;
+    }
+    function linkErrText(reason) {
+      return {
+        expired: 'Este enlace ya venció. Pide uno nuevo a tu contacto de soporte.',
+        revoked: 'Este enlace fue anulado. Pide uno nuevo a tu contacto de soporte.',
+        unavailable: 'Este servicio de soporte no está disponible en este momento.',
+      }[reason] || 'Este enlace no es válido. Revisa que lo hayas copiado completo.';
+    }
+    function endRinging() {
+      clearInterval(pollTimer); pollTimer = null;
+      if (stopRingback) { stopRingback(); stopRingback = null; }
+    }
+
+    async function placeCall() {
+      if (!preflightOk || !callInfo || callReq) return;
+      if (!$('consent').checked) { showErr('Marca la casilla de consentimiento para continuar.'); return; }
+      const name = $('callerName').value.trim();
+      if (!name) { showErr('Escribe tu nombre para que sepan quién llama.'); $('callerName').focus(); return; }
+      try { localStorage.setItem('foko:callerName', name); } catch (_) {}
+      $('gateErr').style.display = 'none';
+      setCallStage('ringing');
+      $('ringText').textContent = `Llamando a ${callInfo.company.name}…`;
+      $('ringSub').textContent = 'Espera a que te contesten';
+      stopRingback = playRingback();
+      const { data, error } = await sb.rpc('start_call', { p_token: callToken, p_name: name });
+      if (error || !data || !data.ok) {
+        endRinging(); setCallStage('form');
+        const r = data && data.reason;
+        showErr(r === 'rate_limited' ? 'Demasiadas llamadas seguidas con este enlace. Intenta en un rato.'
+          : r === 'invalid_link' || r === 'unavailable' ? linkErrText(r === 'unavailable' ? 'unavailable' : 'expired')
+          : 'No se pudo llamar. Revisa tu conexión e intenta de nuevo.');
+        return;
+      }
+      callReq = { id: data.id, secret: data.secret };
+      pollTimer = setInterval(pollCall, 2000);
+    }
+
+    async function pollCall() {
+      const req = callReq;
+      if (!req) return;
+      const { data } = await sb.rpc('call_status', { p_id: req.id, p_secret: req.secret });
+      if (!data || req !== callReq) return;
+      if (data.status === 'accepted' && data.room_code) {
+        endRinging(); callReq = null;
+        $('ringText').textContent = 'Te contestaron. Conectando…';
+        $('ringSub').textContent = '';
+        $('btnCancelCall').hidden = true;
+        $('codeInput').value = data.room_code;
+        await connect();
+        if (!$('gate').hidden) setCallStage('form');   // falló al abrir la cámara: volver al formulario
+      } else if (['missed', 'cancelled', 'not_found'].includes(data.status)) {
+        endRinging(); callReq = null; setCallStage('form');
+        showErr(data.status === 'missed' ? 'Nadie contestó. Intenta de nuevo en unos minutos.' : 'La llamada terminó.');
+      }
+    }
+
+    function cancelCall(keepalive) {
+      const req = callReq;
+      endRinging(); callReq = null;
+      if (!req) return;
+      fetch(`${SUPABASE_URL}/rest/v1/rpc/cancel_call`, {
+        method: 'POST', keepalive,
+        headers: { apikey: SUPABASE_ANON_KEY, Authorization: 'Bearer ' + SUPABASE_ANON_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ p_id: req.id, p_secret: req.secret }),
+      }).catch(() => {});
+    }
+    $('btnCancelCall').addEventListener('click', () => { cancelCall(false); setCallStage('form'); });
+    window.addEventListener('pagehide', () => cancelCall(true));
 
     $('btnPoint').addEventListener('click', () => {
       ar.addPing(0.5, 0.5, ar.color);
